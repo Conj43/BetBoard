@@ -1,0 +1,10 @@
+# macOS / Xcode
+.DS_Store
+DerivedData/
+# Python
+.venv/
+__pycache__/
+# Node
+node_modules/
+# General
+.env*
