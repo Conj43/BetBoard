@@ -4,7 +4,7 @@ A SwiftUI-based iOS application for tracking sports betting performance with AI-
 
 ## Overview
 
-BetBoard helps users make informed sports betting decisions by providing AI predictions, odds comparison across sportsbooks, and comprehensive bet tracking with performance analytics.
+BetBoard helps users make informed sports betting decisions by providing predictions, odds comparison across sportsbooks, and comprehensive bet tracking with performance analytics.
 
 ## Features
 
@@ -43,7 +43,7 @@ SportsAppTest/
 │   ├── AuthView.swift             # Authentication screen
 │   ├── HomeView.swift             # Dashboard with performance metrics
 │   ├── SearchView.swift           # Game search functionality
-│   ├── PredictionsView.swift      # AI predictions display
+│   ├── PredictionsView.swift      # Predictions display
 │   ├── AdminView.swift            # Game result management
 │   └── InfoView.swift             # Settings and app info
 ├── ViewModels/
@@ -132,7 +132,7 @@ service cloud.firestore {
 - **Results Calculation**: Automatic bet outcome determination
 - **Performance Metrics**: ROI, win rate, profit/loss tracking
 
-### AI Predictions
+### Predictions
 - Confidence-based predictions (0-100%)
 - Key factors analysis
 - Recommended bet suggestions
@@ -191,7 +191,7 @@ The app includes comprehensive bet result calculation:
 - This app is for educational and tracking purposes only
 - No actual money or gambling transactions occur within the app
 - Users are responsible for complying with local gambling laws
-- AI predictions are for informational purposes and not guaranteed outcomes
+- Predictions are for informational purposes and not guaranteed outcomes
 
 ## License
 
