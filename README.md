@@ -9,7 +9,7 @@ BetBoard helps users make informed sports betting decisions by providing AI pred
 ## Features
 
 ### 🏀 Core Functionality
-- **AI Predictions**: Machine learning-powered predictions with confidence ratings
+- **Predictions**: Machine learning-powered predictions with confidence ratings
 - **Game Search**: Find games by team names and matchups
 - **Bet Tracking**: Track your bets and monitor performance over time
 - **Multiple Bet Types**: Support for Moneyline, Spread, and Total bets
@@ -24,7 +24,7 @@ BetBoard helps users make informed sports betting decisions by providing AI pred
 ### 🎯 User Experience
 - **Clean Interface**: Modern SwiftUI design with intuitive navigation
 - **Dark Mode Support**: Toggle between light and dark themes
-- **Anonymous Authentication**: Quick signup with Firebase anonymous auth
+- **Authentication**: Quick signup with Firebase auth
 - **Customizable Settings**: Adjust odds format and notification preferences
 
 ## Tech Stack
