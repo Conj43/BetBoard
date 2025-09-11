@@ -1,0 +1,615 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		F2A901C42E5E0779007F8F79 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F2A901C32E5E0779007F8F79 /* FirebaseAnalytics */; };
+		F2A901C62E5E0779007F8F79 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F2A901C52E5E0779007F8F79 /* FirebaseAuth */; };
+		F2A901C82E5E0779007F8F79 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = F2A901C72E5E0779007F8F79 /* FirebaseFirestore */; };
+		F2A901CA2E5E0779007F8F79 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = F2A901C92E5E0779007F8F79 /* FirebaseStorage */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F28DB70A2E3CFC8B00F48BEF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F28DB6F42E3CFC8A00F48BEF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F28DB6FB2E3CFC8A00F48BEF;
+			remoteInfo = SportsAppTest;
+		};
+		F28DB7142E3CFC8B00F48BEF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F28DB6F42E3CFC8A00F48BEF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F28DB6FB2E3CFC8A00F48BEF;
+			remoteInfo = SportsAppTest;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		F28DB6FC2E3CFC8A00F48BEF /* SportsAppTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SportsAppTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F28DB7092E3CFC8B00F48BEF /* SportsAppTestTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SportsAppTestTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F28DB7132E3CFC8B00F48BEF /* SportsAppTestUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SportsAppTestUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		F28DB6FE2E3CFC8A00F48BEF /* SportsAppTest */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SportsAppTest;
+			sourceTree = "<group>";
+		};
+		F28DB70C2E3CFC8B00F48BEF /* SportsAppTestTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SportsAppTestTests;
+			sourceTree = "<group>";
+		};
+		F28DB7162E3CFC8B00F48BEF /* SportsAppTestUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SportsAppTestUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F28DB6F92E3CFC8A00F48BEF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F2A901C42E5E0779007F8F79 /* FirebaseAnalytics in Frameworks */,
+				F2A901CA2E5E0779007F8F79 /* FirebaseStorage in Frameworks */,
+				F2A901C62E5E0779007F8F79 /* FirebaseAuth in Frameworks */,
+				F2A901C82E5E0779007F8F79 /* FirebaseFirestore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F28DB7062E3CFC8B00F48BEF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F28DB7102E3CFC8B00F48BEF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		F28DB6F32E3CFC8A00F48BEF = {
+			isa = PBXGroup;
+			children = (
+				F28DB6FE2E3CFC8A00F48BEF /* SportsAppTest */,
+				F28DB70C2E3CFC8B00F48BEF /* SportsAppTestTests */,
+				F28DB7162E3CFC8B00F48BEF /* SportsAppTestUITests */,
+				F28DB6FD2E3CFC8A00F48BEF /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F28DB6FD2E3CFC8A00F48BEF /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F28DB6FC2E3CFC8A00F48BEF /* SportsAppTest.app */,
+				F28DB7092E3CFC8B00F48BEF /* SportsAppTestTests.xctest */,
+				F28DB7132E3CFC8B00F48BEF /* SportsAppTestUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F28DB6FB2E3CFC8A00F48BEF /* SportsAppTest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F28DB71D2E3CFC8B00F48BEF /* Build configuration list for PBXNativeTarget "SportsAppTest" */;
+			buildPhases = (
+				F28DB6F82E3CFC8A00F48BEF /* Sources */,
+				F28DB6F92E3CFC8A00F48BEF /* Frameworks */,
+				F28DB6FA2E3CFC8A00F48BEF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				F28DB6FE2E3CFC8A00F48BEF /* SportsAppTest */,
+			);
+			name = SportsAppTest;
+			packageProductDependencies = (
+				F2A901C32E5E0779007F8F79 /* FirebaseAnalytics */,
+				F2A901C52E5E0779007F8F79 /* FirebaseAuth */,
+				F2A901C72E5E0779007F8F79 /* FirebaseFirestore */,
+				F2A901C92E5E0779007F8F79 /* FirebaseStorage */,
+			);
+			productName = SportsAppTest;
+			productReference = F28DB6FC2E3CFC8A00F48BEF /* SportsAppTest.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F28DB7082E3CFC8B00F48BEF /* SportsAppTestTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F28DB7202E3CFC8B00F48BEF /* Build configuration list for PBXNativeTarget "SportsAppTestTests" */;
+			buildPhases = (
+				F28DB7052E3CFC8B00F48BEF /* Sources */,
+				F28DB7062E3CFC8B00F48BEF /* Frameworks */,
+				F28DB7072E3CFC8B00F48BEF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F28DB70B2E3CFC8B00F48BEF /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				F28DB70C2E3CFC8B00F48BEF /* SportsAppTestTests */,
+			);
+			name = SportsAppTestTests;
+			packageProductDependencies = (
+			);
+			productName = SportsAppTestTests;
+			productReference = F28DB7092E3CFC8B00F48BEF /* SportsAppTestTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		F28DB7122E3CFC8B00F48BEF /* SportsAppTestUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F28DB7232E3CFC8B00F48BEF /* Build configuration list for PBXNativeTarget "SportsAppTestUITests" */;
+			buildPhases = (
+				F28DB70F2E3CFC8B00F48BEF /* Sources */,
+				F28DB7102E3CFC8B00F48BEF /* Frameworks */,
+				F28DB7112E3CFC8B00F48BEF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F28DB7152E3CFC8B00F48BEF /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				F28DB7162E3CFC8B00F48BEF /* SportsAppTestUITests */,
+			);
+			name = SportsAppTestUITests;
+			packageProductDependencies = (
+			);
+			productName = SportsAppTestUITests;
+			productReference = F28DB7132E3CFC8B00F48BEF /* SportsAppTestUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F28DB6F42E3CFC8A00F48BEF /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					F28DB6FB2E3CFC8A00F48BEF = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					F28DB7082E3CFC8B00F48BEF = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = F28DB6FB2E3CFC8A00F48BEF;
+					};
+					F28DB7122E3CFC8B00F48BEF = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = F28DB6FB2E3CFC8A00F48BEF;
+					};
+				};
+			};
+			buildConfigurationList = F28DB6F72E3CFC8A00F48BEF /* Build configuration list for PBXProject "SportsAppTest" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = F28DB6F32E3CFC8A00F48BEF;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F2A901C22E5E0779007F8F79 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = F28DB6FD2E3CFC8A00F48BEF /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F28DB6FB2E3CFC8A00F48BEF /* SportsAppTest */,
+				F28DB7082E3CFC8B00F48BEF /* SportsAppTestTests */,
+				F28DB7122E3CFC8B00F48BEF /* SportsAppTestUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F28DB6FA2E3CFC8A00F48BEF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F28DB7072E3CFC8B00F48BEF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F28DB7112E3CFC8B00F48BEF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F28DB6F82E3CFC8A00F48BEF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F28DB7052E3CFC8B00F48BEF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F28DB70F2E3CFC8B00F48BEF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		F28DB70B2E3CFC8B00F48BEF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F28DB6FB2E3CFC8A00F48BEF /* SportsAppTest */;
+			targetProxy = F28DB70A2E3CFC8B00F48BEF /* PBXContainerItemProxy */;
+		};
+		F28DB7152E3CFC8B00F48BEF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F28DB6FB2E3CFC8A00F48BEF /* SportsAppTest */;
+			targetProxy = F28DB7142E3CFC8B00F48BEF /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		F28DB71B2E3CFC8B00F48BEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = RSJJ4YU28M;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		F28DB71C2E3CFC8B00F48BEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = RSJJ4YU28M;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		F28DB71E2E3CFC8B00F48BEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RSJJ4YU28M;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = BetBoard.SportsAppTest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		F28DB71F2E3CFC8B00F48BEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RSJJ4YU28M;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = BetBoard.SportsAppTest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F28DB7212E3CFC8B00F48BEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RSJJ4YU28M;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = BetBoard.SportsAppTestTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SportsAppTest.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SportsAppTest";
+			};
+			name = Debug;
+		};
+		F28DB7222E3CFC8B00F48BEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RSJJ4YU28M;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = BetBoard.SportsAppTestTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SportsAppTest.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SportsAppTest";
+			};
+			name = Release;
+		};
+		F28DB7242E3CFC8B00F48BEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RSJJ4YU28M;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = BetBoard.SportsAppTestUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SportsAppTest;
+			};
+			name = Debug;
+		};
+		F28DB7252E3CFC8B00F48BEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RSJJ4YU28M;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = BetBoard.SportsAppTestUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SportsAppTest;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F28DB6F72E3CFC8A00F48BEF /* Build configuration list for PBXProject "SportsAppTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F28DB71B2E3CFC8B00F48BEF /* Debug */,
+				F28DB71C2E3CFC8B00F48BEF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F28DB71D2E3CFC8B00F48BEF /* Build configuration list for PBXNativeTarget "SportsAppTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F28DB71E2E3CFC8B00F48BEF /* Debug */,
+				F28DB71F2E3CFC8B00F48BEF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F28DB7202E3CFC8B00F48BEF /* Build configuration list for PBXNativeTarget "SportsAppTestTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F28DB7212E3CFC8B00F48BEF /* Debug */,
+				F28DB7222E3CFC8B00F48BEF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F28DB7232E3CFC8B00F48BEF /* Build configuration list for PBXNativeTarget "SportsAppTestUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F28DB7242E3CFC8B00F48BEF /* Debug */,
+				F28DB7252E3CFC8B00F48BEF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F2A901C22E5E0779007F8F79 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F2A901C32E5E0779007F8F79 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F2A901C22E5E0779007F8F79 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		F2A901C52E5E0779007F8F79 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F2A901C22E5E0779007F8F79 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		F2A901C72E5E0779007F8F79 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F2A901C22E5E0779007F8F79 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		F2A901C92E5E0779007F8F79 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F2A901C22E5E0779007F8F79 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = F28DB6F42E3CFC8A00F48BEF /* Project object */;
+}
