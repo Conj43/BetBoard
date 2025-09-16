@@ -1,4 +1,4 @@
-col_1,col_2,col_3,col_4,col_5,col_6,col_7,col_8,col_9,col_10,col_11,col_12
+Date,Team,Opponent,Location,Spread,Total (O/U),Moneyline,Score,MOV,ATS Margin,Combined,O/U Margin
 2021-11-09,UC Riverside,San Diego St,Away,12.5,131.5,615,53-66,-13,-0.5,119,-12.5
 2021-11-09,E Washingtn,Nevada,Away,21,154,1250,76-91,-15,6,167,13
 2021-11-09,TX-Arlington,Oklahoma St,Away,18,148.5,1050,45-88,-43,-25,133,-15.5
@@ -5480,3 +5480,4 @@ col_1,col_2,col_3,col_4,col_5,col_6,col_7,col_8,col_9,col_10,col_11,col_12
 2022-01-05,Prairie View,Southern,Away,,,,0-0,0,,0,
 2022-01-03,Prairie View,Grambling St,Away,,,,0-0,0,,0,
 2022-01-08,Bryant,F Dickinson,Away,,,,0-0,0,,0,
+
