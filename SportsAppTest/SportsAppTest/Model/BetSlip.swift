@@ -5,15 +5,6 @@
 //  Created by Trenton Roney on 8/26/25.
 //
 
-
-//
-//  BetSlip.swift
-//  SportsApp
-//
-//  Created by Trenton Roney on 7/14/25.
-//
-
-
 import Foundation
 
 struct BetSlip: Identifiable, Codable {
@@ -23,7 +14,8 @@ struct BetSlip: Identifiable, Codable {
     let homeTeam: Team
     let awayTeam: Team
     let gameTime: Date
-    let bettingLines: BettingLines
+    let bettingLines: BettingLines // Default/fallback betting lines
+    let allBettingLines: AllSportsbookLines? // All sportsbook lines
     let predictionInfo: PredictionInfo?
     let neutralSite: Bool
     
@@ -34,8 +26,57 @@ struct BetSlip: Identifiable, Codable {
     }
 }
 
+// Structure to hold all sportsbook betting lines
+struct AllSportsbookLines: Codable {
+    let draftkings: BettingLines?
+    let betmgm: BettingLines?
+    let fanduel: BettingLines?
+    let caesars: BettingLines?
+    let pointsbet: BettingLines?
+    let barstool: BettingLines?
+    
+    // Custom initializer for direct creation
+    init(draftkings: BettingLines? = nil,
+         betmgm: BettingLines? = nil,
+         fanduel: BettingLines? = nil,
+         caesars: BettingLines? = nil,
+         pointsbet: BettingLines? = nil,
+         barstool: BettingLines? = nil) {
+        self.draftkings = draftkings
+        self.betmgm = betmgm
+        self.fanduel = fanduel
+        self.caesars = caesars
+        self.pointsbet = pointsbet
+        self.barstool = barstool
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        draftkings = try container.decodeIfPresent(BettingLines.self, forKey: .draftkings)
+        betmgm = try container.decodeIfPresent(BettingLines.self, forKey: .betmgm)
+        fanduel = try container.decodeIfPresent(BettingLines.self, forKey: .fanduel)
+        caesars = try container.decodeIfPresent(BettingLines.self, forKey: .caesars)
+        pointsbet = try container.decodeIfPresent(BettingLines.self, forKey: .pointsbet)
+        barstool = try container.decodeIfPresent(BettingLines.self, forKey: .barstool)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(draftkings, forKey: .draftkings)
+        try container.encodeIfPresent(betmgm, forKey: .betmgm)
+        try container.encodeIfPresent(fanduel, forKey: .fanduel)
+        try container.encodeIfPresent(caesars, forKey: .caesars)
+        try container.encodeIfPresent(pointsbet, forKey: .pointsbet)
+        try container.encodeIfPresent(barstool, forKey: .barstool)
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case draftkings, betmgm, fanduel, caesars, pointsbet, barstool
+    }
+}
+
 struct PredictionInfo: Codable {
-    let confidence: Double // 0.0 to 1.0
+    let confidence: Double // 0.0 to 100.0
     let recommendedBet: String?
     let analysis: String?
     
@@ -67,20 +108,3 @@ enum Sportsbook: String, Codable, CaseIterable {
         }
     }
 }
-
-// Firebase Implementation
-// {
-//   "id": "betslip123",
-//   "gameID": "game123",
-//   "sportsbook": "DraftKings",
-//   "homeTeam": { ... },
-//   "awayTeam": { ... },
-//   "gameTime": "2025-07-14T18:30:00Z",
-//   "bettingLines": { ... },
-//   "predictionInfo": {
-//     "confidence": 0.75,
-//     "recommendedBet": "UNC +3.5",
-//     "analysis": "Strong defensive matchup favors the underdog"
-//   },
-//   "neutralSite": true
-// }

@@ -5,15 +5,6 @@
 //  Created by Trenton Roney on 8/26/25.
 //
 
-
-//
-//  BetPerformance.swift
-//  SportsApp
-//
-//  Created by Trenton Roney on 7/14/25.
-//
-
-
 import Foundation
 
 struct BetPerformance: Codable {
