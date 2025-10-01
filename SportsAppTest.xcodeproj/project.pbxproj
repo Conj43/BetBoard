@@ -34,6 +34,7 @@
 		F28DB6FC2E3CFC8A00F48BEF /* SportsAppTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SportsAppTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F28DB7092E3CFC8B00F48BEF /* SportsAppTestTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SportsAppTestTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F28DB7132E3CFC8B00F48BEF /* SportsAppTestUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SportsAppTestUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F2D311A12E8D738D00E230FF /* SportsAppTest.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = SportsAppTest.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -113,6 +114,13 @@
 				F28DB6FC2E3CFC8A00F48BEF /* SportsAppTest.app */,
 				F28DB7092E3CFC8B00F48BEF /* SportsAppTestTests.xctest */,
 				F28DB7132E3CFC8B00F48BEF /* SportsAppTestUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F2D311A42E8D738D00E230FF /* Products */ = {
+			isa = PBXGroup;
+			children = (
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -230,6 +238,12 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F28DB6FD2E3CFC8A00F48BEF /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = F2D311A42E8D738D00E230FF /* Products */;
+					ProjectRef = F2D311A12E8D738D00E230FF /* SportsAppTest.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				F28DB6FB2E3CFC8A00F48BEF /* SportsAppTest */,
