@@ -11,71 +11,150 @@ struct GameSearchResultRowView: View {
     let betSlip: BetSlip
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Away team info
-            HStack(spacing: 8) {
-                if let ranking = betSlip.awayTeam.ranking {
-                    Text("#\(ranking)")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.blue)
+        VStack(spacing: 12) {
+            // Top row: Matchup with logos
+            HStack(spacing: 12) {
+                // Away team section
+                HStack(spacing: 8) {
+                    // Away team logo
+                    TeamLogoView(team: betSlip.awayTeam, size: 32)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            if let ranking = betSlip.awayTeam.ranking {
+                                Text("#\(ranking)")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.blue)
+                            }
+                            
+                            Text(betSlip.awayTeam.shortName)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                        }
+                        
+                        Text("(\(betSlip.awayTeam.record.wins)-\(betSlip.awayTeam.record.losses))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
-                Text(betSlip.awayTeam.shortName)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                // @ symbol
+                Text("@")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 4)
                 
-                Text("(\(betSlip.awayTeam.record.wins)-\(betSlip.awayTeam.record.losses))")
+                // Home team section
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            if let ranking = betSlip.homeTeam.ranking {
+                                Text("#\(ranking)")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.blue)
+                            }
+                            
+                            Text(betSlip.homeTeam.shortName)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                        }
+                        
+                        Text("(\(betSlip.homeTeam.record.wins)-\(betSlip.homeTeam.record.losses))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Home team logo
+                    TeamLogoView(team: betSlip.homeTeam, size: 32)
+                }
+                
+                Spacer()
+                
+                // Chevron
+                Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             
-            // @ symbol
-            Text("@")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            // Home team info
-            HStack(spacing: 8) {
-                if let ranking = betSlip.homeTeam.ranking {
-                    Text("#\(ranking)")
+            // Bottom row: Game time and conference
+            HStack {
+                // Game time
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    
+                    Text(betSlip.formattedGameTime)
                         .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.blue)
+                        .foregroundColor(.secondary)
                 }
                 
-                Text(betSlip.homeTeam.shortName)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                Spacer()
                 
-                Text("(\(betSlip.homeTeam.record.wins)-\(betSlip.homeTeam.record.losses))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            // Game time and conference
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(betSlip.formattedGameTime)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
+                // Conference badge (if same conference)
                 if betSlip.homeTeam.conference == betSlip.awayTeam.conference {
-                    Text(betSlip.homeTeam.conference)
+                    HStack(spacing: 4) {
+                        Image(systemName: "shield.fill")
+                            .font(.caption2)
+                        
+                        Text(betSlip.homeTeam.conference)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(6)
+                }
+                
+                // Neutral site indicator
+                if betSlip.neutralSite {
+                    HStack(spacing: 4) {
+                        Image(systemName: "location.fill")
+                            .font(.caption2)
+                        
+                        Text("Neutral")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(6)
+                }
+            }
+            
+            // Prediction indicator (if available)
+            if let predictionInfo = betSlip.predictionInfo,
+               let recommendedBet = predictionInfo.recommendedBet {
+                HStack(spacing: 6) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.caption2)
+                        .foregroundColor(.purple)
+                    
+                    Text("Prediction: \(recommendedBet)")
                         .font(.caption)
-                        .foregroundColor(.blue)
+                        .foregroundColor(.purple)
+                        .fontWeight(.medium)
+                    
+                    Spacer()
+                    
+                    Text("\(Int(predictionInfo.confidence))% confidence")
+                        .font(.caption2)
+                        .foregroundColor(.purple)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
+                        .background(Color.purple.opacity(0.1))
                         .cornerRadius(4)
                 }
+                .padding(.top, 4)
             }
-            
-            // Chevron
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(.secondary)
         }
         .padding()
         .background(Color(.systemBackground))
