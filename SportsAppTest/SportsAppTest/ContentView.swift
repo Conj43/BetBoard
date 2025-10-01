@@ -31,10 +31,10 @@ struct ContentView: View {
                             Image(systemName: "chart.bar.xaxis")
                             Text("Predictions")
                         }
-                    AdminView()
+                    FirebaseTestView()
                         .tabItem {
-                            Image(systemName: "gearshape.fill")
-                            Text("Admin")
+                            Image(systemName: "wrench")
+                            Text("Debug")
                         }
                     InfoView()
                         .tabItem {
