@@ -35,17 +35,28 @@ class SearchViewModel: ObservableObject {
     }
     
     func loadBetSlips() async {
+        print("🔍 SearchViewModel: Starting to load bet slips...")
         isLoading = true
         errorMessage = nil
         
         do {
             let betSlips = try await firebaseService.fetchBetSlips()
+            print("✅ SearchViewModel: Loaded \(betSlips.count) bet slips")
             
             await MainActor.run {
                 self.allBetSlips = betSlips
                 self.isLoading = false
+                
+                // Print details about each bet slip for debugging
+                for betSlip in betSlips.prefix(3) {
+                    print("🎮 Bet Slip: \(betSlip.homeTeam.shortName) vs \(betSlip.awayTeam.shortName)")
+                    print("   Game ID: \(betSlip.gameID)")
+                    print("   Game Time: \(betSlip.formattedGameTime)")
+                    print("   Sportsbook: \(betSlip.sportsbook.displayName)")
+                }
             }
         } catch {
+            print("❌ SearchViewModel: Error loading bet slips: \(error)")
             await MainActor.run {
                 self.errorMessage = "Failed to load games: \(error.localizedDescription)"
                 self.isLoading = false
@@ -54,25 +65,38 @@ class SearchViewModel: ObservableObject {
     }
     
     private func performSearch(with searchText: String) {
+        print("🔍 SearchViewModel: Performing search with text: '\(searchText)'")
+        
         guard !searchText.isEmpty else {
             searchResults = []
+            print("📭 SearchViewModel: Empty search, clearing results")
             return
         }
         
         let searchTerms = searchText.lowercased().components(separatedBy: " ")
+        print("🔍 SearchViewModel: Search terms: \(searchTerms)")
         
         searchResults = allBetSlips.filter { betSlip in
-            searchTerms.allSatisfy { term in
+            let matches = searchTerms.allSatisfy { term in
                 // Search in team names
-                betSlip.homeTeam.name.lowercased().contains(term) ||
-                betSlip.homeTeam.shortName.lowercased().contains(term) ||
-                betSlip.awayTeam.name.lowercased().contains(term) ||
-                betSlip.awayTeam.shortName.lowercased().contains(term) ||
-                // Search in common abbreviations/nicknames
-                teamNicknames(for: betSlip.homeTeam).contains { $0.lowercased().contains(term) } ||
-                teamNicknames(for: betSlip.awayTeam).contains { $0.lowercased().contains(term) }
+                let homeMatches = betSlip.homeTeam.name.lowercased().contains(term) ||
+                                 betSlip.homeTeam.shortName.lowercased().contains(term)
+                let awayMatches = betSlip.awayTeam.name.lowercased().contains(term) ||
+                                 betSlip.awayTeam.shortName.lowercased().contains(term)
+                let nicknameMatches = teamNicknames(for: betSlip.homeTeam).contains { $0.lowercased().contains(term) } ||
+                                    teamNicknames(for: betSlip.awayTeam).contains { $0.lowercased().contains(term) }
+                
+                return homeMatches || awayMatches || nicknameMatches
             }
+            
+            if matches {
+                print("✅ Match found: \(betSlip.homeTeam.shortName) vs \(betSlip.awayTeam.shortName)")
+            }
+            
+            return matches
         }
+        
+        print("🎯 SearchViewModel: Found \(searchResults.count) matching results")
     }
     
     private func teamNicknames(for team: Team) -> [String] {
@@ -83,7 +107,7 @@ class SearchViewModel: ObservableObject {
             return ["Duke", "Blue Devils", "Devils"]
         case "UVA", "VIRGINIA":
             return ["Virginia", "Cavaliers", "Cavs", "Wahoos"]
-        case "NCSU", "NC STATE":
+        case "NCSU", "NC STATE", "NCSTATE":
             return ["NC State", "North Carolina State", "Wolfpack", "Pack", "State"]
         case "WAKE", "WAKE FOREST":
             return ["Wake Forest", "Demon Deacons", "Deacs"]
@@ -105,6 +129,14 @@ class SearchViewModel: ObservableObject {
             return ["Boston College", "Eagles"]
         case "GT", "GEORGIA TECH":
             return ["Georgia Tech", "Yellow Jackets"]
+        case "KANSAS":
+            return ["Kansas", "Jayhawks", "KU"]
+        case "KENTUCKY", "UK":
+            return ["Kentucky", "Wildcats", "UK"]
+        case "GONZAGA":
+            return ["Gonzaga", "Bulldogs", "Zags"]
+        case "VILLANOVA", "NOVA":
+            return ["Villanova", "Wildcats", "Nova"]
         default:
             return [team.name, team.shortName]
         }

@@ -19,6 +19,7 @@ class PredictionsViewModel: ObservableObject {
     
     private let firebaseService = FirebaseService()
     private var cancellables = Set<AnyCancellable>()
+    private var gameStatusCache: [String: GameStatus] = [:] // Cache for game statuses
     
     init() {
         // Listen for bet type changes
@@ -34,28 +35,75 @@ class PredictionsViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            let betSlips = try await firebaseService.fetchBetSlips()
-            let predictionGames = convertBetSlipsToPredictions(betSlips)
+            print("🔍 Starting to load predictions...")
+            
+            // Load both bet slips and games to get game statuses
+            async let betSlipsTask = firebaseService.fetchBetSlips()
+            async let gamesTask = firebaseService.fetchGames()
+            
+            let (betSlips, games) = try await (betSlipsTask, gamesTask)
+            
+            print("📊 Loaded \(betSlips.count) bet slips and \(games.count) games")
+            
+            // Build game status cache
+            await MainActor.run {
+                for game in games {
+                    self.gameStatusCache[game.id] = game.status
+                    print("🎮 Game \(game.id): \(game.homeTeam) vs \(game.awayTeam) - Status: \(game.status)")
+                }
+            }
+            
+            // Filter out bet slips for games that are already final
+            let activeBetSlips = betSlips.filter { betSlip in
+                guard let gameStatus = gameStatusCache[betSlip.gameID] else {
+                    print("⚠️ No game status found for betSlip gameID: \(betSlip.gameID), including it anyway")
+                    return true
+                }
+                
+                // Only include games that are not final
+                switch gameStatus {
+                case .final:
+                    print("❌ Excluding final game: \(betSlip.gameID)")
+                    return false
+                case .notPlayed, .inProgress:
+                    print("✅ Including active game: \(betSlip.gameID)")
+                    return true
+                }
+            }
+            
+            print("🎯 Active bet slips after filtering: \(activeBetSlips.count)")
+            
+            let predictionGames = convertBetSlipsToPredictions(activeBetSlips)
+            print("🧠 Created \(predictionGames.count) prediction games")
             
             await MainActor.run {
                 self.predictions = predictionGames
                 self.filterPredictions(by: self.selectedBetType)
                 self.isLoading = false
+                print("✅ Predictions loaded successfully: \(self.filteredPredictions.count) filtered predictions")
             }
         } catch {
             await MainActor.run {
                 self.errorMessage = "Failed to load predictions: \(error.localizedDescription)"
                 self.isLoading = false
+                print("❌ Error loading predictions: \(error)")
             }
         }
     }
     
     private func convertBetSlipsToPredictions(_ betSlips: [BetSlip]) -> [PredictionGame] {
+        print("🔄 Converting \(betSlips.count) bet slips to predictions...")
+        
         return betSlips.compactMap { betSlip in
+            print("🎯 Processing bet slip: \(betSlip.id) - \(betSlip.homeTeam.shortName) vs \(betSlip.awayTeam.shortName)")
+            
             guard let predictionInfo = betSlip.predictionInfo,
                   let recommendedBet = predictionInfo.recommendedBet else {
+                print("⚠️ No prediction info for bet slip: \(betSlip.id)")
                 return nil
             }
+            
+            print("🧠 Found prediction info: \(recommendedBet) with \(predictionInfo.confidence)% confidence")
             
             // Determine bet type from recommended bet
             let betType: BetType
@@ -67,16 +115,21 @@ class PredictionsViewModel: ObservableObject {
                 betType = .spread
             }
             
+            print("📈 Determined bet type: \(betType.rawValue)")
+            
             // Find corresponding odds
             let odds: Double
             switch betType {
             case .moneyline:
                 let teamName = recommendedBet.replacingOccurrences(of: " ML", with: "")
                 odds = betSlip.bettingLines.moneyline[teamName] ?? -110
+                print("💰 Moneyline odds for \(teamName): \(odds)")
             case .spread:
                 odds = betSlip.bettingLines.spread[recommendedBet] ?? -110
+                print("📊 Spread odds for \(recommendedBet): \(odds)")
             case .total:
                 odds = betSlip.bettingLines.total[recommendedBet] ?? -110
+                print("🎯 Total odds for \(recommendedBet): \(odds)")
             }
             
             let bestBet = BestBet(
@@ -88,7 +141,7 @@ class PredictionsViewModel: ObservableObject {
             
             let keyFactors = generateKeyFactors(for: betSlip, betType: betType)
             
-            return PredictionGame(
+            let predictionGame = PredictionGame(
                 homeTeam: betSlip.homeTeam,
                 awayTeam: betSlip.awayTeam,
                 gameTime: betSlip.gameTime,
@@ -98,6 +151,9 @@ class PredictionsViewModel: ObservableObject {
                 keyFactors: keyFactors,
                 betSlip: betSlip
             )
+            
+            print("✅ Created prediction game: \(predictionGame.homeTeam.shortName) vs \(predictionGame.awayTeam.shortName)")
+            return predictionGame
         }
     }
     
@@ -140,9 +196,13 @@ class PredictionsViewModel: ObservableObject {
     }
     
     private func filterPredictions(by betType: BetType) {
+        print("🔍 Filtering \(predictions.count) predictions by bet type: \(betType.rawValue)")
+        
         filteredPredictions = predictions.filter { prediction in
             prediction.bestBet.type == betType
         }.sorted { $0.confidence > $1.confidence }
+        
+        print("✅ Filtered to \(filteredPredictions.count) predictions")
     }
     
     func refreshPredictions() async {
