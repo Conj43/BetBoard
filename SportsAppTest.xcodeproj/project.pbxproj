@@ -43,8 +43,26 @@
 			membershipExceptions = (
 				Config/Debug.xcconfig,
 				Config/Release.xcconfig,
+				SportsAppTestTests/SportsAppTestTests.swift,
+				SportsAppTestUITests/SportsAppTestUITests.swift,
+				SportsAppTestUITests/SportsAppTestUITestsLaunchTests.swift,
 			);
 			target = F28DB6FB2E3CFC8A00F48BEF /* SportsAppTest */;
+		};
+		F2E6C5932E8D8BCC00B1D74C /* Exceptions for "SportsAppTest" folder in "SportsAppTestTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				SportsAppTestTests/SportsAppTestTests.swift,
+			);
+			target = F28DB7082E3CFC8B00F48BEF /* SportsAppTestTests */;
+		};
+		F2E6C5992E8D8BCF00B1D74C /* Exceptions for "SportsAppTest" folder in "SportsAppTestUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				SportsAppTestUITests/SportsAppTestUITests.swift,
+				SportsAppTestUITests/SportsAppTestUITestsLaunchTests.swift,
+			);
+			target = F28DB7122E3CFC8B00F48BEF /* SportsAppTestUITests */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -53,18 +71,10 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				F21C960E2E820D1100AE9D8B /* Exceptions for "SportsAppTest" folder in "SportsAppTest" target */,
+				F2E6C5932E8D8BCC00B1D74C /* Exceptions for "SportsAppTest" folder in "SportsAppTestTests" target */,
+				F2E6C5992E8D8BCF00B1D74C /* Exceptions for "SportsAppTest" folder in "SportsAppTestUITests" target */,
 			);
 			path = SportsAppTest;
-			sourceTree = "<group>";
-		};
-		F28DB70C2E3CFC8B00F48BEF /* SportsAppTestTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SportsAppTestTests;
-			sourceTree = "<group>";
-		};
-		F28DB7162E3CFC8B00F48BEF /* SportsAppTestUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SportsAppTestUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -102,8 +112,6 @@
 			isa = PBXGroup;
 			children = (
 				F28DB6FE2E3CFC8A00F48BEF /* SportsAppTest */,
-				F28DB70C2E3CFC8B00F48BEF /* SportsAppTestTests */,
-				F28DB7162E3CFC8B00F48BEF /* SportsAppTestUITests */,
 				F28DB6FD2E3CFC8A00F48BEF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -167,9 +175,6 @@
 			dependencies = (
 				F28DB70B2E3CFC8B00F48BEF /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				F28DB70C2E3CFC8B00F48BEF /* SportsAppTestTests */,
-			);
 			name = SportsAppTestTests;
 			packageProductDependencies = (
 			);
@@ -189,9 +194,6 @@
 			);
 			dependencies = (
 				F28DB7152E3CFC8B00F48BEF /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				F28DB7162E3CFC8B00F48BEF /* SportsAppTestUITests */,
 			);
 			name = SportsAppTestUITests;
 			packageProductDependencies = (
