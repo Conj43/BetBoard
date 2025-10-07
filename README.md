@@ -37,34 +37,103 @@ BetBoard helps users make informed sports betting decisions by providing predict
 ## Project Structure
 
 ```
-SportsAppTest/
-├── Views/
-│   ├── ContentView.swift           # Main app container
-│   ├── AuthView.swift             # Authentication screen
-│   ├── HomeView.swift             # Dashboard with performance metrics
-│   ├── SearchView.swift           # Game search functionality
-│   ├── PredictionsView.swift      # Predictions display
-│   ├── AdminView.swift            # Game result management
-│   └── InfoView.swift             # Settings and app info
-├── ViewModels/
-│   ├── HomeViewModel.swift        # Home screen logic
-│   ├── SearchViewModel.swift      # Search functionality
-│   ├── PredictionsViewModel.swift # Predictions management
-│   └── InfoViewModel.swift        # Settings management
-├── Models/
-│   ├── Bet.swift                  # Bet data structure
-│   ├── Game.swift                 # Game information
-│   ├── Team.swift                 # Team details
-│   ├── BetSlip.swift             # Betting slip with odds
-│   └── Enums.swift               # App enumerations
-├── Services/
-│   ├── AuthService.swift         # Authentication logic
-│   ├── FirebaseService.swift     # Database operations
-│   └── GameResultUpdater.swift   # Game result management
-└── UI Components/
-    ├── BetSlipUI.swift           # Interactive betting interface
-    ├── TrackedBetSlipView.swift  # Bet details display
-    └── ChartView.swift           # Performance charts
+iOS-BetBoard/
+├── SportsAppTest.xcodeproj        # Xcode project file
+└── SportsAppTest/
+    ├── ViewModel/
+    │   ├── SearchViewModel.swift
+    │   ├── PredictionsViewModel.swift
+    │   ├── InfoViewModel.swift
+    │   ├── HomeViewModel.swift
+    │   └── BetHistoryViewModel.swift
+    ├── View/
+    │   ├── SupportingViews/
+    │   │   ├── TrackedBetSlipView.swift
+    │   │   ├── TeamLogoView.swift
+    │   │   ├── ChartView.swift
+    │   │   └── BetAmountInputView.swift
+    │   ├── CoreViews/
+    │   ├── Test/
+    │   │   └── FirebaseTestView.swift
+    │   ├── Search/
+    │   │   ├── SupportingViews/
+    │   │   │   ├── SearchNo...sView.swift
+    │   │   │   ├── SearchEm...View.swift
+    │   │   │   ├── SearchBarView.swift
+    │   │   │   ├── GameSear...View.swift
+    │   │   └── SearchView.swift
+    │   ├── Prediction/
+    │   │   ├── SupportingViews/
+    │   │   │   ├── Prediction...View.swift
+    │   │   │   ├── Prediction...rView.swift
+    │   │   │   ├── Prediction...View.swift
+    │   │   │   ├── Prediction...lView.swift
+    │   │   │   └── BetTypeFil...View.swift
+    │   │   └── PredictionsView.swift
+    │   ├── Info/
+    │   │   ├── SupportingViews/
+    │   │   │   ├── UserProfil...View.swift
+    │   │   │   ├── SettingsTo...View.swift
+    │   │   │   ├── SettingsRowView.swift
+    │   │   │   ├── HowItWorksView.swift
+    │   │   │   └── AppInfoD...ilView.swift
+    │   │   └── InfoView.swift
+    │   ├── Home/
+    │   │   ├── SupportingViews/
+    │   │   │   ├── TrackedBetsSectionView.swift
+    │   │   │   ├── QuickActi...sView.swift
+    │   │   │   ├── PortfolioC...tView.swift
+    │   │   │   ├── BetRowView.swift
+    │   │   │   ├── BetHistoryView.swift
+    │   │   │   └── BetHistory...View.swift
+    │   │   └── HomeView.swift
+    │   └── BetSlip/
+    │       ├── TrackBetSe...nView.swift
+    │       ├── Sportsbook...rView.swift
+    │       ├── PredictionS...nView.swift
+    │       ├── BetTypeAn...nsView.swift
+    │       ├── BetSlipUI.swift
+    │       ├── BetSlipHelpers.swift
+    │       ├── BetSlipHeaderView.swift
+    │       ├── BetSlipDetailView.swift
+    │       └── BetOptionRow.swift
+    ├── Auth/
+    │   └── AuthView.swift
+    ├── SportsAppTestUITests/
+    │   ├── SportsAppTes...nchTests.swift
+    │   └── SportsAppTestUITests.swift
+    ├── SportsAppTestTests/
+    │   └── SportsAppTestTests.swift
+    ├── SportsAppTestApp.swift
+    ├── Services/
+    │   ├── FirebaseService.swift
+    │   └── AuthService.swift
+    ├── Resources/
+    │   ├── ncaa_logos/
+    │   ├── GoogleService-Info.plist
+    │   └── Assets.xcassets/
+    ├── Model/
+    │   ├── User.swift
+    │   ├── TimeFrame.swift
+    │   ├── Team.swift
+    │   ├── PredictionGame.swift
+    │   ├── Game.swift
+    │   ├── Enums.swift
+    │   ├── EnchancedBet.swift
+    │   ├── ChartDataPoint.swift
+    │   ├── BettingLines.swift
+    │   ├── BetSlip.swift
+    │   ├── BetResultFilter.swift
+    │   ├── BetPerformance.swift
+    │   ├── Bet.swift
+    │   └── AppSettings.swift
+    ├── Extensions/
+    │   ├── TeamLogoHelper.swift
+    │   ├── BetTypeExtensions.swift
+    └── ContentView.swift
+    └── Config/
+        ├── Release.xcconfig
+        └── Debug.xcconfig
 ```
 
 ## Installation
