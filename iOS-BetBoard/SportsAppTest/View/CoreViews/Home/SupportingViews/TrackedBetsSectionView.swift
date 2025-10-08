@@ -24,11 +24,12 @@ struct TrackedBetsSectionView: View {
             }
             
             if trackedBets.isEmpty {
-                Text("No tracked bets")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
+                TrackedBetsEmptyStateView {
+                    // This closure is called when user taps "Browse Games"
+                    // You'll need to handle navigation to the Search tab
+                    // For now, we can leave it empty or print a message
+                    print("Navigate to Search tab")
+                }
             } else {
                 ForEach(trackedBets.prefix(3)) { bet in
                     TrackedBetRowView(bet: bet) {

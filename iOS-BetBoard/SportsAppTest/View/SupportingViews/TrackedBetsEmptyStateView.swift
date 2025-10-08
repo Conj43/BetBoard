@@ -1,3 +1,11 @@
+//
+//  TrackedBetsEmptyStateView.swift
+//  SportsAppTest
+//
+//  Created by Trenton Roney on 10/7/25.
+//
+
+
 import SwiftUI
 
 struct TrackedBetsEmptyStateView: View {
@@ -65,27 +73,6 @@ struct TrackedBetsEmptyStateView: View {
                 Text("Find a game and make your first pick!")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-            }
-            
-            // CTA Button
-            Button(action: onBrowseGames) {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                    Text("Browse Games")
-                        .fontWeight(.semibold)
-                }
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    LinearGradient(
-                        colors: [Color.blue, Color.purple],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(12)
             }
             .padding(.horizontal)
             
