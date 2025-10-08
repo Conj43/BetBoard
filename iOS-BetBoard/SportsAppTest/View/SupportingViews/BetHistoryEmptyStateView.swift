@@ -8,56 +8,14 @@
 import SwiftUI
 
 struct BetHistoryEmptyStateView: View {
-    @State private var showingTrophy = false
-    
     var body: some View {
         ScrollView {
             VStack(spacing: 28) {
-                // Trophy cabinet animation
-                ZStack(alignment: .topLeading) {
-                    // Empty trophy case (larger)
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.gray.opacity(0.4), lineWidth: 3)
-                        .frame(width: 200, height: 220)
-                        .overlay(
-                            VStack(spacing: 0) {
-                                Spacer()
-                                // Shelf 1
-                                Rectangle()
-                                    .fill(Color.gray.opacity(0.3))
-                                    .frame(height: 2)
-                                Spacer()
-                                // Shelf 2
-                                Rectangle()
-                                    .fill(Color.gray.opacity(0.3))
-                                    .frame(height: 2)
-                                Spacer()
-                            }
-                        )
-                    
-                    // Trophy in top left shelf (flashing, more visible)
-                    Image(systemName: "trophy.fill")
-                        .font(.system(size: 60))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.yellow.opacity(0.8), Color.orange.opacity(0.8)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .scaleEffect(showingTrophy ? 1.0 : 0.85)
-                        .opacity(showingTrophy ? 0.8 : 0.4)
-                        .offset(x: 15, y: 5) // Position in top left
-                        .onAppear {
-                            withAnimation(
-                                Animation.easeInOut(duration: 1.5)
-                                    .repeatForever(autoreverses: true)
-                            ) {
-                                showingTrophy = true
-                            }
-                        }
-                }
-                .padding(.top, 20)
+                // 3D spinning trophy
+                Trophy3DView()
+                    .frame(height: 200)
+                    .padding(.horizontal, 40)
+                    .padding(.top, 10)
                 
                 // Main message
                 VStack(spacing: 12) {
