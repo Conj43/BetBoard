@@ -1,173 +1,165 @@
+//
+//  BetHistoryEmptyStateView.swift
+//  SportsAppTest
+//
+//  Created by Trenton Roney on 10/7/25.
+//
+
 import SwiftUI
 
 struct BetHistoryEmptyStateView: View {
     @State private var showingTrophy = false
     
     var body: some View {
-        VStack(spacing: 28) {
-            // Trophy cabinet animation
-            ZStack {
-                // Empty trophy case
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.gray.opacity(0.3), lineWidth: 2)
-                    .frame(width: 120, height: 140)
-                    .overlay(
-                        VStack {
-                            Spacer()
-                            // Shelves
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(height: 1)
-                            Spacer()
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(height: 1)
-                            Spacer()
-                        }
-                    )
-                
-                // Appearing trophy (faded)
-                Image(systemName: "trophy.fill")
-                    .font(.system(size: 50))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.yellow.opacity(0.3), Color.orange.opacity(0.3)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+        ScrollView {
+            VStack(spacing: 28) {
+                // Trophy cabinet animation
+                ZStack(alignment: .topLeading) {
+                    // Empty trophy case (larger)
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.gray.opacity(0.4), lineWidth: 3)
+                        .frame(width: 200, height: 220)
+                        .overlay(
+                            VStack(spacing: 0) {
+                                Spacer()
+                                // Shelf 1
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.3))
+                                    .frame(height: 2)
+                                Spacer()
+                                // Shelf 2
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.3))
+                                    .frame(height: 2)
+                                Spacer()
+                            }
                         )
-                    )
-                    .scaleEffect(showingTrophy ? 1.0 : 0.5)
-                    .opacity(showingTrophy ? 0.3 : 0)
-                    .onAppear {
-                        withAnimation(
-                            Animation.easeInOut(duration: 1.5)
-                                .repeatForever(autoreverses: true)
-                        ) {
-                            showingTrophy = true
+                    
+                    // Trophy in top left shelf (flashing, more visible)
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 60))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.yellow.opacity(0.8), Color.orange.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .scaleEffect(showingTrophy ? 1.0 : 0.85)
+                        .opacity(showingTrophy ? 0.8 : 0.4)
+                        .offset(x: 15, y: 5) // Position in top left
+                        .onAppear {
+                            withAnimation(
+                                Animation.easeInOut(duration: 1.5)
+                                    .repeatForever(autoreverses: true)
+                            ) {
+                                showingTrophy = true
+                            }
                         }
-                    }
-            }
-            
-            // Main message
-            VStack(spacing: 12) {
-                Text("Build Your Legacy")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                
-                Text("No betting history yet")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                
-                Text("Start tracking bets to see your performance stats")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            
-            // Future stats preview
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Image(systemName: "chart.bar.fill")
-                        .foregroundColor(.purple)
-                    
-                    Text("Track Your Success")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
                 }
+                .padding(.top, 20)
                 
-                // Mock stats cards
+                // Main message
                 VStack(spacing: 12) {
-                    StatPreviewCard(
-                        icon: "percent",
-                        title: "Win Rate",
-                        description: "See your winning percentage",
-                        color: .green
-                    )
+                    Text("Build Your Legacy")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
                     
-                    StatPreviewCard(
-                        icon: "dollarsign.circle.fill",
-                        title: "Total P&L",
-                        description: "Track profit and losses",
-                        color: .blue
-                    )
-                    
-                    StatPreviewCard(
-                        icon: "flame.fill",
-                        title: "Streaks",
-                        description: "Monitor win/loss streaks",
-                        color: .orange
-                    )
-                    
-                    StatPreviewCard(
-                        icon: "chart.line.uptrend.xyaxis",
-                        title: "ROI",
-                        description: "Calculate return on investment",
-                        color: .purple
-                    )
-                }
-            }
-            .padding()
-            .background(Color(.systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.05), radius: 4)
-            
-            // Basketball wisdom
-            VStack(spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "quote.opening")
-                        .font(.caption2)
-                    
-                    Text("Basketball Wisdom")
-                        .font(.caption)
-                        .fontWeight(.semibold)
+                    Text("No betting history yet")
+                        .font(.body)
                         .foregroundColor(.secondary)
                     
-                    Image(systemName: "quote.closing")
-                        .font(.caption2)
+                    Text("Start tracking bets to see your performance stats")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                 }
-                .foregroundColor(.secondary)
                 
-                Text("Every great champion started with their first game. Your betting journey begins with your first tracked bet!")
-                    .font(.caption)
-                    .italic()
+                // Future stats preview
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Image(systemName: "chart.bar.fill")
+                            .foregroundColor(.purple)
+                        
+                        Text("Track Your Success")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    
+                    // Mock stats cards
+                    VStack(spacing: 12) {
+                        StatPreviewCard(
+                            icon: "percent",
+                            title: "Win Rate",
+                            description: "See your winning percentage",
+                            color: .green
+                        )
+                        
+                        StatPreviewCard(
+                            icon: "dollarsign.circle.fill",
+                            title: "Total P&L",
+                            description: "Track profit and losses",
+                            color: .blue
+                        )
+                        
+                        StatPreviewCard(
+                            icon: "flame.fill",
+                            title: "Streaks",
+                            description: "Monitor win/loss streaks",
+                            color: .orange
+                        )
+                        
+                        StatPreviewCard(
+                            icon: "chart.line.uptrend.xyaxis",
+                            title: "ROI",
+                            description: "Calculate return on investment",
+                            color: .purple
+                        )
+                    }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(16)
+                .shadow(color: .black.opacity(0.05), radius: 4)
+                
+                // Basketball wisdom
+                VStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "quote.opening")
+                            .font(.caption2)
+                        
+                        Text("Basketball Facts")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                        
+                        Image(systemName: "quote.closing")
+                            .font(.caption2)
+                    }
                     .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding()
-            .background(
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.1)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    
+                    Text("Shaun Livingston has never missed a mid-range jumpshot")
+                        .font(.caption)
+                        .italic()
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                .padding()
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.1)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
-            )
-            .cornerRadius(12)
-            
-            // Fun fact
-            VStack(spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "lightbulb.fill")
-                        .font(.caption)
-                        .foregroundColor(.yellow)
-                    
-                    Text("Fun Fact")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
-                }
-                
-                Text("The NCAA tournament bracket has a 1 in 9.2 quintillion chance of being perfect. Smart tracking improves your odds!")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
+                .cornerRadius(12)
             }
             .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
     }
 }
 

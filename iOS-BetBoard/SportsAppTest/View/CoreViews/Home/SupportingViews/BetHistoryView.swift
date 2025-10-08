@@ -54,7 +54,7 @@ struct BetHistoryView: View {
                 }
                 .padding()
             } else if viewModel.filteredBets.isEmpty {
-                emptyStateView
+                BetHistoryEmptyStateView()
             } else {
                 // Stats Summary
                 statsSection
