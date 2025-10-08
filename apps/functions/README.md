@@ -1,1 +1,0 @@
-# Firebase functions (HTTP/cron)
