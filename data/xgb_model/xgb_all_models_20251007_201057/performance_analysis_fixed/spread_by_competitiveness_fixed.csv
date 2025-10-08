@@ -1,0 +1,5 @@
+competitiveness,n_games,mae,median_error,ats_accuracy
+Very Close,861,8.904,7.614,0.526
+Competitive,1352,8.941,7.069,0.528
+Moderate Gap,1247,8.545,7.034,0.498
+Large Gap,970,9.461,7.76,0.492

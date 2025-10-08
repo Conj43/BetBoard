@@ -1,0 +1,6 @@
+matchup_quality,n_games,accuracy,avg_prob,std_prob
+Elite vs Elite,847,0.673,0.6018,0.1952
+Mid-tier,3004,0.7274,0.6078,0.2306
+Mismatch,180,0.9889,0.7721,0.3474
+Unknown,771,0.7004,0.5898,0.2268
+Weak vs Weak,399,0.6391,0.5822,0.1463

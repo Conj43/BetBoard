@@ -1,0 +1,5 @@
+competitiveness,n_games,accuracy,avg_prob
+Very Close,861,0.5691,0.5996
+Competitive,1352,0.6265,0.5896
+Moderate Gap,1247,0.7626,0.5994
+Large Gap,970,0.9278,0.666
