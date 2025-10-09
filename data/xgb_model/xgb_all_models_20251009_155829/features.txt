@@ -74,6 +74,10 @@ team_expected_points
 opp_expected_points
 pregame_margin_projection
 pregame_total_projection
+bet_spread
+bet_total
+moneyline_a
+moneyline_b
 torvik_barthag_diff
 torvik_barthag_ratio
 torvik_adj_o_diff

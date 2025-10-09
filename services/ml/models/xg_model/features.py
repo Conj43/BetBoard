@@ -128,7 +128,7 @@ def _validate_no_leakage(feature_cols):
     if leaked_stats:
         raise ValueError(f"LEAKAGE: Raw game stats in features: {leaked_stats[:10]}")
     
-    ALLOWED_EXCEPTIONS = ['pregame_margin_projection', 'pregame_total_projection']
+    ALLOWED_EXCEPTIONS = ['pregame_margin_projection', 'pregame_total_projection', 'bet_total']
     # Check for outcome columns
     leaked_outcomes = [c for c in feature_cols if any(
         outcome in c.lower() for outcome in 

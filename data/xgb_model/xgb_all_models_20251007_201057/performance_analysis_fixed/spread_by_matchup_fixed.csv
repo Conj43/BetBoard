@@ -1,6 +1,0 @@
-matchup_quality,n_games,mae,median_error,ats_accuracy
-Elite vs Elite,847,8.953,7.557,0.528
-Mid-tier,3004,8.835,7.222,0.503
-Mismatch,180,10.869,9.474,0.528
-Unknown,771,9.425,7.881,0.508
-Weak vs Weak,399,8.791,6.839,0.534

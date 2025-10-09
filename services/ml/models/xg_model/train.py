@@ -18,14 +18,15 @@ from features import build_features
 
 # Model parameters
 XGB_MONEYLINE_PARAMS = {
-    "n_estimators": 500,
-    "learning_rate": 0.05,
-    "max_depth": 6,
+    "n_estimators": 2000,
+    "learning_rate": 0.02,
+    "max_depth": 4,
+    "min_child_weight": 6,
     "subsample": 0.8,
-    "colsample_bytree": 0.8,
-    "gamma": 0.1,
-    "reg_alpha": 0.1,
-    "reg_lambda": 1.0,
+    "colsample_bytree": 0.7,
+    "gamma": 0.4,
+    "reg_alpha": 0.4,
+    "reg_lambda": 8.0,
     "random_state": 42,
     "n_jobs": -1,
     "eval_metric": "logloss",
@@ -736,7 +737,7 @@ def main():
     print("\nBuilding features...")
     X, y_pts, y_win, meta, market, feature_names = build_features(
         game_data,
-        include_betting_lines=False
+        include_betting_lines=True
     )
     
     # Save feature list
