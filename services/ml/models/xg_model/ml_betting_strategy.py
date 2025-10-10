@@ -28,18 +28,24 @@ def kelly_fraction(our_prob, decimal_odds, max_kelly=0.25):
         return 0.0
     return min(k, max_kelly)
 
-def simulate_three_zones_flat(df, flat_bet_size=100, min_edge=0.0, max_edge=0.0471):
+def simulate_zones_flat(df, flat_bet_size=100, min_edge=0.0, max_edge=0.0471, enabled_zones=None):
     """
-    Simulate betting ONLY in the three profitable zones:
-    1. Heavy Favorites: odds < -300
-    2. Pick'em Underdogs: odds +100 to +110
-    3. Slight Underdogs: odds +110 to +150
+    Simulate betting on configurable zones.
+    
+    enabled_zones: dict like {'heavy_favorite': True, 'pickem_underdog': False, 'slight_underdog': True}
     """
     
+    if enabled_zones is None:
+        enabled_zones = {
+            'heavy_favorite': True,
+            'pickem_underdog': True,
+            'slight_underdog': True
+        }
+    
     zones = {
-        'heavy_favorite': {'name': 'Heavy Favorite (<-300)', 'bets': [], 'profit': 0, 'count': 0, 'wins': 0},
-        'pickem_underdog': {'name': "Pick'em Underdog (+100 to +110)", 'bets': [], 'profit': 0, 'count': 0, 'wins': 0},
-        'slight_underdog': {'name': 'Slight Underdog (+110 to +150)', 'bets': [], 'profit': 0, 'count': 0, 'wins': 0},
+        'heavy_favorite': {'name': 'Heavy Favorite (<-300)', 'bets': [], 'profit': 0, 'count': 0, 'wins': 0, 'enabled': enabled_zones.get('heavy_favorite', False)},
+        'pickem_underdog': {'name': "Pick'em Underdog (+100 to +110)", 'bets': [], 'profit': 0, 'count': 0, 'wins': 0, 'enabled': enabled_zones.get('pickem_underdog', False)},
+        'slight_underdog': {'name': 'Slight Underdog (+110 to +150)', 'bets': [], 'profit': 0, 'count': 0, 'wins': 0, 'enabled': enabled_zones.get('slight_underdog', False)},
     }
     
     total_bets = 0
@@ -90,6 +96,10 @@ def simulate_three_zones_flat(df, flat_bet_size=100, min_edge=0.0, max_edge=0.04
         else:
             continue  # Skip everything else
 
+        # Check if this zone is enabled
+        if not zones[zone]['enabled']:
+            continue
+
         # Place bet
         bet_amount = flat_bet_size
         total_staked += bet_amount
@@ -126,10 +136,17 @@ def simulate_three_zones_flat(df, flat_bet_size=100, min_edge=0.0, max_edge=0.04
         'zones': zones
     }
 
-def simulate_three_zones_kelly(df, starting_bankroll=10000.0, min_edge=0.0, max_edge=0.0471, kelly_cap=0.25):
+def simulate_zones_kelly(df, starting_bankroll=10000.0, min_edge=0.0, max_edge=0.0471, kelly_cap=0.25, enabled_zones=None):
     """
-    Quarter-Kelly staking in the three profitable zones.
+    Quarter-Kelly staking in configurable zones.
     """
+    
+    if enabled_zones is None:
+        enabled_zones = {
+            'heavy_favorite': True,
+            'pickem_underdog': True,
+            'slight_underdog': True
+        }
     
     work = df.copy()
     if "date" in work.columns:
@@ -140,9 +157,9 @@ def simulate_three_zones_kelly(df, starting_bankroll=10000.0, min_edge=0.0, max_
             pass
 
     zones = {
-        'heavy_favorite': {'name': 'Heavy Favorite (<-300)', 'profit': 0, 'count': 0, 'wins': 0},
-        'pickem_underdog': {'name': "Pick'em Underdog (+100 to +110)", 'profit': 0, 'count': 0, 'wins': 0},
-        'slight_underdog': {'name': 'Slight Underdog (+110 to +150)', 'profit': 0, 'count': 0, 'wins': 0},
+        'heavy_favorite': {'name': 'Heavy Favorite (<-300)', 'profit': 0, 'count': 0, 'wins': 0, 'enabled': enabled_zones.get('heavy_favorite', False)},
+        'pickem_underdog': {'name': "Pick'em Underdog (+100 to +110)", 'profit': 0, 'count': 0, 'wins': 0, 'enabled': enabled_zones.get('pickem_underdog', False)},
+        'slight_underdog': {'name': 'Slight Underdog (+110 to +150)', 'profit': 0, 'count': 0, 'wins': 0, 'enabled': enabled_zones.get('slight_underdog', False)},
     }
 
     current_bankroll = float(starting_bankroll)
@@ -190,6 +207,10 @@ def simulate_three_zones_kelly(df, starting_bankroll=10000.0, min_edge=0.0, max_
         elif 110 < chosen_odds <= 150:
             zone_key = 'slight_underdog'
         else:
+            continue
+
+        # Check if this zone is enabled
+        if not zones[zone_key]['enabled']:
             continue
 
         # Kelly stake
@@ -252,6 +273,14 @@ def main():
         2025: 'data/xgb_model/2025_xgb_all_models_20251009_194955/moneyline_predictions_2025.csv',
     }
     
+    # ===== ZONE CONFIGURATION =====
+    # Set to True to bet on that zone, False to skip it
+    ENABLED_ZONES = {
+        'heavy_favorite': False,      # Heavy Favorites (odds < -300)
+        'pickem_underdog': True,     # Pick'em Underdogs (+100 to +110)
+        'slight_underdog': True,      # Slight Underdogs (+110 to +150)
+    }
+    
     # Betting parameters
     FLAT_BET_SIZE = 100  # $100 per bet = 1 unit
     KELLY_STARTING_BANKROLL = 10000  # $10,000 starting bankroll
@@ -259,7 +288,9 @@ def main():
     
     # Set up output file
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = f"data/predictions/MONEYLINE_BETS_{timestamp}.txt"
+    enabled_zone_names = [k.replace('_', '') for k, v in ENABLED_ZONES.items() if v]
+    zones_suffix = "_".join(enabled_zone_names) if enabled_zone_names else "NO_ZONES"
+    output_file = f"data/predictions/MONEYLINE_{zones_suffix}_{timestamp}.txt"
     
     import sys
     class Tee:
@@ -278,13 +309,20 @@ def main():
     
     try:
         print("=" * 80)
-        print("THREE PROFITABLE ZONES ANALYSIS (2021-2025)")
+        print("CONFIGURABLE ZONES ANALYSIS (2021-2025)")
         print("=" * 80)
-        print("\nBetting ONLY on:")
-        print("  1. Heavy Favorites (odds < -300)")
-        print("  2. Pick'em Underdogs (odds +100 to +110)")
-        print("  3. Slight Underdogs (odds +110 to +150)")
-        print("\nAll other odds ranges are SKIPPED")
+        print("\nBetting on SELECTED zones only:")
+        
+        zone_display_names = {
+            'heavy_favorite': 'Heavy Favorites (odds < -300)',
+            'pickem_underdog': "Pick'em Underdogs (odds +100 to +110)",
+            'slight_underdog': 'Slight Underdogs (odds +110 to +150)'
+        }
+        
+        for zone_key, enabled in ENABLED_ZONES.items():
+            status = "✅ ENABLED" if enabled else "❌ SKIPPED"
+            print(f"  {status}: {zone_display_names[zone_key]}")
+        
         print("=" * 80)
         
         # Store results
@@ -305,14 +343,15 @@ def main():
                 print(f"Loaded {len(df)} games (dropped {original_len - len(df)} with missing odds)")
                 
                 # Flat betting
-                flat_result = simulate_three_zones_flat(df, flat_bet_size=FLAT_BET_SIZE)
+                flat_result = simulate_zones_flat(df, flat_bet_size=FLAT_BET_SIZE, enabled_zones=ENABLED_ZONES)
                 flat_results_by_year[year] = flat_result
                 
                 # Kelly betting
-                kelly_result = simulate_three_zones_kelly(
+                kelly_result = simulate_zones_kelly(
                     df, 
                     starting_bankroll=KELLY_STARTING_BANKROLL,
-                    kelly_cap=KELLY_CAP
+                    kelly_cap=KELLY_CAP,
+                    enabled_zones=ENABLED_ZONES
                 )
                 kelly_results_by_year[year] = kelly_result
                 
@@ -324,7 +363,7 @@ def main():
                 
                 print(f"\n  Zone Breakdown:")
                 for zone_key, zone_data in flat_result['zones'].items():
-                    if zone_data['count'] > 0:
+                    if zone_data['enabled'] and zone_data['count'] > 0:
                         zone_roi = (zone_data['profit'] / (zone_data['count'] * FLAT_BET_SIZE) * 100)
                         zone_wr = (zone_data['wins'] / zone_data['count'] * 100)
                         print(f"    {zone_data['name']}: {zone_data['count']} bets, "
@@ -341,7 +380,7 @@ def main():
                 
                 print(f"\n  Zone Breakdown:")
                 for zone_key, zone_data in kelly_result['zones'].items():
-                    if zone_data['count'] > 0:
+                    if zone_data['enabled'] and zone_data['count'] > 0:
                         zone_wr = (zone_data['wins'] / zone_data['count'] * 100)
                         print(f"    {zone_data['name']}: {zone_data['count']} bets, "
                               f"{zone_data['wins']} wins ({zone_wr:.1f}%), "
@@ -380,13 +419,15 @@ def main():
         print(f"{'TOTAL':<6} {total_flat_bets:<6} {total_flat_wins:<6} "
               f"{total_flat_wr:>6.2f}%  ${total_flat_profit:>9,.2f}  {total_flat_roi:>6.2f}%")
         
-        # Zone breakdown across all years
+        # Zone breakdown across all years (only enabled zones)
         print(f"\n\nCombined Zone Performance (Flat Betting):")
         print("-" * 80)
         
         combined_zones = {}
         for year_result in flat_results_by_year.values():
             for zone_key, zone_data in year_result['zones'].items():
+                if not zone_data['enabled']:
+                    continue
                 if zone_key not in combined_zones:
                     combined_zones[zone_key] = {'name': zone_data['name'], 'profit': 0, 'count': 0, 'wins': 0}
                 combined_zones[zone_key]['profit'] += zone_data['profit']
@@ -421,20 +462,22 @@ def main():
             print(f"{year:<6} {r['total_bets']:<6} ${r['starting_bankroll']:>9,.2f}  "
                   f"${r['final_bankroll']:>9,.2f}  ${r['total_profit']:>9,.2f}  {r['total_return']:>7.2f}%")
         
-        avg_kelly_return = (total_kelly_profit / (KELLY_STARTING_BANKROLL * len(kelly_results_by_year)) * 100)
+        avg_kelly_return = (total_kelly_profit / (KELLY_STARTING_BANKROLL * len(kelly_results_by_year)) * 100) if len(kelly_results_by_year) > 0 else 0
         
         print("-" * 80)
         print(f"Total Bets: {total_kelly_bets}")
         print(f"Total Profit: ${total_kelly_profit:,.2f}")
         print(f"Average Return per Year: {avg_kelly_return:+.2f}%")
         
-        # Zone breakdown for Kelly
+        # Zone breakdown for Kelly (only enabled zones)
         print(f"\n\nCombined Zone Performance (Kelly Betting):")
         print("-" * 80)
         
         combined_kelly_zones = {}
         for year_result in kelly_results_by_year.values():
             for zone_key, zone_data in year_result['zones'].items():
+                if not zone_data['enabled']:
+                    continue
                 if zone_key not in combined_kelly_zones:
                     combined_kelly_zones[zone_key] = {'name': zone_data['name'], 'profit': 0, 'count': 0, 'wins': 0}
                 combined_kelly_zones[zone_key]['profit'] += zone_data['profit']
