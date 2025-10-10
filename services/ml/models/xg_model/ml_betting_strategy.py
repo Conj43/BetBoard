@@ -266,17 +266,17 @@ def simulate_zones_kelly(df, starting_bankroll=10000.0, min_edge=0.0, max_edge=0
 def main():
     # ===== CONFIGURE YOUR FILE PATHS HERE =====
     year_files = {
-        2021: 'data/xgb_model/2021_xgb_all_models_20251009_202637/moneyline_predictions_2021.csv',
-        2022: 'data/xgb_model/2022_xgb_all_models_20251009_202214/moneyline_predictions_2022.csv',
-        2023: 'data/xgb_model/2023_xgb_all_models_20251009_200335/moneyline_predictions_2023.csv',
-        2024: 'data/xgb_model/2024_xgb_all_models_20251009_200100/moneyline_predictions_2024.csv',
-        2025: 'data/xgb_model/2025_xgb_all_models_20251009_194955/moneyline_predictions_2025.csv',
+        # 2021: 'data/xgb_model/2021_xgb_all_models_20251009_202637/moneyline_predictions_2021.csv',
+        # 2022: 'data/xgb_model/2022_xgb_all_models_20251009_202214/moneyline_predictions_2022.csv',
+        # 2023: 'data/xgb_model/2023_xgb_all_models_20251009_200335/moneyline_predictions_2023.csv',
+        # 2024: 'data/xgb_model/2024_xgb_all_models_20251009_200100/moneyline_predictions_2024.csv',
+        2025: 'data/xgb_model/xgb_all_models_20251010_132522/moneyline_predictions_2025.csv',
     }
     
     # ===== ZONE CONFIGURATION =====
     # Set to True to bet on that zone, False to skip it
     ENABLED_ZONES = {
-        'heavy_favorite': False,      # Heavy Favorites (odds < -300)
+        'heavy_favorite': True,      # Heavy Favorites (odds < -300)
         'pickem_underdog': True,     # Pick'em Underdogs (+100 to +110)
         'slight_underdog': True,      # Slight Underdogs (+110 to +150)
     }

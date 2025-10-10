@@ -1,8 +1,8 @@
 import pandas as pd
 import sys
 from datetime import datetime
-year = 2021
-directory = "data/xgb_model/2021_xgb_all_models_20251009_202637"
+year = 2025
+directory = "data/xgb_model/xgb_all_models_20251010_132522"
 FILE_PATH = f"{directory}/moneyline_predictions_{year}.csv"
 
 # Create output file with timestamp

@@ -698,7 +698,7 @@ def train_on_2025_holdout(X, y_pts, y_win, meta, market, run_dir, feature_names,
             print(f"{row.name+1:2d}. {row['feature']:<45} {row['importance']:>10.3f}")
 
 
-def train_on_holdout_year(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id, test_year=2021):
+def train_on_holdout_year(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id, test_year=2025):
     """
     Train on all pre-test_year seasons, evaluate on test_year.
     
@@ -993,7 +993,7 @@ def main():
     print("\nBuilding features...")
     X, y_pts, y_win, meta, market, feature_names = build_features(
         game_data,
-        include_betting_lines=True
+        include_betting_lines=False
     )
     
     # Save feature list
