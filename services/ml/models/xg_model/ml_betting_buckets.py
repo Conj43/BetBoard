@@ -1,4 +1,37 @@
 import pandas as pd
+import sys
+from datetime import datetime
+year = 2021
+directory = "data/xgb_model/2021_xgb_all_models_20251009_202637"
+FILE_PATH = f"{directory}/moneyline_predictions_{year}.csv"
+
+# Create output file with timestamp
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+output_file = f"{directory}/betting_analysis_{timestamp}.txt"
+
+# Custom print function that writes to both console and file
+class DualOutput:
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        self.log = open(filename, 'w')
+    
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+    
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+    
+    def close(self):
+        self.log.close()
+
+# Redirect stdout to dual output
+dual_output = DualOutput(output_file)
+sys.stdout = dual_output
+
+print(f"Output will be saved to: {output_file}")
+print("=" * 70)
 
 def odds_to_implied_prob(american_odds):
     """Convert American odds to implied probability."""
@@ -421,7 +454,7 @@ def simulate_betting(df, max_kelly=1.0, starting_bankroll=1000, min_edge=0, max_
 # Main execution
 if __name__ == "__main__":
     # Read the CSV file
-    df = pd.read_csv('data/xgb_model/xgb_all_models_20251009_161142/moneyline_predictions_2025.csv')
+    df = pd.read_csv(FILE_PATH)
 
     # Drop rows with missing market odds
     original_len = len(df)
@@ -437,32 +470,32 @@ if __name__ == "__main__":
     
    
 
-    print("\n" + "=" * 70)
-    print("EDGE-BAND STRATEGY: Testing various edge bands")
-    print("=" * 70)
+    # print("\n" + "=" * 70)
+    # print("EDGE-BAND STRATEGY: Testing various edge bands")
+    # print("=" * 70)
 
     # Define your edge bands to test
-    edge_bands = [
-        (0.000, 0.0471)
-    ]
+    # edge_bands = [
+    #     (0.000, 0.0471)
+    # ]
 
     # Run each band and print summary
-    for lo, hi in edge_bands:
-        max_kelly = 0.25
-        results = simulate_betting(df, max_kelly=max_kelly, min_edge=lo, max_edge=hi)
+    # for lo, hi in edge_bands:
+    #     max_kelly = 0.25
+    #     results = simulate_betting(df, max_kelly=max_kelly, min_edge=lo, max_edge=hi)
         
-        print(f"\nEdge Band: {lo*100:.4f}%–{hi*100:.4f}% | Kelly: {max_kelly*100:.0f}%")
-        print("-" * 70)
-        print(f"Starting Bankroll: ${results['starting_bankroll']:,.2f}")
-        print(f"Final Bankroll: ${results['final_bankroll']:,.2f}")
-        print(f"Total Profit/Loss: ${results['total_profit']:,.2f}")
-        print(f"Total Return: {results['total_return']:.2f}%")
-        print(f"Total Bets: {results['total_bets']}")
-        print(f"Bets Won: {results['won_bets']}")
-        print(f"Win Rate: {results['win_rate']:.2f}%")
-        print(f"Total Staked: ${results['total_staked']:,.2f}")
-        print(f"ROI: {results['roi']:.2f}%")
-        print(f"Average Edge: {results['avg_edge']*100:.2f}%")
+    #     print(f"\nEdge Band: {lo*100:.4f}%–{hi*100:.4f}% | Kelly: {max_kelly*100:.0f}%")
+    #     print("-" * 70)
+    #     print(f"Starting Bankroll: ${results['starting_bankroll']:,.2f}")
+    #     print(f"Final Bankroll: ${results['final_bankroll']:,.2f}")
+    #     print(f"Total Profit/Loss: ${results['total_profit']:,.2f}")
+    #     print(f"Total Return: {results['total_return']:.2f}%")
+    #     print(f"Total Bets: {results['total_bets']}")
+    #     print(f"Bets Won: {results['won_bets']}")
+    #     print(f"Win Rate: {results['win_rate']:.2f}%")
+    #     print(f"Total Staked: ${results['total_staked']:,.2f}")
+    #     print(f"ROI: {results['roi']:.2f}%")
+    #     print(f"Average Edge: {results['avg_edge']*100:.2f}%")
     
     
     # FLAT BETTING ANALYSIS
@@ -606,3 +639,7 @@ if __name__ == "__main__":
             print(f"  ROI: {roi:.2f}%")
             print(f"  Avg Odds: {avg_odds:.0f}")
             print(f"  Avg Edge: {avg_edge:.2f}%")
+            
+    sys.stdout.close()
+    sys.stdout = dual_output.terminal
+    print(f"\nResults saved to: {output_file}")

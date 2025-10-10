@@ -698,6 +698,262 @@ def train_on_2025_holdout(X, y_pts, y_win, meta, market, run_dir, feature_names,
             print(f"{row.name+1:2d}. {row['feature']:<45} {row['importance']:>10.3f}")
 
 
+def train_on_holdout_year(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id, test_year=2021):
+    """
+    Train on all pre-test_year seasons, evaluate on test_year.
+    
+    Args:
+        X: Feature matrix
+        y_pts: Points scored (team A, team B)
+        y_win: Win indicator (1 if team A won, 0 if team B won)
+        meta: Metadata (game_id, date, season, etc.)
+        market: Market odds data
+        run_dir: Directory to save results
+        feature_names: List of feature names
+        run_id: Run identifier timestamp
+        test_year: Year to use as test set (default: 2025)
+    """
+    if market is None or len(market) == 0:
+        market = pd.DataFrame(index=X.index)
+    
+    # Calculate targets
+    y_margin = y_pts.iloc[:, 0] - y_pts.iloc[:, 1]  # Team A - Team B
+    y_total = y_pts.iloc[:, 0] + y_pts.iloc[:, 1]   # Team A + Team B
+    
+    # Split into train (pre-test_year) and test (test_year)
+    train_mask = meta["season"] < test_year
+    test_mask = meta["season"] == test_year
+    
+    n_train = train_mask.sum()
+    n_test = test_mask.sum()
+    
+    print(f"\n{'='*70}")
+    print("TRAIN/TEST SPLIT")
+    print(f"{'='*70}")
+    print(f"Training seasons: {sorted(meta.loc[train_mask, 'season'].unique())}")
+    print(f"Test season: {test_year}")
+    print(f"Training games: {n_train}")
+    print(f"Test games: {n_test}")
+    
+    if n_train == 0:
+        raise ValueError(f"No training data available before {test_year}")
+    if n_test == 0:
+        raise ValueError(f"No test data available for {test_year}")
+    
+    # Extract data
+    X_train_full = X.loc[train_mask]
+    y_win_train_full = y_win.loc[train_mask]
+    y_margin_train_full = y_margin.loc[train_mask]
+    y_total_train_full = y_total.loc[train_mask]
+    meta_train_full = meta.loc[train_mask]
+    market_train_full = market.loc[train_mask] if len(market.columns) > 0 else pd.DataFrame()
+    
+    X_test = X.loc[test_mask]
+    y_win_test = y_win.loc[test_mask]
+    y_margin_test = y_margin.loc[test_mask]
+    y_total_test = y_total.loc[test_mask]
+    meta_test = meta.loc[test_mask]
+    market_test = market.loc[test_mask] if len(market.columns) > 0 else pd.DataFrame()
+    
+    # Create validation split from training data
+    train_data, val_data = create_validation_split(
+        X_train_full,
+        y_win_train_full,
+        y_margin_train_full,
+        y_total_train_full,
+        meta_train_full,
+        market_train_full,
+        val_ratio=TRAIN_CONFIG["validation_split"]
+    )
+    
+    print(f"\n  Train set: {len(train_data['X'])} games")
+    print(f"  Val set: {len(val_data['X'])} games")
+    
+    # ===== TRAIN ALL THREE MODELS =====
+    
+    # 1. Moneyline
+    ml_results = train_moneyline_model(
+        train_data['X'],
+        train_data['y_win'],
+        X_test,
+        X_val=val_data['X'] if len(val_data['X']) >= 10 else None,
+        y_val=val_data['y_win'] if len(val_data['X']) >= 10 else None
+    )
+    
+    ml_metrics = evaluate_moneyline(
+        y_win_test,
+        ml_results["pred_proba"],
+        ml_results["pred_class"],
+        market_test if len(market_test.columns) > 0 else None
+    )
+    
+    print(f"\nMoneyline Performance:")
+    print(f"  Accuracy: {ml_metrics['accuracy']:.1%}")
+    print(f"  Log Loss: {ml_metrics['log_loss']:.4f}")
+    print(f"  AUC-ROC: {ml_metrics['auc_roc']:.4f}")
+    if 'ml_roi' in ml_metrics:
+        print(f"  ML ROI: {ml_metrics['ml_roi']:+.2f}%")
+        print(f"  ML Profit: ${ml_metrics['ml_profit']:,.0f}")
+    
+    # 2. Spread
+    spread_results = train_spread_model(
+        train_data['X'],
+        train_data['y_margin'],
+        X_test,
+        X_val=val_data['X'] if len(val_data['X']) >= 10 else None,
+        y_val=val_data['y_margin'] if len(val_data['X']) >= 10 else None
+    )
+    
+    spread_metrics = evaluate_spread(
+        y_margin_test,
+        spread_results["pred_margin"],
+        market_test if len(market_test.columns) > 0 else None
+    )
+    
+    print(f"\nSpread Performance:")
+    print(f"  MAE: {spread_metrics['mae_margin']:.2f}")
+    print(f"  RMSE: {spread_metrics['rmse_margin']:.2f}")
+    if 'ats_accuracy' in spread_metrics:
+        print(f"  ATS Accuracy: {spread_metrics['ats_accuracy']:.1%} ({spread_metrics['ats_games']} games)")
+    
+    # 3. Total
+    total_results = train_total_model(
+        train_data['X'],
+        train_data['y_total'],
+        X_test,
+        X_val=val_data['X'] if len(val_data['X']) >= 10 else None,
+        y_val=val_data['y_total'] if len(val_data['X']) >= 10 else None
+    )
+    
+    total_metrics = evaluate_total(
+        y_total_test,
+        total_results["pred_total"],
+        market_test if len(market_test.columns) > 0 else None
+    )
+    
+    print(f"\nTotal Performance:")
+    print(f"  MAE: {total_metrics['mae_total']:.2f}")
+    print(f"  RMSE: {total_metrics['rmse_total']:.2f}")
+    if 'ou_accuracy' in total_metrics:
+        print(f"  O/U Accuracy: {total_metrics['ou_accuracy']:.1%} ({total_metrics['ou_games']} games)")
+    
+    # ===== SAVE PREDICTIONS =====
+    
+    # Moneyline predictions
+    ml_pred_df = meta_test.copy()
+    ml_pred_df["true_winner"] = y_win_test.values
+    ml_pred_df["pred_winner"] = ml_results["pred_class"]
+    ml_pred_df["p_win_A"] = ml_results["pred_proba"]
+    ml_pred_df["correct"] = (y_win_test.values == ml_results["pred_class"]).astype(int)
+    
+    if "moneyline_a" in market_test.columns:
+        ml_pred_df["moneyline_a"] = market_test["moneyline_a"].values
+        ml_pred_df["moneyline_b"] = market_test["moneyline_b"].values
+    
+    ml_path = os.path.join(run_dir, f"moneyline_predictions_{test_year}.csv")
+    ml_pred_df.to_csv(ml_path, index=False)
+    print(f"\nSaved: {ml_path}")
+    
+    # Spread predictions
+    spread_pred_df = meta_test.copy()
+    spread_pred_df["true_margin"] = y_margin_test.values
+    spread_pred_df["pred_margin"] = spread_results["pred_margin"]
+    spread_pred_df["err_margin"] = np.abs(y_margin_test.values - spread_results["pred_margin"])
+    
+    if "bet_spread" in market_test.columns:
+        spread_pred_df["bet_spread"] = market_test["bet_spread"].values
+        spread_pred_df['adjusted_margin'] = spread_pred_df['true_margin'] + spread_pred_df['bet_spread']
+        spread_pred_df['pred_adjusted_margin'] = spread_pred_df['pred_margin'] + spread_pred_df['bet_spread']
+        spread_pred_df['model_pick_a'] = (spread_pred_df['pred_adjusted_margin'] > 0).astype(int)
+        spread_pred_df['team_a_covered'] = (spread_pred_df['adjusted_margin'] > 0).astype(int)
+        spread_pred_df['ats_correct'] = (spread_pred_df['model_pick_a'] == spread_pred_df['team_a_covered']).astype(int)
+    
+    spread_path = os.path.join(run_dir, f"spread_predictions_{test_year}.csv")
+    spread_pred_df.to_csv(spread_path, index=False)
+    print(f"Saved: {spread_path}")
+    
+    # Total predictions
+    total_pred_df = meta_test.copy()
+    total_pred_df["true_total"] = y_total_test.values
+    total_pred_df["pred_total"] = total_results["pred_total"]
+    total_pred_df["err_total"] = np.abs(y_total_test.values - total_results["pred_total"])
+    
+    if "bet_total" in market_test.columns:
+        total_pred_df["bet_total"] = market_test["bet_total"].values
+        total_pred_df['total_edge'] = total_pred_df['pred_total'] - total_pred_df['bet_total']
+        total_pred_df['model_pick_over'] = (total_pred_df['total_edge'] > 0).astype(int)
+        total_pred_df['actual_over'] = (total_pred_df['true_total'] > total_pred_df['bet_total']).astype(int)
+        total_pred_df['ou_correct'] = (total_pred_df['model_pick_over'] == total_pred_df['actual_over']).astype(int)
+    
+    total_path = os.path.join(run_dir, f"total_predictions_{test_year}.csv")
+    total_pred_df.to_csv(total_path, index=False)
+    print(f"Saved: {total_path}")
+    
+    # Save metrics
+    metrics_summary = {
+        "test_year": test_year,
+        "training_years": sorted(meta.loc[train_mask, 'season'].unique()),
+        "moneyline": ml_metrics,
+        "spread": spread_metrics,
+        "total": total_metrics,
+    }
+    
+    metrics_path = os.path.join(run_dir, f"metrics_summary_{test_year}.json")
+    with open(metrics_path, "w") as f:
+        json.dump(metrics_summary, f, indent=2, default=str)
+    print(f"Saved: {metrics_path}")
+    
+    # ===== SAVE MODELS =====
+    import joblib
+    
+    models_dir = os.path.join(run_dir, f"models_{test_year}")
+    os.makedirs(models_dir, exist_ok=True)
+    
+    # Save XGBoost models
+    ml_results["model"].save_model(os.path.join(models_dir, "moneyline_model.json"))
+    spread_results["model"].save_model(os.path.join(models_dir, "spread_model.json"))
+    total_results["model"].save_model(os.path.join(models_dir, "total_model.json"))
+    
+    # Save feature names (critical for inference)
+    joblib.dump(feature_names, os.path.join(models_dir, "feature_names.pkl"))
+    
+    # Save model metadata
+    model_metadata = {
+        "training_date": run_id,
+        "training_seasons": sorted(meta.loc[train_mask, 'season'].unique()),
+        "test_season": test_year,
+        "n_features": len(feature_names),
+        "metrics": metrics_summary,
+    }
+    
+    with open(os.path.join(models_dir, "model_metadata.json"), "w") as f:
+        json.dump(model_metadata, f, indent=2, default=str)
+    
+    print(f"\nSaved models to: {models_dir}")
+    print(f"  - moneyline_model.json")
+    print(f"  - spread_model.json")
+    print(f"  - total_model.json")
+    print(f"  - feature_names.pkl")
+    print(f"  - model_metadata.json")
+    
+    # Save feature importance
+    for model_name, results in [
+        ("moneyline", ml_results),
+        ("spread", spread_results),
+        ("total", total_results)
+    ]:
+        imp_df = results["feature_importance"].head(20)
+        print(f"\n{'='*70}")
+        print(f"TOP 20 {model_name.upper()} FEATURES")
+        print(f"{'='*70}")
+        for idx, row in imp_df.iterrows():
+            print(f"{row.name+1:2d}. {row['feature']:<45} {row['importance']:>10.3f}")
+    
+    return metrics_summary
+
+
+
+
 def main():
     """Main training pipeline."""
     
@@ -747,7 +1003,9 @@ def main():
     print(f"\nSaved {len(feature_names)} features to {features_path}")
     
     # Train all models
-    train_on_2025_holdout(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id)
+    # train_on_2025_holdout(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id)
+    train_on_holdout_year(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id)
+
     
     print(f"\n{'='*70}")
     print("Training Complete!")
