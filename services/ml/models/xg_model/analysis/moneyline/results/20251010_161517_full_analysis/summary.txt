@@ -1,0 +1,6 @@
+Experiment: full_analysis
+Timestamp: 20251010_161517
+
+Overall Results:
+  Flat Betting ROI: 0.83%
+  Kelly Betting Return: 64.75%

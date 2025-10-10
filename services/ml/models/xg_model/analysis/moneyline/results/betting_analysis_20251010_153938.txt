@@ -1,0 +1,226 @@
+Output will be saved to: services/ml/models/xg_model/analysis/moneyline/data/betting_analysis_20251010_153938.txt
+======================================================================
+
+Dropped 217 rows with missing market odds (4.2%)
+Analyzing 4984 games with valid market data
+
+
+
+======================================================================
+PART 4: ODDS BUCKET ANALYSIS (0-4.71% Edge Band)
+======================================================================
+
+Overall Stats:
+----------------------------------------------------------------------
+Total Bets: 2091
+Win Rate: 43.19%
+Total Profit: $-23,606.06
+ROI: -11.29%
+
+
+Breakdown by Odds Bucket:
+======================================================================
+
+Heavy Favorite (<-300)
+----------------------------------------------------------------------
+  Count: 258 (12.3% of total)
+  Wins: 215
+  Win Rate: 83.33%
+  Total Staked: $25,800.00
+  Total Profit: $703.00
+  ROI: 2.72%
+  Avg Odds: -464
+  Avg Edge: 1.93%
+
+Strong Favorite (-300 to -200)
+----------------------------------------------------------------------
+  Count: 256 (12.2% of total)
+  Wins: 177
+  Win Rate: 69.14%
+  Total Staked: $25,600.00
+  Total Profit: $-762.93
+  ROI: -2.98%
+  Avg Odds: -248
+  Avg Edge: 2.02%
+
+Moderate Favorite (-200 to -150)
+----------------------------------------------------------------------
+  Count: 213 (10.2% of total)
+  Wins: 127
+  Win Rate: 59.62%
+  Total Staked: $21,300.00
+  Total Profit: $-1,274.92
+  ROI: -5.99%
+  Avg Odds: -175
+  Avg Edge: 2.25%
+
+Slight Favorite (-150 to -110)
+----------------------------------------------------------------------
+  Count: 179 (8.6% of total)
+  Wins: 97
+  Win Rate: 54.19%
+  Total Staked: $17,900.00
+  Total Profit: $-819.42
+  ROI: -4.58%
+  Avg Odds: -132
+  Avg Edge: 2.12%
+
+Pick'em Favorite (-110 to -100)
+----------------------------------------------------------------------
+  Count: 48 (2.3% of total)
+  Wins: 21
+  Win Rate: 43.75%
+  Total Staked: $4,800.00
+  Total Profit: $-694.80
+  ROI: -14.47%
+  Avg Odds: -104
+  Avg Edge: 2.37%
+
+Pick'em Underdog (+100 to +110)
+----------------------------------------------------------------------
+  Count: 49 (2.3% of total)
+  Wins: 24
+  Win Rate: 48.98%
+  Total Staked: $4,900.00
+  Total Profit: $-6.00
+  ROI: -0.12%
+  Avg Odds: 104
+  Avg Edge: 2.26%
+
+Slight Underdog (+110 to +150)
+----------------------------------------------------------------------
+  Count: 189 (9.0% of total)
+  Wins: 81
+  Win Rate: 42.86%
+  Total Staked: $18,900.00
+  Total Profit: $-270.00
+  ROI: -1.43%
+  Avg Odds: 129
+  Avg Edge: 2.24%
+
+Moderate Underdog (+150 to +200)
+----------------------------------------------------------------------
+  Count: 138 (6.6% of total)
+  Wins: 50
+  Win Rate: 36.23%
+  Total Staked: $13,800.00
+  Total Profit: $-98.00
+  ROI: -0.71%
+  Avg Odds: 174
+  Avg Edge: 2.09%
+
+Strong Underdog (+200 to +300)
+----------------------------------------------------------------------
+  Count: 205 (9.8% of total)
+  Wins: 51
+  Win Rate: 24.88%
+  Total Staked: $20,500.00
+  Total Profit: $-2,739.00
+  ROI: -13.36%
+  Avg Odds: 249
+  Avg Edge: 2.22%
+
+Heavy Underdog (>+300)
+----------------------------------------------------------------------
+  Count: 556 (26.6% of total)
+  Wins: 60
+  Win Rate: 10.79%
+  Total Staked: $55,600.00
+  Total Profit: $-17,644.00
+  ROI: -31.73%
+  Avg Odds: 889
+  Avg Edge: 1.95%
+
+
+======================================================================
+PART 5: ODDS RANGE FILTER (0-4.71% Edge + Odds -10000 to +150)
+======================================================================
+
+Filtered Stats (Odds between -10000 and +150):
+----------------------------------------------------------------------
+Total Bets: 1192
+Win Rate: 62.25% 
+Total Profit: $-3,125.06 
+ROI: -2.62% 
+Total Staked: $119,200.00
+
+
+Breakdown by Odds Bucket (Filtered):
+======================================================================
+
+Heavy Favorite (<-300)
+----------------------------------------------------------------------
+  Count: 258 (21.6% of total)
+  Wins: 215
+  Win Rate: 83.33%
+  Total Staked: $25,800.00
+  Total Profit: $703.00
+  ROI: 2.72%
+  Avg Odds: -464
+  Avg Edge: 1.93%
+
+Strong Favorite (-300 to -200)
+----------------------------------------------------------------------
+  Count: 256 (21.5% of total)
+  Wins: 177
+  Win Rate: 69.14%
+  Total Staked: $25,600.00
+  Total Profit: $-762.93
+  ROI: -2.98%
+  Avg Odds: -248
+  Avg Edge: 2.02%
+
+Moderate Favorite (-200 to -150)
+----------------------------------------------------------------------
+  Count: 213 (17.9% of total)
+  Wins: 127
+  Win Rate: 59.62%
+  Total Staked: $21,300.00
+  Total Profit: $-1,274.92
+  ROI: -5.99%
+  Avg Odds: -175
+  Avg Edge: 2.25%
+
+Slight Favorite (-150 to -110)
+----------------------------------------------------------------------
+  Count: 179 (15.0% of total)
+  Wins: 97
+  Win Rate: 54.19%
+  Total Staked: $17,900.00
+  Total Profit: $-819.42
+  ROI: -4.58%
+  Avg Odds: -132
+  Avg Edge: 2.12%
+
+Pick'em Favorite (-110 to -100)
+----------------------------------------------------------------------
+  Count: 48 (4.0% of total)
+  Wins: 21
+  Win Rate: 43.75%
+  Total Staked: $4,800.00
+  Total Profit: $-694.80
+  ROI: -14.47%
+  Avg Odds: -104
+  Avg Edge: 2.37%
+
+Pick'em Underdog (+100 to +110)
+----------------------------------------------------------------------
+  Count: 49 (4.1% of total)
+  Wins: 24
+  Win Rate: 48.98%
+  Total Staked: $4,900.00
+  Total Profit: $-6.00
+  ROI: -0.12%
+  Avg Odds: 104
+  Avg Edge: 2.26%
+
+Slight Underdog (+110 to +150)
+----------------------------------------------------------------------
+  Count: 189 (15.9% of total)
+  Wins: 81
+  Win Rate: 42.86%
+  Total Staked: $18,900.00
+  Total Profit: $-270.00
+  ROI: -1.43%
+  Avg Odds: 129
+  Avg Edge: 2.24%

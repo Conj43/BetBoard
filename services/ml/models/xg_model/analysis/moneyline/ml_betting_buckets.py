@@ -7,7 +7,7 @@ FILE_PATH = f"{directory}/moneyline_predictions_{year}.csv"
 
 # Create output file with timestamp
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-output_file = f"{directory}/betting_analysis_{timestamp}.txt"
+output_file = f"services/ml/models/xg_model/analysis/moneyline/data/betting_analysis_{timestamp}.txt"
 
 # Custom print function that writes to both console and file
 class DualOutput:

@@ -1,0 +1,116 @@
+================================================================================
+CONFIGURABLE ZONES ANALYSIS (2021-2025)
+================================================================================
+
+Betting on SELECTED zones only:
+  ✅ ENABLED: Heavy Favorites (odds < -300)
+  ✅ ENABLED: Pick'em Underdogs (odds +100 to +110)
+  ✅ ENABLED: Slight Underdogs (odds +110 to +150)
+================================================================================
+
+================================================================================
+YEAR 2025
+================================================================================
+Loaded 4984 games (dropped 217 with missing odds)
+
+--- FLAT BETTING ($100 per game) ---
+Total Bets: 567
+Wins: 387 (68.25%)
+Total Profit: $476.90
+ROI: 0.84%
+
+  Zone Breakdown:
+    Heavy Favorite (<-300): 329 bets, 282 wins (85.7%), $752.90 profit (+2.29% ROI)
+    Pick'em Underdog (+100 to +110): 49 bets, 24 wins (49.0%), $-6.00 profit (-0.12% ROI)
+    Slight Underdog (+110 to +150): 189 bets, 81 wins (42.9%), $-270.00 profit (-1.43% ROI)
+
+--- QUARTER KELLY ($10,000 starting bankroll) ---
+Total Bets: 567
+Wins: 387 (68.25%)
+Starting Bankroll: $10,000.00
+Ending Bankroll: $15,031.77
+Total Profit: $5,031.77
+Return: +50.32%
+
+  Zone Breakdown:
+    Heavy Favorite (<-300): 329 bets, 282 wins (85.7%), $114.03 profit
+    Pick'em Underdog (+100 to +110): 49 bets, 24 wins (49.0%), $3,155.01 profit
+    Slight Underdog (+110 to +150): 189 bets, 81 wins (42.9%), $1,762.73 profit
+
+
+================================================================================
+COMBINED RESULTS (2021-2025)
+================================================================================
+
+================================================================================
+FLAT BETTING SUMMARY ($100 per bet = 1 unit)
+================================================================================
+
+Year-by-Year:
+Year   Bets   Wins   Win%     Profit       ROI     
+--------------------------------------------------------------------------------
+2025   567    387     68.25%  $   476.90    0.84%
+--------------------------------------------------------------------------------
+TOTAL  567    387     68.25%  $   476.90    0.84%
+
+
+Combined Zone Performance (Flat Betting):
+--------------------------------------------------------------------------------
+Heavy Favorite (<-300)
+  Bets: 329 | Wins: 282 (85.71%)
+  Profit: $752.90 | ROI: +2.29%
+
+Pick'em Underdog (+100 to +110)
+  Bets: 49 | Wins: 24 (48.98%)
+  Profit: $-6.00 | ROI: -0.12%
+
+Slight Underdog (+110 to +150)
+  Bets: 189 | Wins: 81 (42.86%)
+  Profit: $-270.00 | ROI: -1.43%
+
+
+================================================================================
+KELLY BETTING SUMMARY ($10,000 starting bankroll each year)
+================================================================================
+
+Year-by-Year:
+Year   Bets   Starting     Ending       Profit       Return    
+--------------------------------------------------------------------------------
+2025   567    $10,000.00  $15,031.77  $ 5,031.77    50.32%
+--------------------------------------------------------------------------------
+Total Bets: 567
+Total Profit: $5,031.77
+Average Return per Year: +50.32%
+
+
+Combined Zone Performance (Kelly Betting):
+--------------------------------------------------------------------------------
+Heavy Favorite (<-300)
+  Bets: 329 | Wins: 282 (85.71%)
+  Profit: $114.03
+
+Pick'em Underdog (+100 to +110)
+  Bets: 49 | Wins: 24 (48.98%)
+  Profit: $3,155.01
+
+Slight Underdog (+110 to +150)
+  Bets: 189 | Wins: 81 (42.86%)
+  Profit: $1,762.73
+
+
+================================================================================
+FINAL VERDICT
+================================================================================
+
+Flat Betting (100 units):
+  Total Profit: $476.90 (+4.77 units)
+  ROI: 0.84%
+  Win Rate: 68.25%
+  Winning Years: 1/5
+
+Quarter Kelly Betting:
+  Total Profit: $5,031.77
+  Avg Return: +50.32% per year
+  Winning Years: 1/5
+
+✅ Strategy is PROFITABLE with 0.84% ROI
