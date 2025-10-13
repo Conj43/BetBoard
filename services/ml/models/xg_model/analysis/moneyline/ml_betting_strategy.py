@@ -428,7 +428,7 @@ def main():
                 flat_bet_size=FLAT_BET_SIZE, 
                 enabled_zones=ENABLED_ZONES,
                 edge_bucket_size=EDGE_BUCKET_SIZE,
-                output_dir=OUTPUT_DIR
+                # output_dir=OUTPUT_DIR
             )
             flat_results_by_year[year] = flat_result
             
@@ -439,7 +439,7 @@ def main():
                 kelly_cap=KELLY_CAP,
                 enabled_zones=ENABLED_ZONES,
                 edge_bucket_size=EDGE_BUCKET_SIZE,
-                output_dir=OUTPUT_DIR
+                # output_dir=OUTPUT_DIR
             )
             kelly_results_by_year[year] = kelly_result
             

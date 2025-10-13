@@ -27,8 +27,8 @@ class DualOutput:
         self.log.close()
 
 # Redirect stdout to dual output
-dual_output = DualOutput(output_file)
-sys.stdout = dual_output
+# dual_output = DualOutput(output_file)
+# sys.stdout = dual_output
 
 print(f"Output will be saved to: {output_file}")
 print("=" * 70)
@@ -640,6 +640,6 @@ if __name__ == "__main__":
             print(f"  Avg Odds: {avg_odds:.0f}")
             print(f"  Avg Edge: {avg_edge:.2f}%")
             
-    sys.stdout.close()
-    sys.stdout = dual_output.terminal
+    # sys.stdout.close()
+    # sys.stdout = dual_output.terminal
     print(f"\nResults saved to: {output_file}")
