@@ -959,7 +959,7 @@ def main():
     
     # Create run directory
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = os.path.join(TRAIN_CONFIG["xgb_output"], f"xgb_all_models_{run_id}")
+    run_dir = os.path.join(TRAIN_CONFIG["xgb_output"], f"No_Bet_xgb_all_models_{run_id}")
     os.makedirs(run_dir, exist_ok=True)
     
     print(f"{'='*70}")

@@ -1,0 +1,39 @@
+{
+  "training_date": "20251014_153652",
+  "training_seasons": [
+    "2019",
+    "2020",
+    "2021"
+  ],
+  "test_season": 2022,
+  "n_features": 83,
+  "metrics": {
+    "test_year": 2022,
+    "training_years": [
+      "2019",
+      "2020",
+      "2021"
+    ],
+    "moneyline": {
+      "accuracy": 0.7185243021666992,
+      "log_loss": 0.5415416937546481,
+      "brier_score": 0.182678408286935,
+      "auc_roc": 0.7883746387571853,
+      "ml_roi": -1.071543489639966,
+      "ml_profit": -5386.649122420109,
+      "ml_bets": 5027
+    },
+    "spread": {
+      "mae_margin": 8.765469573318912,
+      "rmse_margin": 11.166375321005447,
+      "ats_accuracy": 0.51171875,
+      "ats_games": 5120
+    },
+    "total": {
+      "mae_total": 13.303657426001992,
+      "rmse_total": 17.02854332267631,
+      "ou_accuracy": 0.50234375,
+      "ou_games": 5120
+    }
+  }
+}
