@@ -5,8 +5,8 @@ import os
 
 # ===== CONFIGURATION SECTION =====
 # Toggle features on/off
-SAVE_TO_FILE = False  # Set to True to save results to file
-SAVE_BETS_CSV = False  # Set to True to save individual bet records to CSV
+SAVE_TO_FILE = True  # Set to True to save results to file
+SAVE_BETS_CSV = True  # Set to True to save individual bet records to CSV
 
 # File paths
 YEAR = 2025
