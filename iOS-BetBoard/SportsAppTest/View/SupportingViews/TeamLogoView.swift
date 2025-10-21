@@ -6,13 +6,6 @@
 //
 
 
-//
-//  TeamLogoView.swift
-//  SportsAppTest
-//
-//  Reusable component for displaying team logos
-//
-
 import SwiftUI
 
 struct TeamLogoView: View {

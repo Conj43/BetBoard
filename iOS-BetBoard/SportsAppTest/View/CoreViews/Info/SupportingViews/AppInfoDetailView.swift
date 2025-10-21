@@ -5,14 +5,6 @@
 //  Created by Trenton Roney on 9/22/25.
 //
 
-
-//
-//  AppInfoDetailView.swift
-//  SportsAppOG
-//
-//  Created by Trenton Roney on 8/26/25.
-//
-
 import SwiftUI
 
 struct AppInfoDetailView: View {
@@ -56,7 +48,7 @@ struct AppInfoDetailView: View {
                         .fontWeight(.semibold)
                     
                     ForEach([
-                        ("chart.bar.xaxis", "AI Predictions", "Get confidence-rated predictions for upcoming games"),
+                        ("chart.bar.xaxis", "Our Predictions", "Get confidence-rated predictions for upcoming games"),
                         ("magnifyingglass", "Game Search", "Find games by team names and matchups"),
                         ("chart.line.uptrend.xyaxis", "Performance Tracking", "Track your betting performance over time"),
                         ("brain.head.profile", "Smart Analysis", "Detailed breakdowns of key factors for each game")

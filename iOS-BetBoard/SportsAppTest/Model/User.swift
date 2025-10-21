@@ -24,11 +24,3 @@ struct User: Identifiable, Codable {
     let createdAt: Date
 }
 
-// Firebase Implementation
-// {
-//   "id": "user456",
-//   "username": "Trenton",
-//   "email": "trenton@example.com",
-//   "trackedBetIDs": ["bet123", "bet124"],
-//   "createdAt": "2024-01-15T12:00:00Z"
-// }

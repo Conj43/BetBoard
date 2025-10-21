@@ -6,13 +6,6 @@
 //
 
 
-//
-//  PredictionSectionView.swift
-//  SportsAppOG
-//
-//  Created by Trenton Roney on 8/26/25.
-//
-
 import SwiftUI
 
 struct PredictionSectionView: View {
@@ -23,7 +16,7 @@ struct PredictionSectionView: View {
             HStack {
                 Image(systemName: "brain.head.profile")
                     .foregroundColor(.purple)
-                Text("AI Prediction")
+                Text("Our Prediction")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 Spacer()

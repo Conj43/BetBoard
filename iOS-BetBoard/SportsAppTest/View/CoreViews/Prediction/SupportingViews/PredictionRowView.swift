@@ -6,13 +6,6 @@
 //
 
 
-//
-//  PredictionRowView.swift
-//  SportsAppTest
-//
-//  Created by Trenton Roney on 9/22/25.
-//
-
 import SwiftUI
 
 struct PredictionRowView: View {

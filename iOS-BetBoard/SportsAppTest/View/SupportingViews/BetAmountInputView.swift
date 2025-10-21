@@ -5,14 +5,6 @@
 //  Created by Trenton Roney on 8/27/25.
 //
 
-
-//
-//  BetAmountInputView.swift
-//  SportsAppOG
-//
-//  Created by Trenton Roney on 8/27/25.
-//
-
 import SwiftUI
 
 struct BetAmountInputView: View {

@@ -6,13 +6,6 @@
 //
 
 
-//
-//  AppSettings.swift
-//  SportsApp
-//
-//  Created by Trenton Roney on 7/14/25.
-//
-
 
 import Foundation
 

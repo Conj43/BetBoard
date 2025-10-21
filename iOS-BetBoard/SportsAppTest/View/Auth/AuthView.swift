@@ -23,7 +23,7 @@ struct AuthView: View {
                     .font(.largeTitle)
                     .fontWeight(.bold)
                 
-                Text("Track your sports bets with AI predictions")
+                Text("Track your sports bets with our predictions")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)

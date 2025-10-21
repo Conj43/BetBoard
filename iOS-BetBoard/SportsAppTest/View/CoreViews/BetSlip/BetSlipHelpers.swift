@@ -6,13 +6,6 @@
 //
 
 
-//
-//  BetSlipHelpers.swift
-//  SportsAppOG
-//
-//  Created by Trenton Roney on 8/26/25.
-//
-
 import Foundation
 
 struct BetSlipHelpers {

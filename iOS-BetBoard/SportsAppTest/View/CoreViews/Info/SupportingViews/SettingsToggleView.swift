@@ -6,13 +6,6 @@
 //
 
 
-//
-//  SettingsToggleView.swift
-//  SportsAppOG
-//
-//  Created by Trenton Roney on 8/26/25.
-//
-
 import SwiftUI
 
 struct SettingsToggleView: View {

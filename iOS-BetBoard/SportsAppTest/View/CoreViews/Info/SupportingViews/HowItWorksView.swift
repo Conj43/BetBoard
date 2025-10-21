@@ -5,14 +5,6 @@
 //  Created by Trenton Roney on 9/22/25.
 //
 
-
-//
-//  HowItWorksView.swift
-//  SportsAppOG
-//
-//  Created by Trenton Roney on 8/26/25.
-//
-
 import SwiftUI
 
 struct HowItWorksView: View {
@@ -25,7 +17,7 @@ struct HowItWorksView: View {
                         .font(.system(size: 50))
                         .foregroundColor(.purple)
                     
-                    Text("How Our AI Predictions Work")
+                    Text("How Our Predictions Work")
                         .font(.title)
                         .fontWeight(.bold)
                     

@@ -5,12 +5,6 @@
 //  Created by Trenton Roney on 8/26/25.
 //
 
-//
-//  ChartView.swift
-//  SportsApp
-//
-//  Created by Trenton Roney on 7/2/25.
-//
 import SwiftUI
 import Charts
 

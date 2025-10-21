@@ -5,14 +5,6 @@
 //  Created by Trenton Roney on 9/30/25.
 //
 
-
-//
-//  TeamLogoHelper.swift
-//  SportsAppTest
-//
-//  Helper to map team names to logo filenames
-//
-
 import SwiftUI
 
 struct TeamLogoHelper {

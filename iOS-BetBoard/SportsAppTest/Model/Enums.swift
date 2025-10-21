@@ -5,13 +5,6 @@
 //  Created by Trenton Roney on 8/26/25.
 //
 
-//
-//  Enums.swift
-//  SportsApp
-//
-//  Created by Trenton Roney on 7/14/25.
-//
-
 import Foundation
 
 enum BetType: String, Codable {
