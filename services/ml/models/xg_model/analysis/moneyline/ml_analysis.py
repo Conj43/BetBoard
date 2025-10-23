@@ -5,8 +5,8 @@ import os
 
 # ===== CONFIGURATION SECTION =====
 # Toggle features on/off
-SAVE_TO_FILE = True  # Set to True to save results to file
-SAVE_BETS_CSV = False  # Set to True to save individual bet records to CSV
+SAVE_TO_FILE = False  # Set to True to save results to file
+SAVE_BETS_CSV = True  # Set to True to save individual bet records to CSV
 
 # File paths
 YEAR = 2025
@@ -15,7 +15,7 @@ FILE_PATH = f"{DIRECTORY}/moneyline_predictions_{YEAR}.csv"
 OUTPUT_DIR = "services/ml/models/xg_model/analysis/moneyline/results"
 
 # Multi-year analysis configuration
-MULTI_YEAR_ANALYSIS = True  # Set to True to run analysis across multiple years
+MULTI_YEAR_ANALYSIS = False  # Set to True to run analysis across multiple years
 YEAR_FILES = {
     2021: 'data/xgb_model/2021_No_Bet_xgb_all_models_20251014_153704/moneyline_predictions_2021.csv',
     2022: 'data/xgb_model/2022_No_Bet_xgb_all_models_20251014_153652/moneyline_predictions_2022.csv',
