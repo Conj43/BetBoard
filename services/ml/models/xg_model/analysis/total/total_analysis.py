@@ -5,7 +5,7 @@ import os
 
 # ===== CONFIGURATION SECTION =====
 # Toggle features on/off
-SAVE_TO_FILE = False  # Set to True to save results to file
+SAVE_TO_FILE = True  # Set to True to save results to file
 SAVE_BETS_CSV = False  # Set to True to save individual bet records to CSV
 
 # File paths
@@ -50,19 +50,19 @@ ENABLED_ZONES = {
 # Point zone configuration - which total points ranges to bet on (set to True/False)
 # Based on your data: 140-150 is the sweet spot with 67% win rate!
 ENABLED_POINT_ZONES = {
-    'very_low': False,         # Under 120 points (29% win rate - AVOID!)
-    'low': False,              # 120-130 points (38% win rate - AVOID!)
+    'very_low': True,         # Under 120 points (29% win rate - AVOID!)
+    'low': True,              # 120-130 points (38% win rate - AVOID!)
     'below_avg': True,         # 130-140 points (57% win rate)
     'average': True,           # 140-150 points (66% win rate - BEST!)
     'above_avg': True,         # 150-160 points (55% win rate)
-    'high': False,             # 160-170 points (42% win rate - AVOID!)
-    'very_high': False,        # 170+ points (32% win rate - AVOID!)
+    'high': True,             # 160-170 points (42% win rate - AVOID!)
+    'very_high': True,        # 170+ points (32% win rate - AVOID!)
 }
 
 # Analysis toggles
 RUN_EDGE_BUCKET_ANALYSIS = True  # Detailed breakdown by edge ranges
 RUN_ZONE_ANALYSIS = True         # Analysis of specific edge zones
-RUN_KELLY_ANALYSIS = True        # Kelly Criterion simulations
+RUN_KELLY_ANALYSIS = False        # Kelly Criterion simulations
 RUN_DIRECTIONAL_ANALYSIS = True  # Over vs Under breakdown
 RUN_TOTAL_POINTS_ANALYSIS = True  # Analysis by total points scored
 RUN_LINE_MARGIN_ANALYSIS = True   # Analysis by how close actual was to line
