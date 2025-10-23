@@ -42,13 +42,32 @@ struct AuthView: View {
                 } else {
                     Button(action: {
                         Task {
-                            await authService.signInAnonymously()
-                            await authService.createUserProfile()
+                            //await authService.signInAnonymously()
+                            //await authService.createUserProfile()
+                            await authService.signInWithGoogle()
                         }
                     }) {
                         HStack {
+                            Image("googleLogo")
+                                .resizable()
+                                .frame(width: 20, height: 20)
+                            Text("Sign in with Google")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green)
+                        .cornerRadius(12)
+                    }
+                    
+                    //Anonymous Sign-In Button
+                    Button(action: {
+                        Task { await authService.signInAnonymously()}
+                    }) {
+                        HStack {
                             Image(systemName: "person.fill")
-                            Text("Get Started")
+                            Text("Sign in anonymously")
                         }
                         .font(.headline)
                         .foregroundColor(.white)
@@ -71,11 +90,12 @@ struct AuthView: View {
             Spacer()
             
             // Disclaimer
-            Text("Anonymous sign-in for testing. No personal information required.")
+            Text("Anonymous sign-in for testing. Or give the Google Sign-In a try.")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
         .padding()
     }
+    
 }

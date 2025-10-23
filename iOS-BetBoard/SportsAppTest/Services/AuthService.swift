@@ -8,6 +8,8 @@
 import Foundation
 import FirebaseAuth
 import FirebaseFirestore
+import GoogleSignIn
+import UIKit
 import Combine
 
 @MainActor
@@ -38,6 +40,47 @@ class AuthService: ObservableObject {
         }
     }
     
+    // GOOGLE SIGN-IN
+    func signInWithGoogle() async {
+        isLoading = true
+        errorMessage = nil
+        
+        guard let presentingVC = UIApplication.shared.connectedScenes
+            .compactMap({ ($0 as? UIWindowScene)?.keyWindow?.rootViewController})
+            .first else {
+            errorMessage = "Unable to access the root view controller."
+            isLoading = false
+            return
+        }
+        
+        do {
+            //Start Google sign-in flow
+            let signInResult = try await GIDSignIn.sharedInstance.signIn(withPresenting: presentingVC)
+            
+            //Extract Tokens
+            guard let idToken = signInResult.user.idToken?.tokenString else {
+                throw NSError(domain: "AuthService", code: 0, userInfo: [NSLocalizedDescriptionKey: "Missing ID token."])
+            }
+            let accessToken = signInResult.user.accessToken.tokenString
+            
+            // Create firebase credential
+            let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessToken)
+            
+            // Sign in with Firebase
+            let result = try await Auth.auth().signIn(with: credential)
+            currentUser = result.user
+            isSignedIn = true
+            
+            //Create/update user profile in Firestore
+            await createUserProfile()
+        } catch {
+            errorMessage = "Google Sign-In failed: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+    }
+    
+    // Anonymous Sign-In, good for testing
     func signInAnonymously() async {
         isLoading = true
         errorMessage = nil
@@ -52,10 +95,24 @@ class AuthService: ObservableObject {
         
         isLoading = false
     }
+     
+    // OLD SIGN OUT FUNCTION
+    /*
+    func signOut() {
+        do {
+            try Auth.auth().signOut()
+            currentUser = nil
+            isSignedIn = false
+        } catch {
+            errorMessage = "Failed to sign out: \(error.localizedDescription)"
+        }
+    }
+     */
     
     func signOut() {
         do {
             try Auth.auth().signOut()
+            GIDSignIn.sharedInstance.signOut()
             currentUser = nil
             isSignedIn = false
         } catch {
@@ -67,7 +124,7 @@ class AuthService: ObservableObject {
         guard let user = currentUser else { return }
         
         let userData: [String: Any] = [
-            "username": "User\(String(user.uid.suffix(6)))",
+            "username": user.displayName ?? "User\(String(user.uid.suffix(6)))",
             "email": user.email ?? "",
             "notificationsEnabled": true,
             "darkModeEnabled": false,
