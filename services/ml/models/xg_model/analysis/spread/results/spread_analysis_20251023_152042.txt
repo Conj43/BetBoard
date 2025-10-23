@@ -1,4 +1,4 @@
-Output will be saved to: services/ml/models/xg_model/analysis/spread/results/spread_analysis_20251020_151026.txt
+Output will be saved to: services/ml/models/xg_model/analysis/spread/results/spread_analysis_20251023_152042.txt
 
 ================================================================================
 COMPREHENSIVE SPREAD BETTING ANALYSIS

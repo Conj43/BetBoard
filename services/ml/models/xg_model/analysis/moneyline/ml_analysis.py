@@ -5,7 +5,7 @@ import os
 
 # ===== CONFIGURATION SECTION =====
 # Toggle features on/off
-SAVE_TO_FILE = False  # Set to True to save results to file
+SAVE_TO_FILE = True  # Set to True to save results to file
 SAVE_BETS_CSV = False  # Set to True to save individual bet records to CSV
 
 # File paths
@@ -26,8 +26,8 @@ YEAR_FILES = {
 
 # Betting parameters
 FLAT_BET_SIZE = 100  # Dollar amount per bet
-MIN_EDGE = 0.005  # Minimum edge threshold (0 = 0%)
-MAX_EDGE = 0.2  # Maximum edge threshold (0.0471 = 4.71%)
+MIN_EDGE = 0.01  # Minimum edge threshold (0 = 0%)
+MAX_EDGE = 0.1  # Maximum edge threshold (0.0471 = 4.71%)
 EDGE_BUCKET_SIZE = 0.005  # Size of edge buckets for analysis (0.005 = 0.5%)
 
 # Kelly Criterion parameters
@@ -36,10 +36,10 @@ KELLY_CAP = 0.25  # Kelly fraction cap (0.25 = quarter Kelly)
 
 # Zone configuration - which odds ranges to bet on (set to True/False to enable/disable)
 ENABLED_ZONES = {
-    'heavy_favorite': False,          # best 0.01 - 0.1 edge (1% - 10%)
+    'heavy_favorite': True,          # best 0.01 - 0.1 edge (1% - 10%)
     'strong_favorite': False,        # profitable in 0.05 - 0.25
     'moderate_favorite': False,      # not really profitable
-    'slight_favorite': True,        # best in 0.005 - 0.2
+    'slight_favorite': False,        # best in 0.005 - 0.2
     'pickem_favorite': False,        # not enough bets here
     'pickem_underdog': False,         # not enough bets here
     'slight_underdog': False,         # not great. 0.22 ROI at 0.02 - 0.16
@@ -56,7 +56,7 @@ MAX_ODDS = 10000     # Maximum odds to bet (e.g., 150 to exclude big underdogs)
 RUN_ODDS_BUCKET_ANALYSIS = True  # Detailed breakdown by odds ranges
 RUN_EDGE_BUCKET_ANALYSIS = True  # Detailed breakdown by edge ranges
 RUN_ZONE_ANALYSIS = True         # Analysis of specific odds zones
-RUN_KELLY_ANALYSIS = True        # Kelly Criterion simulations
+RUN_KELLY_ANALYSIS = False        # Kelly Criterion simulations
 
 # ===== END CONFIGURATION =====
 
