@@ -9,3 +9,4 @@ node_modules/
 # General
 .env*
 betboardtest-firebase-adminsdk*.json
+.vscode/
