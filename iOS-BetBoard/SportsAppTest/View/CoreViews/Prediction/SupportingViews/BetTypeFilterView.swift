@@ -12,7 +12,11 @@ struct BetTypeFilterView: View {
     
     var body: some View {
         HStack(spacing: 0) {
-            ForEach([BetType.moneyline, BetType.spread, BetType.total], id: \.self) { betType in
+            // Define fixed bet types to ensure proper type safety
+            let betTypes: [BetType] = [.moneyline, .spread, .total]
+            
+            ForEach(0..<betTypes.count, id: \.self) { index in
+                let betType = betTypes[index]
                 Button(action: {
                     selectedBetType = betType
                 }) {
@@ -20,7 +24,7 @@ struct BetTypeFilterView: View {
                         Image(systemName: iconForBetType(betType))
                             .font(.title3)
                         
-                        Text(betType.displayName)
+                        Text(getBetTypeDisplayName(betType))
                             .font(.subheadline)
                             .fontWeight(.medium)
                     }
@@ -37,6 +41,18 @@ struct BetTypeFilterView: View {
         .padding(.vertical, 8)
     }
     
+    // Helper function to get display name for bet types
+    private func getBetTypeDisplayName(_ betType: BetType) -> String {
+        switch betType {
+        case .moneyline:
+            return "Moneyline"
+        case .spread:
+            return "Spread"
+        case .total:
+            return "Total"
+        }
+    }
+    
     private func iconForBetType(_ betType: BetType) -> String {
         switch betType {
         case .moneyline:
@@ -47,4 +63,9 @@ struct BetTypeFilterView: View {
             return "arrow.up.arrow.down"
         }
     }
+}
+
+// Preview provider for SwiftUI canvas
+#Preview {
+    BetTypeFilterView(selectedBetType: .constant(.moneyline))
 }

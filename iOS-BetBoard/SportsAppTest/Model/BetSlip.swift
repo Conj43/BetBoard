@@ -76,12 +76,39 @@ struct AllSportsbookLines: Codable {
 }
 
 struct PredictionInfo: Codable {
-    let confidence: Double // 0.0 to 100.0
-    let recommendedBet: String?
+    // Moneyline prediction
+    let moneylineConfidence: Double // 0.0 to 100.0
+    let moneylineBet: String?
+    
+    // Spread prediction
+    let spreadConfidence: Double // 0.0 to 100.0
+    let spreadBet: String?
+    
+    // Total prediction
+    let totalConfidence: Double // 0.0 to 100.0
+    let totalBet: String?
+    
+    // Optional analysis
     let analysis: String?
     
-    var confidencePercentage: String {
-        return "\(Int(confidence))%"
+    // Computed property to get the highest confidence bet (for backward compatibility)
+    var recommendedBet: String? {
+        // Find the bet with highest confidence
+        let confidences: [(bet: String?, confidence: Double)] = [
+            (moneylineBet, moneylineConfidence),
+            (spreadBet, spreadConfidence),
+            (totalBet, totalConfidence)
+        ]
+        
+        return confidences
+            .filter { $0.bet != nil }
+            .max(by: { $0.confidence < $1.confidence })?
+            .bet
+    }
+    
+    // Computed property to get the highest confidence value (for backward compatibility)
+    var confidence: Double {
+        return max(moneylineConfidence, max(spreadConfidence, totalConfidence))
     }
 }
 

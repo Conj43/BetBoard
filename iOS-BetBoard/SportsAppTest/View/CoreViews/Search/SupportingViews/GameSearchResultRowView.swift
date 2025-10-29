@@ -12,93 +12,52 @@ struct GameSearchResultRowView: View {
     
     var body: some View {
         VStack(spacing: 12) {
-            // Top row: Matchup with logos
-            HStack(spacing: 12) {
-                // Away team section
-                HStack(spacing: 8) {
-                    // Away team logo
-                    TeamLogoView(team: betSlip.awayTeam, size: 32)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
-                            if let ranking = betSlip.awayTeam.ranking {
-                                Text("#\(ranking)")
-                                    .font(.caption2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.blue)
-                            }
-                            
-                            Text(betSlip.awayTeam.shortName)
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .lineLimit(1)
-                        }
-                        
-                        Text("(\(betSlip.awayTeam.record.wins)-\(betSlip.awayTeam.record.losses))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                // @ symbol
-                Text("@")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 4)
-                
-                // Home team section
-                HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
-                            if let ranking = betSlip.homeTeam.ranking {
-                                Text("#\(ranking)")
-                                    .font(.caption2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.blue)
-                            }
-                            
-                            Text(betSlip.homeTeam.shortName)
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .lineLimit(1)
-                        }
-                        
-                        Text("(\(betSlip.homeTeam.record.wins)-\(betSlip.homeTeam.record.losses))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // Home team logo
-                    TeamLogoView(team: betSlip.homeTeam, size: 32)
-                }
-                
-                Spacer()
-                
-                // Chevron
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            // Bottom row: Game time and conference
+            // Game header with teams and game time
             HStack {
-                // Game time
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                // Away team
+                TeamLogoView(team: betSlip.awayTeam, size: 36)
+                    .padding(.trailing, 4)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(betSlip.awayTeam.shortName)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
                     
-                    Text(betSlip.formattedGameTime)
+                    Text("\(betSlip.awayTeam.record.wins)-\(betSlip.awayTeam.record.losses)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
                 Spacer()
                 
-                // Conference badge (if same conference)
+                // Game time
+                Text(betSlip.formattedGameTime)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                // Home team
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(betSlip.homeTeam.shortName)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    Text("\(betSlip.homeTeam.record.wins)-\(betSlip.homeTeam.record.losses)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                TeamLogoView(team: betSlip.homeTeam, size: 36)
+                    .padding(.leading, 4)
+            }
+            
+            // Game tags
+            HStack(spacing: 8) {
+                // Conference indicator
                 if betSlip.homeTeam.conference == betSlip.awayTeam.conference {
                     HStack(spacing: 4) {
-                        Image(systemName: "shield.fill")
+                        Image(systemName: "trophy.fill")
                             .font(.caption2)
                         
                         Text(betSlip.homeTeam.conference)
@@ -128,30 +87,40 @@ struct GameSearchResultRowView: View {
                     .background(Color.orange.opacity(0.1))
                     .cornerRadius(6)
                 }
+                
+                Spacer()
             }
             
-            // Prediction indicator (if available)
-            if let predictionInfo = betSlip.predictionInfo,
-               let recommendedBet = predictionInfo.recommendedBet {
-                HStack(spacing: 6) {
-                    Image(systemName: "brain.head.profile")
-                        .font(.caption2)
-                        .foregroundColor(.purple)
+            // Prediction indicators (if available)
+            if let predictionInfo = betSlip.predictionInfo {
+                VStack(spacing: 8) {
+                    // Show individual prediction types
+                    if let moneylineBet = predictionInfo.moneylineBet {
+                        PredictionBadgeView(
+                            title: "Moneyline",
+                            selection: moneylineBet,
+                            confidence: predictionInfo.moneylineConfidence,
+                            iconName: "arrow.right"
+                        )
+                    }
                     
-                    Text("Prediction: \(recommendedBet)")
-                        .font(.caption)
-                        .foregroundColor(.purple)
-                        .fontWeight(.medium)
+                    if let spreadBet = predictionInfo.spreadBet {
+                        PredictionBadgeView(
+                            title: "Spread",
+                            selection: spreadBet,
+                            confidence: predictionInfo.spreadConfidence,
+                            iconName: "arrow.up.arrow.down"
+                        )
+                    }
                     
-                    Spacer()
-                    
-                    Text("\(Int(predictionInfo.confidence))% confidence")
-                        .font(.caption2)
-                        .foregroundColor(.purple)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.purple.opacity(0.1))
-                        .cornerRadius(4)
+                    if let totalBet = predictionInfo.totalBet {
+                        PredictionBadgeView(
+                            title: "Total",
+                            selection: totalBet,
+                            confidence: predictionInfo.totalConfidence,
+                            iconName: "sum"
+                        )
+                    }
                 }
                 .padding(.top, 4)
             }
@@ -160,12 +129,64 @@ struct GameSearchResultRowView: View {
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-        .foregroundColor(.primary)
+    }
+}
+
+// Helper view for prediction badges
+struct PredictionBadgeView: View {
+    let title: String
+    let selection: String
+    let confidence: Double
+    let iconName: String
+    
+    var body: some View {
+        HStack {
+            // Icon and title
+            HStack(spacing: 4) {
+                Image(systemName: iconName)
+                    .font(.caption2)
+                
+                Text(title + ":")
+                    .font(.caption)
+                    .fontWeight(.medium)
+            }
+            .foregroundColor(.purple)
+            
+            // Selection
+            Text(selection)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            // Confidence
+            Text("\(Int(confidence))%")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(confidenceColor)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Color.purple.opacity(0.1))
+        .cornerRadius(6)
+    }
+    
+    private var confidenceColor: Color {
+        if confidence >= 55 {
+            return .green
+        } else if confidence >= 50 {
+            return .blue
+        } else if confidence >= 40 {
+            return .orange
+        } else {
+            return .red
+        }
     }
 }
 
 #Preview {
-    // Create a sample BetSlip for preview with correct initializers
+    // Create a sample BetSlip for preview
     let sampleBetSlip = BetSlip(
         id: "preview-betslip",
         gameID: "sample-game",
@@ -198,15 +219,20 @@ struct GameSearchResultRowView: View {
             spread: ["DUKE -3.5": -110, "UNC +3.5": -110],
             total: ["Over 145.5": -110, "Under 145.5": -110]
         ),
-        allBettingLines: nil, // No multiple sportsbooks for this preview
+        allBettingLines: nil,
         predictionInfo: PredictionInfo(
-            confidence: 85.0,
-            recommendedBet: "UNC +3.5",
+            moneylineConfidence: 75.0,
+            moneylineBet: "DUKE",
+            spreadConfidence: 85.0,
+            spreadBet: "UNC +3.5",
+            totalConfidence: 65.0,
+            totalBet: "OVER 145.5",
             analysis: "Strong defensive matchup favors the underdog"
         ),
         neutralSite: false
     )
     
-    GameSearchResultRowView(betSlip: sampleBetSlip)
+    return GameSearchResultRowView(betSlip: sampleBetSlip)
+        .previewLayout(.sizeThatFits)
         .padding()
 }

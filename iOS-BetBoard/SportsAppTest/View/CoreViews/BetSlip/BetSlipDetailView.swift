@@ -125,8 +125,12 @@ struct BetSlipDetailView: View {
         ),
         allBettingLines: nil, // No multiple sportsbooks for this preview
         predictionInfo: PredictionInfo(
-            confidence: 85.0,
-            recommendedBet: "UNC +3.5",
+            moneylineConfidence: 75.0,
+            moneylineBet: "DUKE",
+            spreadConfidence: 85.0,
+            spreadBet: "UNC +3.5",
+            totalConfidence: 65.0,
+            totalBet: "Over 145.5",
             analysis: "Strong defensive matchup favors the underdog"
         ),
         neutralSite: false

@@ -8,7 +8,8 @@
 
 import SwiftUI
 
-struct BetOptionRow: View {
+// Changed name from BetOptionRow to BetSelectionRow to avoid conflicts
+struct BetSelectionRow: View {
     let selection: String
     let odds: Double
     let isSelected: Bool

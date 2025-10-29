@@ -62,7 +62,7 @@ struct TrackedBetSlipView: View {
         VStack(spacing: 12) {
             // Bet Type Badge
             HStack {
-                Text(bet.type.displayName)
+                Text(getBetTypeDisplayName(bet.type))
                     .font(.caption)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
@@ -272,6 +272,18 @@ struct TrackedBetSlipView: View {
     }
     
     // MARK: - Helper Functions
+    // Added helper method to get the displayName for BetType
+    private func getBetTypeDisplayName(_ betType: BetType) -> String {
+        switch betType {
+        case .moneyline:
+            return "Moneyline"
+        case .spread:
+            return "Spread"
+        case .total:
+            return "Total"
+        }
+    }
+    
     private func betTypeColor(for betType: BetType) -> Color {
         switch betType {
         case .moneyline:

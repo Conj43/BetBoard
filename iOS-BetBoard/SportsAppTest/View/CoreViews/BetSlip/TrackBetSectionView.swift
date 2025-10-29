@@ -5,7 +5,6 @@
 //  Created by Trenton Roney on 10/1/25.
 //
 
-
 import SwiftUI
 
 struct TrackBetSectionView: View {
@@ -14,145 +13,149 @@ struct TrackBetSectionView: View {
     let selectedBetType: BetType
     let selectedSportsbook: Sportsbook
     @Binding var betAmount: String
-    let onTrackBet: ((BetType, String, Double, Double) -> Void)?
+    var onTrackBet: ((BetType, String, Double, Double) -> Void)?
     
-    private var isTrackButtonEnabled: Bool {
-        guard let amount = Double(betAmount) else { return false }
-        return amount > 0
-    }
+    @State private var showingValidationError = false
+    @State private var validationErrorMessage = ""
     
     var body: some View {
-        VStack(spacing: 12) {
-            // Selected bet display
-            selectedBetDisplay
-            
-            // Amount input section
-            amountInputSection
-            
-            // Track bet button
-            trackBetButton
-        }
-        .padding(.horizontal)
-        .padding(.bottom)
-    }
-    
-    // MARK: - Selected Bet Display
-    private var selectedBetDisplay: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Selected Bet")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .textCase(.uppercase)
-                
-                Text(selection)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                HStack(spacing: 4) {
-                    Text(BetSlipHelpers.formatOdds(odds))
-                        .font(.caption)
-                        .foregroundColor(.blue)
+        VStack(spacing: 16) {
+            // Bet Summary
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Tracking Bet")
+                        .font(.headline)
+                        .fontWeight(.semibold)
                     
-                    Text("(\(selectedSportsbook.displayName))")
-                        .font(.caption)
+                    Text("\(selection) @ \(formatOdds(odds))")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    Image(systemName: "sportscourt")
+                        .foregroundColor(.purple)
+                    
+                    Text(selectedSportsbook.displayName)
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
             }
             
-            Spacer()
-            
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Potential Payout")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .textCase(.uppercase)
-                
-                if let amount = Double(betAmount), amount > 0 {
-                    let payout = BetSlipHelpers.calculatePayout(amount: amount, odds: odds)
-                    Text("$\(String(format: "%.2f", payout))")
+            // Custom Bet Amount Input (inline implementation)
+            VStack(spacing: 8) {
+                HStack {
+                    Text("Amount")
                         .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.green)
+                        .foregroundColor(.secondary)
                     
-                    Text("Profit: $\(String(format: "%.2f", payout - amount))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } else {
-                    Text("Enter amount")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Spacer()
+                    
+                    if let amount = Double(betAmount.replacingOccurrences(of: ",", with: "")), amount > 0 {
+                        Text(potentialWinText(for: amount))
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
                 }
+                
+                HStack {
+                    Text("$")
+                        .foregroundColor(.secondary)
+                    
+                    TextField("0", text: $betAmount)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
+            }
+            
+            // Validation Error (if any)
+            if showingValidationError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.red)
+                    
+                    Text(validationErrorMessage)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal)
+            }
+            
+            // Track Button
+            Button(action: trackBet) {
+                Text("Track Bet")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(12)
             }
         }
         .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
     }
     
-    // MARK: - Amount Input Section
-    private var amountInputSection: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text("Bet Amount")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Spacer()
-            }
-            
-            HStack {
-                Text("$")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                TextField("0.00", text: $betAmount)
-                    .keyboardType(.decimalPad)
-                    .font(.headline)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .multilineTextAlignment(.trailing)
-            }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(8)
-            
-            // Quick amount buttons
-            HStack(spacing: 8) {
-                ForEach([25, 50, 100, 250], id: \.self) { amount in
-                    Button("$\(amount)") {
-                        betAmount = String(amount)
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.blue.opacity(0.1))
-                    .foregroundColor(.blue)
-                    .cornerRadius(6)
-                }
-                
-                Spacer()
-            }
+    private func trackBet() {
+        showingValidationError = false
+        
+        guard let amount = Double(betAmount.replacingOccurrences(of: ",", with: "")) else {
+            validationErrorMessage = "Please enter a valid amount"
+            showingValidationError = true
+            return
+        }
+        
+        guard amount > 0 else {
+            validationErrorMessage = "Amount must be greater than $0"
+            showingValidationError = true
+            return
+        }
+        
+        onTrackBet?(selectedBetType, selection, odds, amount)
+    }
+    
+    private func formatOdds(_ odds: Double) -> String {
+        if odds > 0 {
+            return "+\(Int(odds))"
+        } else {
+            return "\(Int(odds))"
         }
     }
     
-    // MARK: - Track Bet Button
-    private var trackBetButton: some View {
-        Button(action: {
-            if let amount = Double(betAmount), amount > 0 {
-                onTrackBet?(selectedBetType, selection, odds, amount)
-            }
-        }) {
-            HStack {
-                Image(systemName: "plus.circle.fill")
-                Text("Track This Bet")
-            }
-            .font(.headline)
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(isTrackButtonEnabled ? Color.blue : Color.gray)
-            .cornerRadius(12)
+    private func potentialWinText(for amount: Double) -> String {
+        let winnings: Double
+        
+        if odds > 0 {
+            // Positive American odds (e.g. +150)
+            winnings = amount * (odds / 100.0)
+        } else {
+            // Negative American odds (e.g. -110)
+            winnings = amount * (100.0 / abs(odds))
         }
-        .disabled(!isTrackButtonEnabled)
+        
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencySymbol = "$"
+        
+        return "To Win: \(formatter.string(from: NSNumber(value: winnings)) ?? "$0")"
+    }
+}
+
+#Preview {
+    TrackBetSectionView(
+        selection: "UNC -5.5",
+        odds: -110,
+        selectedBetType: .spread,
+        selectedSportsbook: .draftkings,
+        betAmount: .constant("50")
+    ) { betType, selection, odds, amount in
+        print("Tracked bet: \(betType) \(selection) @ \(odds) for $\(amount)")
     }
 }

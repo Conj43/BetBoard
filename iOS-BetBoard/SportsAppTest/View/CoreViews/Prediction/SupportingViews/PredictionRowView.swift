@@ -1,15 +1,8 @@
-//
-//  PredictionRowView.swift
-//  SportsAppTest
-//
-//  Created by Trenton Roney on 9/22/25.
-//
-
-
 import SwiftUI
 
 struct PredictionRowView: View {
     let prediction: PredictionGame
+    @EnvironmentObject var predictionsViewModel: PredictionsViewModel
     
     var body: some View {
         VStack(spacing: 12) {
@@ -58,12 +51,12 @@ struct PredictionRowView: View {
             // Best Bet Info
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Best Bet")
+                    Text(getBetTypeText())
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .textCase(.uppercase)
                     
-                    Text(prediction.bestBet.selection)
+                    Text(getBestSelection())
                         .font(.subheadline)
                         .fontWeight(.semibold)
                 }
@@ -100,17 +93,17 @@ struct PredictionRowView: View {
                                 .cornerRadius(3)
                             
                             Rectangle()
-                                .fill(confidenceColor(for: prediction.confidence))
-                                .frame(width: geometry.size.width * CGFloat(prediction.confidence / 100.0), height: 6)
+                                .fill(confidenceColor(for: getTypeSpecificConfidence()))
+                                .frame(width: geometry.size.width * CGFloat(getTypeSpecificConfidence() / 100.0), height: 6)
                                 .cornerRadius(3)
                         }
                     }
                     .frame(width: 80, height: 6)
                     
-                    Text("\(Int(prediction.confidence))%")
+                    Text("\(Int(getTypeSpecificConfidence()))%")
                         .font(.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(confidenceColor(for: prediction.confidence))
+                        .foregroundColor(confidenceColor(for: getTypeSpecificConfidence()))
                 }
             }
         }
@@ -118,6 +111,42 @@ struct PredictionRowView: View {
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+    }
+    
+    // Get the appropriate bet type text based on the selected bet type
+    private func getBetTypeText() -> String {
+        switch predictionsViewModel.selectedBetType {
+        case .moneyline:
+            return "Moneyline"
+        case .spread:
+            return "Spread"
+        case .total:
+            return "Total"
+        }
+    }
+    
+    // Get the appropriate selection based on the selected bet type
+    private func getBestSelection() -> String {
+        switch predictionsViewModel.selectedBetType {
+        case .moneyline:
+            return prediction.betSlip.predictionInfo?.moneylineBet ?? "N/A"
+        case .spread:
+            return prediction.betSlip.predictionInfo?.spreadBet ?? "N/A"
+        case .total:
+            return prediction.betSlip.predictionInfo?.totalBet ?? "N/A"
+        }
+    }
+    
+    // Get the confidence specific to the selected bet type
+    private func getTypeSpecificConfidence() -> Double {
+        switch predictionsViewModel.selectedBetType {
+        case .moneyline:
+            return prediction.betSlip.predictionInfo?.moneylineConfidence ?? 0
+        case .spread:
+            return prediction.betSlip.predictionInfo?.spreadConfidence ?? 0
+        case .total:
+            return prediction.betSlip.predictionInfo?.totalConfidence ?? 0
+        }
     }
     
     private func formatOdds(_ odds: Double) -> String {
@@ -129,11 +158,11 @@ struct PredictionRowView: View {
     }
     
     private func confidenceColor(for confidence: Double) -> Color {
-        if confidence >= 90 {
+        if confidence >= 55 {
             return .green
-        } else if confidence >= 80 {
+        } else if confidence >= 50 {
             return .orange
-        } else if confidence >= 70 {
+        } else if confidence >= 40 {
             return .yellow
         } else {
             return .red

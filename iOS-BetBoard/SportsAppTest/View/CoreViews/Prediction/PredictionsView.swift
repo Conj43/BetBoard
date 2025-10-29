@@ -37,6 +37,7 @@ struct PredictionsView: View {
                     await viewModel.refreshPredictions()
                 }
             }
+            .environmentObject(viewModel) // Pass the viewModel as an environment object
         }
         .task {
             await viewModel.loadPredictions()
@@ -78,6 +79,7 @@ struct PredictionsView: View {
                     ForEach(viewModel.filteredPredictions) { prediction in
                         NavigationLink(destination: PredictionDetailView(prediction: prediction, viewModel: viewModel)) {
                             PredictionRowView(prediction: prediction)
+                                // We don't need to pass the view model here since it's in the environment
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
@@ -87,9 +89,4 @@ struct PredictionsView: View {
             .padding(.top, 8)
         }
     }
-}
-
-#Preview {
-    PredictionsView()
-        .environmentObject(AuthService())
 }
