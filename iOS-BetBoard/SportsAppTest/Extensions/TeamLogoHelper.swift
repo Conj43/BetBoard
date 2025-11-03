@@ -118,6 +118,7 @@ struct TeamLogoHelper {
             "houston": "houston",
             "uconn": "connecticut",
             "connecticut": "connecticut",
+            "U Albany": "u_albany",
         ]
         
         // Return mapped name or try to use the normalized name directly
