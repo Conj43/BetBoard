@@ -129,13 +129,30 @@ struct PredictionSectionView: View {
     }
     
     private func predictionView(betType: String, bet: String, confidence: Double) -> some View {
-        HStack {
+        // Format the bet string based on bet type
+        let formattedBet: String
+        if betType == "Moneyline" {
+            formattedBet = TeamNameFormatter.formatTeamName(bet)
+        } else if betType == "Spread" {
+            let components = bet.components(separatedBy: " ")
+            if components.count >= 2 {
+                let teamName = components[0]
+                let spreadValue = components[1...].joined(separator: " ")
+                formattedBet = "\(TeamNameFormatter.formatTeamName(teamName)) \(spreadValue)"
+            } else {
+                formattedBet = bet
+            }
+        } else {
+            formattedBet = bet
+        }
+        
+        return HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(betType)
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
-                Text(bet)
+                Text(formattedBet)
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundColor(.purple)
@@ -145,7 +162,7 @@ struct PredictionSectionView: View {
             
             Text("\(Int(confidence))% to cover DK line")
                 .font(.caption)
-                .foregroundColor(confidence > 65 ? .green : .orange)
+                .foregroundColor(confidence > 50 ? .green : .orange)
                 .fontWeight(.semibold)
         }
     }

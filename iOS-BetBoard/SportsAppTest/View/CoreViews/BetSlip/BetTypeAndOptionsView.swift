@@ -177,6 +177,23 @@ struct BetTypeOptionRow: View {
     let isSelected: Bool
     let onSelect: () -> Void
     
+    private var formattedLabel: String {
+            // For moneyline bets, the label is just the team name
+            if !label.contains(" ") {
+                return TeamNameFormatter.formatTeamName(label)
+            }
+            
+            // For spread bets, format the team name but keep the spread
+            let components = label.components(separatedBy: " ")
+            if components.count >= 2 {
+                let teamName = components[0]
+                let spreadValue = components[1...].joined(separator: " ")
+                return "\(TeamNameFormatter.formatTeamName(teamName)) \(spreadValue)"
+            }
+            
+            return label
+        }
+    
     var body: some View {
         Button(action: onSelect) {
             HStack {

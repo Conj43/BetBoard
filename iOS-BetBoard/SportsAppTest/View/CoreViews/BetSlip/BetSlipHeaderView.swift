@@ -109,7 +109,7 @@ struct TeamDisplayView: View {
             TeamLogoView(team: team, size: logoSize)
             
             // Team name
-            Text(team.shortName)
+            Text(team.displayName)
                 .font(.headline)
                 .fontWeight(.bold)
             

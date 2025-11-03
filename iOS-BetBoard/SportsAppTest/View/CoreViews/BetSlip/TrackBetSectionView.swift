@@ -18,6 +18,25 @@ struct TrackBetSectionView: View {
     @State private var showingValidationError = false
     @State private var validationErrorMessage = ""
     
+    // Format the selection string based on bet type
+    private var formattedSelection: String {
+        if selectedBetType == .moneyline {
+            // For moneyline, the selection is just the team name
+            return TeamNameFormatter.formatTeamName(selection)
+        } else if selectedBetType == .spread {
+            // For spread, extract team name and preserve the spread value
+            // Format: "TEAMNAME -7.5" or "TEAMNAME +7.5"
+            let components = selection.components(separatedBy: " ")
+            if components.count >= 2 {
+                let teamName = components[0]
+                let spreadValue = components[1...].joined(separator: " ")
+                return "\(TeamNameFormatter.formatTeamName(teamName)) \(spreadValue)"
+            }
+        }
+        // For other bet types like totals, keep as is
+        return selection
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
             // Bet Summary
@@ -27,7 +46,8 @@ struct TrackBetSectionView: View {
                         .font(.headline)
                         .fontWeight(.semibold)
                     
-                    Text("\(selection) @ \(formatOdds(odds))")
+                    // Use formatted selection here
+                    Text("\(formattedSelection) @ \(formatOdds(odds))")
                         .font(.subheadline)
                         .fontWeight(.medium)
                 }
@@ -118,6 +138,8 @@ struct TrackBetSectionView: View {
             return
         }
         
+        // Note: We still pass the original selection to onTrackBet
+        // since that's the format needed for database storage
         onTrackBet?(selectedBetType, selection, odds, amount)
     }
     

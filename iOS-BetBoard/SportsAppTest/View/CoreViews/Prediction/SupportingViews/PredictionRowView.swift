@@ -17,7 +17,7 @@ struct PredictionRowView: View {
                             .foregroundColor(.blue)
                     }
                     
-                    Text(prediction.awayTeam.shortName)
+                    Text(prediction.awayTeam.displayName)
                         .font(.subheadline)
                         .fontWeight(.semibold)
                 }
@@ -35,7 +35,7 @@ struct PredictionRowView: View {
                             .foregroundColor(.blue)
                     }
                     
-                    Text(prediction.homeTeam.shortName)
+                    Text(prediction.homeTeam.displayName)
                         .font(.subheadline)
                         .fontWeight(.semibold)
                 }
@@ -126,16 +126,32 @@ struct PredictionRowView: View {
     }
     
     // Get the appropriate selection based on the selected bet type
-    private func getBestSelection() -> String {
-        switch predictionsViewModel.selectedBetType {
-        case .moneyline:
-            return prediction.betSlip.predictionInfo?.moneylineBet ?? "N/A"
-        case .spread:
-            return prediction.betSlip.predictionInfo?.spreadBet ?? "N/A"
-        case .total:
-            return prediction.betSlip.predictionInfo?.totalBet ?? "N/A"
-        }
-    }
+    // Get the appropriate selection based on the selected bet type
+       private func getBestSelection() -> String {
+           switch predictionsViewModel.selectedBetType {
+           case .moneyline:
+               if let bet = prediction.betSlip.predictionInfo?.moneylineBet {
+                   return TeamNameFormatter.formatTeamName(bet)
+               }
+               return "N/A"
+               
+           case .spread:
+               if let bet = prediction.betSlip.predictionInfo?.spreadBet {
+                   // Format team name in spread bet (e.g., "CHARLESTON-SOUTHERN -2.0")
+                   let components = bet.components(separatedBy: " ")
+                   if components.count >= 2 {
+                       let teamName = components[0]
+                       let spreadValue = components[1...].joined(separator: " ")
+                       return "\(TeamNameFormatter.formatTeamName(teamName)) \(spreadValue)"
+                   }
+                   return bet
+               }
+               return "N/A"
+               
+           case .total:
+               return prediction.betSlip.predictionInfo?.totalBet ?? "N/A"
+           }
+       }
     
     // Get the confidence specific to the selected bet type
     private func getTypeSpecificConfidence() -> Double {
