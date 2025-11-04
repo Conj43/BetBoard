@@ -31,6 +31,9 @@ RAW_GAMES_PREFIX = f"{RAW_DATA_PREFIX}/games"
 RAW_TEAMS_PREFIX = f"{RAW_DATA_PREFIX}/team_snapshots"
 RAW_ODDS_PREFIX = f"{RAW_DATA_PREFIX}/odds"
 RAW_TORVIK_PREFIX = f"{RAW_DATA_PREFIX}/torvik_rankings"  # you already have this
+RAW_RESULTS_PREFIX = f"{RAW_DATA_PREFIX}/results"
+
+
 
 # Processed, model-ready features:
 #   gs://<bucket>/processed_features/2025-10-28/features.csv
@@ -47,6 +50,8 @@ MODEL_RUNS_PREFIX = "model_runs"
 #   gs://<bucket>/predictions_export/2025-10-28/game_preds.json
 PREDICTIONS_EXPORT_PREFIX = "predictions_export"
 
+def raw_results_path(date_str: str) -> str:
+    return f"{RAW_RESULTS_PREFIX}/{date_str}/results.csv"
 
 def raw_games_path(date_str: str) -> str:
     return f"{RAW_GAMES_PREFIX}/{date_str}/games.csv"
@@ -70,6 +75,12 @@ def predictions_export_game_preds_path(date_str: str) -> str:
 
 def predictions_export_top_picks_path(date_str: str) -> str:
     return f"{PREDICTIONS_EXPORT_PREFIX}/{date_str}/top_picks.json"
+
+def predictions_export_graded_picks_path(date_str: str) -> str:
+    return f"{PREDICTIONS_EXPORT_PREFIX}/{date_str}/graded_picks.json"
+
+def predictions_export_summary_path(date_str: str) -> str:
+    return f"{PREDICTIONS_EXPORT_PREFIX}/{date_str}/summary.json"
 
 
 def model_run_dir(run_id: str) -> str:
