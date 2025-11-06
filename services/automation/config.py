@@ -1,6 +1,41 @@
 
+import os
+from pathlib import Path
 from datetime import timedelta
 from datetime import datetime, timezone
+
+################################################################################
+# Local paths
+################################################################################
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = BASE_DIR / "data"
+
+# Local staging directories for raw ingest, engineered features, and outputs.
+RAW_DATA_DIR = os.environ.get("BETBOARD_RAW_DATA_DIR", str(DATA_DIR / "raw"))
+PROCESSED_DATA_DIR = os.environ.get("BETBOARD_PROCESSED_DATA_DIR", str(DATA_DIR / "processed"))
+PREDICTIONS_DIR = os.environ.get("BETBOARD_PREDICTIONS_DIR", str(DATA_DIR / "predictions"))
+
+# Default model artifacts (can override via env BETBOARD_MODEL_DIR)
+_default_model_run = os.environ.get("BETBOARD_LOCAL_MODEL_RUN", "No_Bet_xgb_all_models_20251104_160154")
+_default_bet_model_run = os.environ.get("BETBOARD_LOCAL_BET_MODEL_RUN", "Bet_xgb_all_models_20251104_160047")
+_storage_model_version = os.environ.get("BETBOARD_MODEL_VERSION", "current_production")
+MODEL_DIR = os.environ.get(
+    "BETBOARD_MODEL_DIR",
+    f"models/{_storage_model_version}/no_bet",
+)
+MODEL_FALLBACK_LOCAL_DIR = str(DATA_DIR / "xgb_model" / _default_model_run / "models_production")
+BET_MODEL_DIR = os.environ.get(
+    "BETBOARD_BET_MODEL_DIR",
+    f"models/{_storage_model_version}/with_bet",
+)
+BET_MODEL_FALLBACK_LOCAL_DIR = str(DATA_DIR / "xgb_model" / _default_bet_model_run / "models_production")
+
+# Firebase credentials (service account JSON)
+FIREBASE_CREDENTIALS_PATH = os.environ.get(
+    "BETBOARD_FIREBASE_CREDENTIALS",
+    str(BASE_DIR / "services" / "firebase" / "betboardtest-firebase-adminsdk-fbsvc-196904ba56.json"),
+)
 ################################################################################
 # Firebase / GCP
 ################################################################################
@@ -8,7 +43,7 @@ from datetime import datetime, timezone
 # GCP project / Firebase project info
 GCP_PROJECT_ID = "betboardtest"  # TODO: set to your actual Firebase project id
 FIREBASE_STORAGE_BUCKET = "betboardtest.firebasestorage.app"  # from screenshot
-FIRESTORE_PREDICTIONS_COLLECTION = "predictions"
+FIRESTORE_PREDICTIONS_COLLECTION = "games"
 
 # Service account / creds:
 # In Cloud Run or Cloud Functions you’ll probably rely on workload identity.
@@ -166,34 +201,20 @@ def firestore_doc_for_game_pred(game_pred: dict, picks_for_game: list) -> dict:
 
     This is what the iOS app will read.
     """
-    return {
+    doc = {
         "game_id": game_pred["game_id"],
         "tipoff_datetime": game_pred.get("tipoff_datetime"),
         "home_team": game_pred.get("home_team"),
         "away_team": game_pred.get("away_team"),
-
-        # sportsbook lines
-        "book_spread_home": game_pred.get("book_spread_home"),
-        "book_total": game_pred.get("book_total"),
-        "moneyline_home": game_pred.get("moneyline_home"),
-        "moneyline_away": game_pred.get("moneyline_away"),
-
-        # model view of the matchup
         "model_spread_home": game_pred.get("model_spread_home"),
         "model_total": game_pred.get("model_total"),
         "home_win_prob": game_pred.get("home_win_prob"),
-
-        # edges
-        "spread_edge_points": game_pred.get("spread_edge_points"),
-        "total_edge_points": game_pred.get("total_edge_points"),
-        "moneyline_edge_home": game_pred.get("moneyline_edge_home"),
-        "moneyline_edge_away": game_pred.get("moneyline_edge_away"),
-
-        # recommended picks for this game, could be [], 1, or 2+
-        "recommended": picks_for_game,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "model_run_id": ACTIVE_MODEL_RUN_ID,
     }
+    if picks_for_game:
+        doc["recommended"] = picks_for_game
+    return doc
 
 
 

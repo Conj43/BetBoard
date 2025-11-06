@@ -1,26 +1,361 @@
 import os
+import sys
+import json
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any
+from io import StringIO
+from typing import List, Dict, Any, Optional
+
+import numpy as np
 import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
+try:
+    import firebase_admin
+    from firebase_admin import credentials, storage
+except ImportError:  # pragma: no cover - optional dependency
+    firebase_admin = None  # type: ignore
+    credentials = None  # type: ignore
+    storage = None  # type: ignore
 
 # --- CONFIG IMPORTS ---------------------------------------------------------
 try:
-    from config import RAW_DATA_DIR
+    from config import (
+        RAW_DATA_DIR,
+        FIREBASE_CREDENTIALS_PATH,
+        FIREBASE_STORAGE_BUCKET,
+        RAW_GAMES_PREFIX,
+        RAW_TEAMS_PREFIX,
+        RAW_ODDS_PREFIX,
+        TEAM_MAPPING,
+        CONFERENCE_MAP,
+    )
 except ImportError:
     RAW_DATA_DIR = "data/raw"
+    FIREBASE_CREDENTIALS_PATH = ""
+    FIREBASE_STORAGE_BUCKET = ""
+    RAW_GAMES_PREFIX = "raw_data/games"
+    RAW_TEAMS_PREFIX = "raw_data/team_snapshots"
+    RAW_ODDS_PREFIX = "raw_data/odds"
+    TEAM_MAPPING = {}
+    CONFERENCE_MAP = {}
+
+from feature_engineering import prepare_rolling
+from utils import load_alias_map, standardize_opponent_columns
 
 
+UPLOAD_TO_FIREBASE = os.environ.get("BETBOARD_SKIP_FIREBASE_UPLOAD", "0") != "1"
+_FIREBASE_BUCKET: Optional["storage.bucket"] = None
+
+
+def _get_firebase_bucket(allow_when_upload_disabled: bool = False) -> Optional["storage.bucket"]:
+    """
+    Lazily initialize and cache the Firebase Storage bucket.
+    Returns None if firebase_admin is unavailable or initialization fails.
+    """
+
+    global _FIREBASE_BUCKET
+
+    if not UPLOAD_TO_FIREBASE and not allow_when_upload_disabled:
+        return None
+
+    if firebase_admin is None or storage is None:
+        print("[ingest_raw] firebase_admin not available; skipping upload.")
+        return None
+
+    if not FIREBASE_STORAGE_BUCKET:
+        print("[ingest_raw] FIREBASE_STORAGE_BUCKET not configured; skipping upload.")
+        return None
+
+    if _FIREBASE_BUCKET is not None:
+        return _FIREBASE_BUCKET
+
+    try:
+        if not firebase_admin._apps:
+            if FIREBASE_CREDENTIALS_PATH and os.path.exists(FIREBASE_CREDENTIALS_PATH):
+                cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+                firebase_admin.initialize_app(cred, {"storageBucket": FIREBASE_STORAGE_BUCKET})
+            else:
+                firebase_admin.initialize_app(options={"storageBucket": FIREBASE_STORAGE_BUCKET})
+
+        _FIREBASE_BUCKET = storage.bucket()
+        return _FIREBASE_BUCKET
+    except Exception as exc:  # pragma: no cover - environment dependent
+        print(f"[ingest_raw][WARN] Failed to initialize Firebase Storage: {exc}")
+        _FIREBASE_BUCKET = None
+        return None
+
+
+def _upload_csv_string(csv_content: str, remote_path: str) -> None:
+    bucket = _get_firebase_bucket()
+    if bucket is None:
+        return
+    try:
+        blob = bucket.blob(remote_path)
+        blob.upload_from_string(csv_content, content_type="text/csv")
+        print(f"[ingest_raw] Uploaded to gs://{bucket.name}/{remote_path}")
+    except Exception as exc:  # pragma: no cover - env dependent
+        print(f"[ingest_raw][WARN] Failed to upload CSV to {remote_path}: {exc}")
+
+
+def upload_snapshots_to_firebase(game_date: str,
+                                 games_df: pd.DataFrame,
+                                 teams_df: pd.DataFrame,
+                                 odds_df: pd.DataFrame) -> None:
+    uploads = [
+        (games_df, f"{RAW_GAMES_PREFIX}/{game_date}/games.csv", f"{RAW_GAMES_PREFIX}/latest.csv"),
+        (teams_df, f"{RAW_TEAMS_PREFIX}/{game_date}/teams.csv", f"{RAW_TEAMS_PREFIX}/latest.csv"),
+        (odds_df, f"{RAW_ODDS_PREFIX}/{game_date}/odds.csv", f"{RAW_ODDS_PREFIX}/latest.csv"),
+    ]
+
+    for df, dated_path, latest_path in uploads:
+        csv_content = df.to_csv(index=False)
+        _upload_csv_string(csv_content, dated_path)
+        _upload_csv_string(csv_content, latest_path)
+
+
+# --- OPTIONAL GAMELOG RETRIEVAL ---------------------------------------------
+def download_gamelogs_snapshot(game_date: str) -> Optional[pd.DataFrame]:
+    """
+    Load the Sports Reference gamelog snapshot for the given date from Firebase.
+    Returns a DataFrame or None if not available.
+    """
+    bucket = _get_firebase_bucket(allow_when_upload_disabled=True)
+    if not bucket:
+        return None
+
+    dated_blob = bucket.blob(f"raw_data/gamelogs/{game_date}/gamelogs.csv")
+    latest_blob = bucket.blob("raw_data/gamelogs/latest.csv")
+
+    target_blob = dated_blob if dated_blob.exists() else latest_blob if latest_blob.exists() else None
+    if target_blob is None:
+        print(f"[ingest_raw][WARN] No gamelog snapshot found for {game_date}.")
+        return None
+
+    try:
+        data = target_blob.download_as_text()
+        df = pd.read_csv(StringIO(data))
+        print(f"[ingest_raw] Loaded gamelogs for {game_date} from Firebase")
+        return df
+    except Exception as exc:  # pragma: no cover
+        print(f"[ingest_raw][WARN] Failed to download gamelogs: {exc}")
+        return None
+
+
+# --- TEAM METRICS COMPUTATION -----------------------------------------------
+def _team_metrics_from_gamelogs(game_date: str) -> Dict[str, Dict[str, float]]:
+    raw_logs = download_gamelogs_snapshot(game_date)
+    if raw_logs is None:
+        return {}
+
+    if raw_logs.empty:
+        return {}
+
+    try:
+        logs = standardize_opponent_columns(raw_logs)
+        logs["Date"] = pd.to_datetime(logs["Date"], errors="coerce")
+        logs = logs.dropna(subset=["Date", "Team", "Opp"])
+        logs = logs.sort_values("Date")
+
+        rolling = prepare_rolling(logs)
+        if rolling.empty:
+            return {}
+
+        rolling = rolling.sort_values(["team_key", "Date"])
+        latest = rolling.groupby("team_key").tail(1)
+
+        cache: Dict[str, Dict[str, float]] = {}
+        for _, row in latest.iterrows():
+            team_key = row["team_key"]
+            metrics: Dict[str, float] = {}
+            if not pd.isna(row.get("prior_games")):
+                metrics["prior_games"] = float(row["prior_games"])
+
+            for col, val in row.items():
+                if not isinstance(col, str):
+                    continue
+                if not col.startswith("team_"):
+                    continue
+                if col in {"team_key"}:
+                    continue
+
+                value = row[col]
+                if pd.isna(value):
+                    continue
+                if isinstance(value, (int, float, np.integer, np.floating)):
+                    metrics[col] = float(value)
+                else:
+                    try:
+                        num_value = float(value)
+                        metrics[col] = num_value
+                    except (TypeError, ValueError):
+                        continue
+
+            if metrics:
+                cache[team_key] = metrics
+
+        return cache
+    except Exception as exc:  # pragma: no cover
+        print(f"[ingest_raw][WARN] Exception computing team metrics from gamelogs: {exc}")
+        return {}
+
+
+def _load_team_metrics(game_date: str) -> Dict[str, Dict[str, float]]:
+    global _TEAM_METRICS_CACHE, _TEAM_METRICS_DATE
+
+    if _TEAM_METRICS_DATE == game_date and _TEAM_METRICS_CACHE:
+        return _TEAM_METRICS_CACHE
+
+    metrics = _team_metrics_from_gamelogs(game_date)
+
+    if not metrics:
+        print(f"[ingest_raw][WARN] Rolling metrics unavailable for {game_date} (likely early season data).")
+
+    _TEAM_METRICS_CACHE = metrics
+    _TEAM_METRICS_DATE = game_date
+    return _TEAM_METRICS_CACHE
+
+
+# --- DATA SOURCE HELPERS ----------------------------------------------------
+_ODDS_CACHE: Optional[Dict[str, Any]] = None
+_TORVIK_LOOKUP: Optional[Dict[str, Dict[str, float]]] = None
+_TEAM_METRICS_CACHE: Dict[str, Dict[str, float]] = {}
+_TEAM_METRICS_DATE: Optional[str] = None
+_ALIAS_MAP: Optional[Dict[str, str]] = None
+
+
+def _slugify_team(name: str) -> str:
+    if not isinstance(name, str):
+        return ""
+    cleaned = "".join(ch for ch in name.lower() if ch.isalnum())
+    return cleaned
+
+
+def _team_slug_from_name(name: str) -> str:
+    if not name:
+        return ""
+    if name in TEAM_MAPPING:
+        mapped = TEAM_MAPPING[name]
+        return "".join(ch for ch in str(mapped).lower() if ch.isalnum())
+    return _slugify_team(name)
+
+
+def _team_conference_from_name(name: str) -> Optional[str]:
+    slug = _team_slug_from_name(name)
+    for conference, teams in CONFERENCE_MAP.items():
+        if slug in teams:
+            return conference
+    return None
+
+
+def _load_latest_odds_data() -> Dict[str, Any]:
+    global _ODDS_CACHE
+    if _ODDS_CACHE is not None:
+        return _ODDS_CACHE
+
+    # Try Firebase storage
+    try:
+        bucket = _get_firebase_bucket(allow_when_upload_disabled=True)
+        if bucket:
+            blob = bucket.blob("raw_data/odds/latest.json")
+            if blob.exists():
+                raw = blob.download_as_string()
+                _ODDS_CACHE = json.loads(raw.decode("utf-8"))
+                return _ODDS_CACHE
+    except Exception as exc:  # pragma: no cover - environment dependent
+        print(f"[ingest_raw][WARN] Unable to download odds from Firebase: {exc}")
+
+    # Fallback to local cache if present
+    local_candidates = [
+        os.path.join(RAW_DATA_DIR, "odds_latest.json"),
+        os.path.join(RAW_DATA_DIR, "odds", "latest.json"),
+    ]
+    for path in local_candidates:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    _ODDS_CACHE = json.load(fh)
+                    return _ODDS_CACHE
+            except Exception as exc:  # pragma: no cover
+                print(f"[ingest_raw][WARN] Failed reading local odds cache {path}: {exc}")
+
+    print("[ingest_raw][WARN] No odds data available; returning empty schedule.")
+    _ODDS_CACHE = {"games": []}
+    return _ODDS_CACHE
+
+
+def _load_torvik_lookup() -> Dict[str, Dict[str, float]]:
+    global _TORVIK_LOOKUP
+    if _TORVIK_LOOKUP is not None:
+        return _TORVIK_LOOKUP
+
+    df = None
+
+    try:
+        bucket = _get_firebase_bucket(allow_when_upload_disabled=True)
+        if bucket:
+            blob = bucket.blob("raw_data/torvik_rankings/latest.csv")
+            if blob.exists():
+                csv_bytes = blob.download_as_string()
+                df = pd.read_csv(StringIO(csv_bytes.decode("utf-8")))
+    except Exception as exc:  # pragma: no cover
+        print(f"[ingest_raw][WARN] Unable to download Torvik rankings: {exc}")
+
+    if df is None:
+        local_candidates = [
+            os.path.join(RAW_DATA_DIR, "torvik_rankings_latest.csv"),
+            os.path.join(RAW_DATA_DIR, "torvik_rankings", "latest.csv"),
+        ]
+        for path in local_candidates:
+            if os.path.exists(path):
+                try:
+                    df = pd.read_csv(path)
+                    break
+                except Exception as exc:  # pragma: no cover
+                    print(f"[ingest_raw][WARN] Failed reading Torvik cache {path}: {exc}")
+
+    lookup: Dict[str, Dict[str, float]] = {}
+    if df is not None and not df.empty:
+        possible_team_cols = [c for c in df.columns if c.lower() in {"team", "school", "team_name"}]
+        team_col = possible_team_cols[0] if possible_team_cols else None
+        if team_col:
+            for _, row in df.iterrows():
+                slug = _slugify_team(str(row[team_col]))
+                numeric_values: Dict[str, float] = {}
+                for col, val in row.items():
+                    if col == team_col:
+                        continue
+                    num_val = pd.to_numeric(pd.Series([val]), errors="coerce").iloc[0]
+                    if pd.notna(num_val):
+                        numeric_values[col] = float(num_val)
+                if numeric_values:
+                    lookup[slug] = numeric_values
+
+    _TORVIK_LOOKUP = lookup
+    return _TORVIK_LOOKUP
+
+
+# --- UTILS / NORMALIZATION --------------------------------------------------
 # --- UTILS / NORMALIZATION --------------------------------------------------
 def normalize_team_key(name: str) -> str:
     """
     Convert 'Missouri', 'Mizzou', 'MISSOURI' etc. into a single canonical key.
-    TODO: replace with your real normalization logic from utils.py
     """
+    global _ALIAS_MAP
     if not isinstance(name, str):
         return ""
-    key = name.upper().strip()
-    # TODO: apply any alias maps, e.g. {"MIZZOU": "MISSOURI"}
-    return key
+
+    if _ALIAS_MAP is None:
+        try:
+            _ALIAS_MAP = load_alias_map()
+        except Exception:
+            _ALIAS_MAP = {}
+
+    slug = _slugify_team(name)
+    return _ALIAS_MAP.get(slug, slug)
 
 
 def ensure_dir(path: str):
@@ -43,64 +378,110 @@ def fetch_schedule_for_date(game_date: str) -> pd.DataFrame:
     """
     Return one row per game on `game_date`.
 
-    Expected columns in the returned DataFrame:
-    - date (YYYY-MM-DD string)
-    - tipoff_datetime (ISO8601 string w/ offset or UTC 'Z')
-    - home_team_name (string human readable)
-    - away_team_name (string human readable)
-    - location_type ("Home" | "Away" | "Neutral" from home team POV or game POV)
-    - home_conf (optional)
-    - away_conf (optional)
-
-    TODO: Implement using your schedule source. This is currently a stub.
+    Data is derived from the latest Odds API snapshot stored in Firebase.
     """
-    # TEMP MOCK EXAMPLE:
-    data = [
-        {
+    odds_payload = _load_latest_odds_data()
+    games = odds_payload.get("games", [])
+    if not games:
+        return pd.DataFrame(columns=[
+            "date",
+            "tipoff_datetime",
+            "home_team_name",
+            "away_team_name",
+            "location_type",
+            "home_conf",
+            "away_conf",
+            "odds_event_id",
+            "odds_sport_key",
+        ])
+
+    target_date = datetime.strptime(game_date, "%Y-%m-%d").date()
+
+    rows = []
+    for game in games:
+        commence = game.get("commence_time")
+        if not commence:
+            continue
+        try:
+            tipoff_dt = datetime.fromisoformat(commence)
+        except ValueError:
+            try:
+                tipoff_dt = datetime.fromisoformat(commence.replace("Z", "+00:00"))
+            except ValueError:
+                tipoff_dt = None
+        if tipoff_dt is None or tipoff_dt.date() != target_date:
+            continue
+
+        home = game.get("home_team")
+        away = game.get("away_team")
+        if not home or not away:
+            continue
+
+        rows.append({
             "date": game_date,
-            "tipoff_datetime": f"{game_date}T19:00:00-05:00",  # TODO real tipoff
-            "home_team_name": "Missouri",
-            "away_team_name": "Kentucky",
-            "location_type": "Home",  # or "Neutral"
-            "home_conf": "SEC",
-            "away_conf": "SEC",
-        }
-    ]
-    return pd.DataFrame(data)
+            "tipoff_datetime": tipoff_dt.isoformat(),
+            "home_team_name": home,
+            "away_team_name": away,
+            "location_type": "Home",
+            "home_conf": _team_conference_from_name(home),
+            "away_conf": _team_conference_from_name(away),
+            "odds_event_id": game.get("id"),
+            "odds_sport_key": odds_payload.get("sport_key"),
+        })
+
+    if not rows:
+        print(f"[ingest_raw][WARN] No games found in odds feed for {game_date}.")
+        return pd.DataFrame(columns=[
+            "date",
+            "tipoff_datetime",
+            "home_team_name",
+            "away_team_name",
+            "location_type",
+            "home_conf",
+            "away_conf",
+            "odds_event_id",
+            "odds_sport_key",
+        ])
+
+    return pd.DataFrame(rows)
 
 
-def fetch_team_snapshot(team_key: str, as_of_date: str) -> Dict[str, Any]:
+def fetch_team_snapshot(team_key: str, as_of_date: str, team_name: Optional[str] = None) -> Dict[str, Any]:
     """
     Get raw team-level state for this team as of RIGHT NOW.
 
-    This is where you will eventually:
-    - read TorvikScript.R output
-    - pull rolling season stats from Sports-Reference or similar
-    - maybe compute simple season-to-date aggregates
-
-    This should return raw stats, not fully engineered features.
-    We'll save these directly (so we can re-engineer features later).
-
-    Required keys:
-    - "team_key"
-    - any numeric fields you want downstream (off_eff, def_eff, tempo, etc.)
-
-    TODO: Replace body with actual data loader(s) in data_loaders.py,
-    or merge multiple sources into one dict.
+    Pulls the latest Torvik rankings snapshot from Firebase (or local cache)
+    and returns numeric metrics for the requested team.
     """
-    # TEMP MOCK EXAMPLE:
-    return {
+    slug = _team_slug_from_name(team_name or team_key)
+    torvik_lookup = _load_torvik_lookup()
+    metrics = torvik_lookup.get(slug, {})
+
+    team_metrics = _load_team_metrics(as_of_date)
+    rolling_stats = team_metrics.get(team_key, {})
+
+    snapshot: Dict[str, Any] = {
         "team_key": team_key,
-        "games_played": 3,
-        "off_efficiency": 112.4,
-        "def_efficiency": 98.7,
-        "tempo": 70.3,
-        "off_reb_rate": 31.2,
-        "def_reb_rate": 74.5,
-        "tov_rate": 17.8,
-        "ft_rate": 29.1,
-        # add anything else you normally pull
+        "as_of_date": as_of_date,
+        "retrieved_at": datetime.now(timezone.utc).isoformat(),
     }
+
+    # Rolling stats (already prefixed with team_)
+    for key, value in rolling_stats.items():
+        snapshot[key] = value
+
+    # Torvik metrics
+    for key, value in metrics.items():
+        prefixed = f"team_{key}"
+        snapshot[prefixed] = value
+
+    # Convenience flags
+    if "team_rank" not in snapshot and "team_rank" in metrics:
+        snapshot["team_rank"] = metrics["team_rank"]
+    if "prior_games" not in snapshot:
+        snapshot["prior_games"] = 0.0
+
+    return snapshot
 
 
 def fetch_odds_for_game(game_row: pd.Series) -> Dict[str, Any]:
@@ -108,29 +489,137 @@ def fetch_odds_for_game(game_row: pd.Series) -> Dict[str, Any]:
     Get current sportsbook line(s) for this specific game.
 
     Input: one row from games_df containing at least:
-      - game_id
-      - home_team_key
-      - away_team_key
-      - tipoff_datetime
-      - date
+      - odds_event_id (from Odds API)
 
-    Return:
-      - spread_home (float, e.g. -2.5 meaning home favored by 2.5)
-      - total (float, e.g. 148.5)
-      - moneyline_home (int, e.g. -135)
-      - moneyline_away (int, e.g. +115)
-      - sportsbook (str)
-      - NOTE: if a line doesn't exist yet (like 5 days out), return None.
-
-    TODO: hook up to TheOddsAPI / your odds scraper.
+    Returns betting lines from the first bookmaker that has data.
     """
-    # TEMP MOCK EXAMPLE:
+    odds_payload = _load_latest_odds_data()
+    games = odds_payload.get("games", [])
+    if not games:
+        return {}
+
+    event_id = game_row.get("odds_event_id")
+    home_name = game_row.get("home_team_name")
+    away_name = game_row.get("away_team_name")
+
+    def canonical(name: str) -> str:
+        return name.strip().lower() if isinstance(name, str) else ""
+
+    target_game = None
+    for entry in games:
+        entry_id = entry.get("id")
+        if event_id and entry_id == event_id:
+            target_game = entry
+            break
+        if (not event_id and
+                canonical(entry.get("home_team")) == canonical(home_name) and
+                canonical(entry.get("away_team")) == canonical(away_name)):
+            target_game = entry
+            break
+
+    if target_game is None:
+        return {}
+
+    spread_home = None
+    total = None
+    ml_home = None
+    ml_away = None
+    sportsbook_name = None
+    all_bookmakers: Dict[str, Dict[str, Any]] = {}
+
+    primary_captured = False
+
+    for bookmaker in target_game.get("bookmakers", []):
+        markets = bookmaker.get("markets", [])
+        if not markets:
+            continue
+
+        book_key = bookmaker.get("key") or canonical(bookmaker.get("title", ""))
+        if not book_key:
+            continue
+
+        book_entry: Dict[str, Any] = {
+            "bookmaker_key": book_key,
+            "bookmaker_title": bookmaker.get("title"),
+            "moneyline": {},
+            "spread": {},
+            "total": {},
+        }
+
+        spread_found = False
+        total_found = False
+        moneyline_found = False
+
+        for market in markets:
+            key = market.get("key")
+            outcomes = market.get("outcomes", [])
+            if key == "spreads" and outcomes:
+                for outcome in outcomes:
+                    name = canonical(outcome.get("name"))
+                    point = outcome.get("point")
+                    if point is None:
+                        continue
+                    price = outcome.get("price")
+                    if name == canonical(home_name):
+                        spread_home = float(point)
+                        spread_found = True
+                        book_entry["spread"]["home"] = {
+                            "line": float(point),
+                            "price": int(price) if price is not None else None,
+                        }
+                    elif name == canonical(away_name):
+                        spread_home = -float(point)
+                        spread_found = True
+                        book_entry["spread"]["away"] = {
+                            "line": float(point),
+                            "price": int(price) if price is not None else None,
+                        }
+            elif key == "totals" and outcomes:
+                for outcome in outcomes:
+                    point = outcome.get("point")
+                    if point is not None:
+                        total = float(point)
+                        total_found = True
+                        label = outcome.get("name", "").strip().lower()
+                        price = outcome.get("price")
+                        target = {
+                            "line": float(point),
+                            "price": int(price) if price is not None else None,
+                        }
+                        if "over" in label:
+                            book_entry["total"]["over"] = target
+                        elif "under" in label:
+                            book_entry["total"]["under"] = target
+            elif key in {"h2h", "moneyline"} and outcomes:
+                for outcome in outcomes:
+                    name = canonical(outcome.get("name"))
+                    price = outcome.get("price")
+                    if price is None:
+                        continue
+                    if name == canonical(home_name):
+                        ml_home = int(price)
+                        moneyline_found = True
+                        book_entry["moneyline"]["home"] = int(price)
+                    elif name == canonical(away_name):
+                        ml_away = int(price)
+                        moneyline_found = True
+                        book_entry["moneyline"]["away"] = int(price)
+
+        if spread_found or total_found or moneyline_found:
+            if not primary_captured:
+                sportsbook_name = bookmaker.get("title") or bookmaker.get("key")
+                primary_captured = True
+
+        if book_entry["moneyline"] or book_entry["spread"] or book_entry["total"]:
+            all_bookmakers[book_key] = book_entry
+
     return {
-        "spread_home": -2.5,
-        "total": 148.5,
-        "moneyline_home": -135,
-        "moneyline_away": 115,
-        "sportsbook": "DraftKings",
+        "spread_home": spread_home,
+        "total": total,
+        "moneyline_home": ml_home,
+        "moneyline_away": ml_away,
+        "bookmakers": all_bookmakers,
+        "sportsbook": sportsbook_name,
     }
 
 
@@ -150,6 +639,9 @@ def ingest_raw_for_date(game_date: str, now_iso: str) -> None:
 
     # 1. schedule
     games_df = fetch_schedule_for_date(game_date)
+    if games_df.empty:
+        print(f"[ingest_raw] {game_date}: no scheduled games found; skipping.")
+        return
 
     # 2. normalize + assign keys
     games_df["home_team_key"] = games_df["home_team_name"].apply(normalize_team_key)
@@ -160,6 +652,11 @@ def ingest_raw_for_date(game_date: str, now_iso: str) -> None:
         axis=1
     )
 
+    team_name_lookup: Dict[str, str] = {}
+    for _, row in games_df.iterrows():
+        team_name_lookup[row["home_team_key"]] = row["home_team_name"]
+        team_name_lookup[row["away_team_key"]] = row["away_team_name"]
+
     # 3. team snapshots
     unique_teams = sorted(
         set(games_df["home_team_key"].tolist() + games_df["away_team_key"].tolist())
@@ -167,7 +664,11 @@ def ingest_raw_for_date(game_date: str, now_iso: str) -> None:
 
     team_records = []
     for team_key in unique_teams:
-        team_raw = fetch_team_snapshot(team_key, as_of_date=game_date)
+        team_raw = fetch_team_snapshot(
+            team_key=team_key,
+            as_of_date=game_date,
+            team_name=team_name_lookup.get(team_key),
+        )
         team_raw["team_key"] = team_key  # ensure present
         team_raw["as_of_date"] = game_date
         team_raw["retrieved_at"] = now_iso
@@ -190,9 +691,15 @@ def ingest_raw_for_date(game_date: str, now_iso: str) -> None:
             "total": odds_raw.get("total"),
             "moneyline_home": odds_raw.get("moneyline_home"),
             "moneyline_away": odds_raw.get("moneyline_away"),
-            "sportsbook": odds_raw.get("sportsbook"),
             "retrieved_at": now_iso,
         }
+
+        bookmakers = odds_raw.get("bookmakers")
+        if bookmakers:
+            try:
+                odds_record["bookmakers_json"] = json.dumps(bookmakers)
+            except (TypeError, ValueError):
+                pass
 
         odds_records.append(odds_record)
 
@@ -207,13 +714,22 @@ def ingest_raw_for_date(game_date: str, now_iso: str) -> None:
     teams_path = os.path.join(out_dir, f"{game_date}_teams.csv")
     odds_path = os.path.join(out_dir, f"{game_date}_odds.csv")
 
-    games_df.to_csv(games_path, index=False)
-    team_df.to_csv(teams_path, index=False)
-    odds_df.to_csv(odds_path, index=False)
+    # Local CSV persistence disabled for cloud deployment.
+    # games_df.to_csv(games_path, index=False)
+    # team_df.to_csv(teams_path, index=False)
+    # odds_df.to_csv(odds_path, index=False)
 
-    print(f"[ingest_raw] {game_date}: wrote {games_path}")
-    print(f"[ingest_raw] {game_date}: wrote {teams_path}")
-    print(f"[ingest_raw] {game_date}: wrote {odds_path}")
+    print(f"[ingest_raw] {game_date}: skipped local write (cloud storage only)")
+
+    if UPLOAD_TO_FIREBASE:
+        upload_snapshots_to_firebase(
+            game_date=game_date,
+            games_df=games_df,
+            teams_df=team_df,
+            odds_df=odds_df,
+        )
+    else:
+        print("[ingest_raw] Firebase upload disabled (BETBOARD_SKIP_FIREBASE_UPLOAD=1)")
 
 
 def daterange(start_date: datetime, end_date: datetime) -> List[str]:

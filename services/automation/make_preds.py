@@ -1,17 +1,23 @@
 import os
 import json
+from pathlib import Path
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 import pandas as pd
 
 try:
     from config import (
         PROCESSED_DATA_DIR,
         MODEL_DIR,           # e.g. "models/run_2025_10_28"
+        MODEL_FALLBACK_LOCAL_DIR,
+        BET_MODEL_DIR,
+        BET_MODEL_FALLBACK_LOCAL_DIR,
         PREDICTIONS_DIR,     # e.g. "data/output"
         MIN_EDGE_SPREAD_PTS, # e.g. 1.5
         MIN_EDGE_TOTAL_PTS,  # e.g. 3.0
         MIN_PROB_EDGE,       # e.g. 0.05
+        FIREBASE_CREDENTIALS_PATH,
+        FIREBASE_STORAGE_BUCKET,
     )
 except ImportError:
     PROCESSED_DATA_DIR = "data/processed"
@@ -20,6 +26,11 @@ except ImportError:
     MIN_EDGE_SPREAD_PTS = 1.5
     MIN_EDGE_TOTAL_PTS = 3.0
     MIN_PROB_EDGE = 0.05
+    FIREBASE_CREDENTIALS_PATH = ""
+    FIREBASE_STORAGE_BUCKET = ""
+    MODEL_FALLBACK_LOCAL_DIR = "data/xgb_model/No_Bet_xgb_all_models_20251104_160154/models_production"
+    BET_MODEL_DIR = "models/current_production/with_bet"
+    BET_MODEL_FALLBACK_LOCAL_DIR = "data/xgb_model/Bet_xgb_all_models_20251104_160047/models_production"
 
 # We'll assume LightGBM/XGBoost-ish models were joblib'd.
 # If you're using pickle or something else, tweak here.
@@ -27,6 +38,22 @@ try:
     import joblib
 except ImportError:
     joblib = None  # TODO: make sure joblib is installed in prod env
+
+try:
+    import firebase_admin
+    from firebase_admin import credentials, storage, firestore
+except ImportError:  # pragma: no cover
+    firebase_admin = None  # type: ignore
+    credentials = None  # type: ignore
+    storage = None  # type: ignore
+    firestore = None  # type: ignore
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MODEL_CACHE_DIR = PROJECT_ROOT / "data" / "model_cache"
+MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+_FIREBASE_BUCKET = None
+_FIRESTORE_CLIENT = None
 
 
 # --- Helpers for implied probability from moneyline -------------------------
@@ -53,25 +80,59 @@ def implied_prob_from_moneyline(odds: float) -> float:
 
 # --- Load models ------------------------------------------------------------
 
-def load_models(model_dir: str):
+def _load_xgb_model(model_dir: str, basename: str, model_type: str):
+    """
+    Load an XGBoost model saved either as a sklearn-style pickle or native JSON.
+    """
+    pkl_path = os.path.join(model_dir, f"{basename}_model.pkl")
+    json_path = os.path.join(model_dir, f"{basename}_model.json")
+
+    if os.path.exists(pkl_path):
+        if joblib is None:
+            raise RuntimeError(
+                f"joblib is required to load {basename}_model.pkl but is not installed."
+            )
+        return joblib.load(pkl_path)
+
+    if os.path.exists(json_path):
+        try:
+            import xgboost as xgb  # type: ignore
+        except ImportError as exc:
+            raise RuntimeError(
+                "xgboost is required to load JSON model artifacts. "
+                "Install xgboost or provide pickle models."
+            ) from exc
+
+        if model_type == "classifier":
+            model = xgb.XGBClassifier()
+        else:
+            model = xgb.XGBRegressor()
+        model.load_model(json_path)
+        return model
+
+    raise FileNotFoundError(
+        f"Could not find {basename}_model.(pkl|json) in {model_dir}"
+    )
+
+
+def load_models(model_dir: str, fallback_dir: Optional[str] = None):
     """
     Load trained models for:
     - spread (predicts margin: home - away)
     - total (predicts combined score)
     - win prob model (predicts P(home wins))
-
-    TODO: update filenames to match what you actually saved.
     """
-    if joblib is None:
-        raise RuntimeError("joblib not available. Install joblib or adjust loader.")
+    try:
+        resolved_dir = _ensure_local_model_dir(model_dir)
+    except FileNotFoundError:
+        if fallback_dir:
+            resolved_dir = _ensure_local_model_dir(fallback_dir)
+        else:
+            raise
 
-    spread_model_path = os.path.join(model_dir, "spread_model.pkl")
-    total_model_path = os.path.join(model_dir, "total_model.pkl")
-    winprob_model_path = os.path.join(model_dir, "moneyline_model.pkl")
-
-    spread_model = joblib.load(spread_model_path)
-    total_model = joblib.load(total_model_path)
-    winprob_model = joblib.load(winprob_model_path)
+    spread_model = _load_xgb_model(resolved_dir, "spread", "regressor")
+    total_model = _load_xgb_model(resolved_dir, "total", "regressor")
+    winprob_model = _load_xgb_model(resolved_dir, "moneyline", "classifier")
 
     return spread_model, total_model, winprob_model
 
@@ -147,7 +208,12 @@ def model_inputs_from_row(rowd: dict, feature_cols: List[str]) -> pd.DataFrame:
     Right now we'll just assume it's passed in.
     """
     data = {col: rowd.get(col) for col in feature_cols}
-    return pd.DataFrame([data])
+    df = pd.DataFrame([data])
+
+    # ensure numeric types for XGBoost (strings -> NaN)
+    for col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
 
 
 def score_game(group_entry: Dict[str, dict],
@@ -187,45 +253,6 @@ def score_game(group_entry: Dict[str, dict],
         # If you trained regression giving win prob directly:
         home_win_prob = float(winprob_model.predict(X_home)[0])
 
-    # Pull sportsbook numbers from home_row.
-    # We assume build_features stored the live lines like:
-    # - bet_spread_home (spread where negative means home is favored)
-    # - bet_total
-    # - moneyline_home
-    # - moneyline_away
-    book_spread_home = home_row.get("bet_spread_home")
-    book_total = home_row.get("bet_total")
-    ml_home = home_row.get("moneyline_home")
-    ml_away = home_row.get("moneyline_away")
-
-    # Compute edges
-    # Spread edge: how far off we think the line is from reality
-    # (positive absolute difference == stronger edge)
-    if book_spread_home is not None:
-        spread_edge_points = home_margin_pred - float(book_spread_home)
-    else:
-        spread_edge_points = None
-
-    # Total edge
-    if book_total is not None:
-        total_edge_points = total_pred - float(book_total)
-    else:
-        total_edge_points = None
-
-    # Moneyline edge
-    implied_home = implied_prob_from_moneyline(ml_home)
-    implied_away = implied_prob_from_moneyline(ml_away)
-
-    if implied_home is not None:
-        moneyline_edge_home = home_win_prob - implied_home
-    else:
-        moneyline_edge_home = None
-
-    if implied_away is not None:
-        moneyline_edge_away = (1.0 - home_win_prob) - implied_away
-    else:
-        moneyline_edge_away = None
-
     # Build summary record for this game
     result = {
         "game_id": home_row.get("game_id"),
@@ -235,22 +262,16 @@ def score_game(group_entry: Dict[str, dict],
         "home_conf": home_row.get("Conference"),
         "away_conf": away_row.get("OppConference"),
 
-        "model_spread_home": home_margin_pred,   # model's home minus away
-        "book_spread_home": book_spread_home,
-        "spread_edge_points": spread_edge_points,
-
+        "model_spread_home": home_margin_pred,
         "model_total": total_pred,
-        "book_total": book_total,
-        "total_edge_points": total_edge_points,
-
         "home_win_prob": home_win_prob,
-        "moneyline_home": ml_home,
-        "moneyline_away": ml_away,
-        "implied_home_win_prob": implied_home,
-        "implied_away_win_prob": implied_away,
-        "moneyline_edge_home": moneyline_edge_home,
-        "moneyline_edge_away": moneyline_edge_away,
     }
+    bookmakers_raw = home_row.get("bookmakers_json")
+    if isinstance(bookmakers_raw, str) and bookmakers_raw:
+        try:
+            result["bookmakers"] = json.loads(bookmakers_raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            pass
 
     return result
 
@@ -384,19 +405,7 @@ def publish_to_firestore(date_str: str,
     For now we just dump JSON locally to PREDICTIONS_DIR.
     """
 
-    os.makedirs(PREDICTIONS_DIR, exist_ok=True)
-
-    # 1. save game-level preds (all games, not just picks)
-    game_preds_path = os.path.join(PREDICTIONS_DIR, f"{date_str}_game_preds.json")
-    with open(game_preds_path, "w") as f:
-        json.dump(game_level_preds, f, indent=2)
-    print(f"[make_predictions] wrote {game_preds_path}")
-
-    # 2. save final picks (ranked bets we actually like)
-    picks_path = os.path.join(PREDICTIONS_DIR, f"{date_str}_top_picks.json")
-    with open(picks_path, "w") as f:
-        json.dump(top_picks, f, indent=2)
-    print(f"[make_predictions] wrote {picks_path}")
+    # Local JSON persistence disabled for cloud deployment.
 
     # TODO: Firestore example structure (pseudo-code):
     #
@@ -414,7 +423,9 @@ def publish_to_firestore(date_str: str,
 # --- Driver -----------------------------------------------------------------
 
 def run_predictions_for_date(date_str: str,
-                             feature_cols: List[str]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+                             feature_cols: List[str],
+                             model_dir: str = MODEL_DIR,
+                             fallback_dir: Optional[str] = None) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     For a single date:
     - load features
@@ -429,7 +440,7 @@ def run_predictions_for_date(date_str: str,
     features_df = pd.read_csv(feat_path)
 
     # 2. load trained models
-    spread_model, total_model, winprob_model = load_models(MODEL_DIR)
+    spread_model, total_model, winprob_model = load_models(model_dir, fallback_dir or MODEL_FALLBACK_LOCAL_DIR)
 
     # 3. group rows by game (home/away)
     grouped = split_home_away(features_df)
@@ -448,14 +459,7 @@ def run_predictions_for_date(date_str: str,
         )
 
         game_level_preds.append(game_pred)
-
-        picks_for_game = choose_bets_for_game(game_pred)
-        all_picks.extend(picks_for_game)
-
-    # 5. rank picks across all games
-    top_picks = rank_all_picks(all_picks, max_picks=10)
-
-    return game_level_preds, top_picks
+    return game_level_preds, []
 
 
 def run_predictions_for_range(start_date: str, end_date: str, feature_cols: List[str]):
@@ -493,3 +497,116 @@ if __name__ == "__main__":
         end_date=today,  # change to tomorrow if you want to surface early lines
         feature_cols=FEATURE_COLS_FROM_TRAINING,
     )
+def _get_firebase_bucket(bucket_name: Optional[str] = None):
+    global _FIREBASE_BUCKET
+    if firebase_admin is None or storage is None:
+        return None
+
+    if _FIREBASE_BUCKET is not None and (bucket_name is None or _FIREBASE_BUCKET.name == bucket_name):
+        return _FIREBASE_BUCKET
+
+    target_bucket = bucket_name or FIREBASE_STORAGE_BUCKET
+    if not target_bucket:
+        return None
+
+    if not firebase_admin._apps:
+        if FIREBASE_CREDENTIALS_PATH and os.path.exists(FIREBASE_CREDENTIALS_PATH):
+            cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+            firebase_admin.initialize_app(cred, {"storageBucket": target_bucket})
+        else:
+            firebase_admin.initialize_app(options={"storageBucket": target_bucket})
+    bucket = storage.bucket(target_bucket)
+    if bucket:
+        _FIREBASE_BUCKET = bucket
+    return bucket
+
+
+def _get_firestore_client():
+    global _FIRESTORE_CLIENT
+    if firebase_admin is None or firestore is None:
+        return None
+    if _FIRESTORE_CLIENT is not None:
+        return _FIRESTORE_CLIENT
+    if not firebase_admin._apps:
+        _get_firebase_bucket()
+    try:
+        _FIRESTORE_CLIENT = firestore.client()
+    except Exception:
+        _FIRESTORE_CLIENT = None
+    return _FIRESTORE_CLIENT
+
+
+def _current_model_version() -> Optional[str]:
+    explicit = os.environ.get("BETBOARD_MODEL_VERSION")
+    if explicit and explicit != "current_production":
+        return explicit
+    client = _get_firestore_client()
+    if client is None:
+        return None
+    try:
+        doc = client.collection("models").document("current_production").get()
+        if doc.exists:
+            data = doc.to_dict() or {}
+            return data.get("version")
+    except Exception:
+        return None
+    return None
+
+
+def _resolve_model_path(model_dir: str) -> str:
+    path_str = str(model_dir)
+    if "current_production" in path_str or "latest" in path_str:
+        version = _current_model_version()
+        if version:
+            path_str = path_str.replace("current_production", version).replace("latest", version)
+    return path_str
+
+
+def _ensure_local_model_dir(model_dir: str) -> str:
+    model_dir = _resolve_model_path(model_dir)
+    path = Path(model_dir)
+    if path.exists():
+        return str(path)
+
+    remote = model_dir.strip()
+    bucket_name = FIREBASE_STORAGE_BUCKET
+
+    if remote.startswith("gs://"):
+        _, rest = remote.split("://", 1)
+        parts = rest.split("/", 1)
+        bucket_name = parts[0]
+        remote = parts[1] if len(parts) > 1 else ""
+
+    remote = remote.lstrip("/")
+    if not remote:
+        raise FileNotFoundError("MODEL_DIR does not point to a valid path.")
+
+    bucket = _get_firebase_bucket(bucket_name)
+    if bucket is None:
+        raise FileNotFoundError("Firebase bucket not configured; cannot download models.")
+
+    relative_parts = [part for part in remote.split("/") if part]
+    cache_dir = MODEL_CACHE_DIR / bucket.name
+    for part in relative_parts:
+        cache_dir /= part
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    required_files = [
+        "spread_model.json",
+        "total_model.json",
+        "moneyline_model.json",
+        "feature_names.pkl",
+        "model_metadata.json",
+    ]
+
+    for filename in required_files:
+        local_path = cache_dir / filename
+        if local_path.exists():
+            continue
+        blob_path = "/".join(relative_parts + [filename])
+        blob = bucket.blob(blob_path)
+        if not blob.exists():
+            raise FileNotFoundError(f"Model artifact missing in bucket: {blob_path}")
+        blob.download_to_filename(str(local_path))
+
+    return str(cache_dir)
