@@ -8,8 +8,8 @@ from utils import parse_dates, normalize_key, standardize_opponent_columns
 
 def prepare_rolling(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Compute rolling averages and advanced metrics for teams.
-    Returns DataFrame with team_*_roll and opp_*_roll columns.
+    Compute rolling averages for teams based on all games played so far.
+    For production use - includes current game in averages.
     """
     df = df.copy()
     df = standardize_opponent_columns(df)
@@ -40,36 +40,11 @@ def prepare_rolling(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values(["team_key", "Date", "RowID"]).reset_index(drop=True)
     df["prior_games"] = df.groupby("team_key").cumcount()
     
-    # Compute basic rolling stats
+    # Compute rolling stats (NO SHIFT - we want to include current game for production)
     df = _compute_basic_rolling_stats(df)
-    
-    # Compute rolling win% and SOS
     df = _compute_win_pct_and_sos(df)
-    
-    # Compute rolling pace and efficiency metrics
     df = _compute_pace_and_efficiency(df)
-
-
-    
-    # Filter out games with insufficient data
-    df = df[df["prior_games"] > 0].copy()
-
-    # Only require core opponent/team roll stats to be present; keep other
-    # advanced metrics even if they still have gaps early in the season.
-    required_cols = [
-        "team_points_roll",
-        "opp_points_roll",
-        "team_winpct_roll",
-        "opp_winpct_roll",
-        "team_SOS_roll",
-        "opp_SOS_roll",
-    ]
-    required_cols = [c for c in required_cols if c in df.columns]
-    if required_cols:
-        df = df.dropna(subset=required_cols)
-
-    df = df.reset_index(drop=True)
-
+    df = _compute_matchup_features(df)
     return df
 
 
@@ -90,7 +65,6 @@ def _compute_basic_rolling_stats(df: pd.DataFrame) -> pd.DataFrame:
           .expanding()
           .mean()
           .reset_index(level=0, drop=True)
-          .shift(1)
     )
     roll.columns = [f"team_{c}_roll" for c in roll.columns]
     roll = roll.rename(columns={"team_Tm_roll": "team_points_roll"})
@@ -137,7 +111,6 @@ def _compute_win_pct_and_sos(df: pd.DataFrame) -> pd.DataFrame:
           .expanding()
           .mean()
           .reset_index(level=0, drop=True)
-          .shift(1)
     )
     df["team_winpct_roll"] = team_winpct_roll
     
@@ -157,7 +130,6 @@ def _compute_win_pct_and_sos(df: pd.DataFrame) -> pd.DataFrame:
           .expanding()
           .mean()
           .reset_index(level=0, drop=True)
-          .shift(1)
     )
     
     # Opponent SOS - dict lookup

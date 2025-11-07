@@ -1,9 +1,10 @@
 import os
 import sys
+import json
 from pathlib import Path
 from io import StringIO
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -20,34 +21,31 @@ except ImportError:  # pragma: no cover - optional dependency
     credentials = None  # type: ignore
     storage = None  # type: ignore
 
-try:
-    from config import (
-        RAW_DATA_DIR,
-        PROCESSED_DATA_DIR,
-        FIREBASE_CREDENTIALS_PATH,
-        FIREBASE_STORAGE_BUCKET,
-        PROCESSED_FEATURES_PREFIX,
-        RAW_GAMES_PREFIX,
-        RAW_TEAMS_PREFIX,
-        RAW_ODDS_PREFIX,
-    )
-except ImportError:
-    RAW_DATA_DIR = "data/raw"
-    PROCESSED_DATA_DIR = "data/processed"
-    FIREBASE_CREDENTIALS_PATH = ""
-    FIREBASE_STORAGE_BUCKET = ""
-    PROCESSED_FEATURES_PREFIX = "processed_features"
-    RAW_GAMES_PREFIX = "raw_data/games"
-    RAW_TEAMS_PREFIX = "raw_data/team_snapshots"
-    RAW_ODDS_PREFIX = "raw_data/odds"
+
+from config import (
+    RAW_GAMES_PREFIX,
+    RAW_TEAMS_PREFIX,
+    RAW_ODDS_PREFIX,
+    FIREBASE_CREDENTIALS_PATH,
+    FIREBASE_STORAGE_BUCKET,
+    PROCESSED_FEATURES_PREFIX,
+)
+
 
 from feature_engineering import _compute_matchup_features
-from utils import parse_dates, normalize_key, standardize_opponent_columns
+
+from ingest_raw import (  # type: ignore
+    fetch_schedule_for_date,
+    fetch_team_snapshot,
+    fetch_odds_for_game,
+    normalize_team_key,
+    make_game_id,
+)
 
 UPLOAD_TO_FIREBASE = os.environ.get("BETBOARD_SKIP_FIREBASE_UPLOAD", "0") != "1"
 _FIREBASE_BUCKET: Optional["storage.bucket"] = None
 
-
+FEATURE_COLS_ORDER = None  # Optionally set to a list of columns to enforce order
 def _get_firebase_bucket() -> Optional["storage.bucket"]:
     global _FIREBASE_BUCKET
 
@@ -73,7 +71,7 @@ def _get_firebase_bucket() -> Optional["storage.bucket"]:
             else:
                 firebase_admin.initialize_app(options={"storageBucket": FIREBASE_STORAGE_BUCKET})
 
-        _FIREBASE_BUCKET = storage.bucket()
+        _FIREBASE_BUCKET = storage.bucket(name=FIREBASE_STORAGE_BUCKET)
         return _FIREBASE_BUCKET
     except Exception as exc:  # pragma: no cover
         print(f"[build_features][WARN] Failed to initialize Firebase Storage: {exc}")
@@ -112,37 +110,127 @@ def _download_csv(remote_path: str) -> pd.DataFrame:
     return pd.read_csv(StringIO(data))
 
 
-# --- You will eventually want this imported from a shared module -------------
-# This list should match the columns you actually trained on.
-# Right now it's a placeholder. You MUST fill it in to match per_game_2024.csv
-# (but only the columns that were used as features, not targets like "final score").
-FEATURE_COLS_ORDER = [
-    # "Team",
-    # "Opp",
-    # "Conference",
-    # "OppConference",
-    # "Location",            # "Home"/"Away"/"Neutral"
-    # "Date",
-    # "Type",
-    # "off_efficiency",
-    # "def_efficiency",
-    # "tempo",
-    # "off_reb_rate",
-    # "def_reb_rate",
-    # "tov_rate",
-    # "opp_off_efficiency",
-    # "opp_def_efficiency",
-    # "opp_tempo",
-    # ...
-    # "bet_spread",
-    # "bet_total",
-    # "moneyline_home",
-    # "moneyline_away",
-    # etc.
-    #
-    # TODO: fill this out to EXACT model inputs in training.
-    # For now we will build a superset and then select these before saving.
-]
+def _load_snapshots_from_storage(date_str: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    games_remote = f"{RAW_GAMES_PREFIX}/{date_str}/games.csv"
+    teams_remote = f"{RAW_TEAMS_PREFIX}/{date_str}/teams.csv"
+    odds_remote = f"{RAW_ODDS_PREFIX}/{date_str}/odds.csv"
+
+    games_df = _download_csv(games_remote)
+    teams_df = _download_csv(teams_remote)
+    odds_df = _download_csv(odds_remote)
+    return games_df, teams_df, odds_df
+
+
+def _build_snapshots_from_sources(date_str: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    schedule_df = fetch_schedule_for_date(date_str)
+    if schedule_df.empty:
+        raise FileNotFoundError(f"No schedule available for {date_str}")
+
+    games_df = schedule_df.copy()
+    games_df["home_team_key"] = games_df["home_team_name"].apply(normalize_team_key)
+    games_df["away_team_key"] = games_df["away_team_name"].apply(normalize_team_key)
+    games_df["game_id"] = games_df.apply(
+        lambda r: make_game_id(r["date"], r["home_team_key"], r["away_team_key"]), axis=1
+    )
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    team_name_lookup = {}
+    for _, row in games_df.iterrows():
+        team_name_lookup[row["home_team_key"]] = row["home_team_name"]
+        team_name_lookup[row["away_team_key"]] = row["away_team_name"]
+
+    team_records = []
+    for team_key, team_name in team_name_lookup.items():
+        snapshot = fetch_team_snapshot(team_key=team_key, as_of_date=date_str, team_name=team_name)
+        snapshot["team_key"] = team_key
+        snapshot["team_name"] = team_name
+        snapshot.setdefault("as_of_date", date_str)
+        snapshot.setdefault("retrieved_at", now_iso)
+        team_records.append(snapshot)
+
+    teams_df = pd.DataFrame(team_records)
+
+    odds_records = []
+    for _, game_row in games_df.iterrows():
+        odds_raw = fetch_odds_for_game(game_row)
+        record = {
+            "game_id": game_row["game_id"],
+            "date": game_row["date"],
+            "tipoff_datetime": game_row.get("tipoff_datetime"),
+            "home_team_key": game_row["home_team_key"],
+            "away_team_key": game_row["away_team_key"],
+            "spread_home": odds_raw.get("spread_home"),
+            "total": odds_raw.get("total"),
+            "moneyline_home": odds_raw.get("moneyline_home"),
+            "moneyline_away": odds_raw.get("moneyline_away"),
+            "retrieved_at": now_iso,
+        }
+        bookmakers = odds_raw.get("bookmakers")
+        if bookmakers:
+            try:
+                record["bookmakers_json"] = json.dumps(bookmakers)
+            except (TypeError, ValueError):
+                pass
+        odds_records.append(record)
+
+    odds_df = pd.DataFrame(odds_records)
+    return games_df, teams_df, odds_df
+
+
+def format_for_model(features_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Clean up and format features to match training data schema.
+    """
+    # Define the exact columns the model expects (from per_game_2023.csv)
+    expected_cols = [
+        'Team', 'Conference', 'OppConference', 'Date', 'tipoff_datetime', 'Opp', 'Type', 'is_neutral', 'is_home', 'is_conf_game',
+        'team_key', 'opp_key', 'prior_games',
+        # Rolling stats
+        'team_points_roll', 'team_FG_roll', 'team_FGA_roll', 'team_FG%_roll',
+        'team_3P_roll', 'team_3PA_roll', 'team_3P%_roll',
+        'team_2P_roll', 'team_2PA_roll', 'team_2P%_roll', 'team_eFG%_roll',
+        'team_FT_roll', 'team_FTA_roll', 'team_FT%_roll',
+        'team_ORB_roll', 'team_DRB_roll', 'team_TRB_roll',
+        'team_AST_roll', 'team_STL_roll', 'team_BLK_roll', 'team_TOV_roll', 'team_PF_roll',
+        'opp_points_roll', 'opp_FG_roll', 'opp_FGA_roll', 'opp_FG%_roll',
+        'opp_3P_roll', 'opp_3PA_roll', 'opp_3P%_roll',
+        'opp_2P_roll', 'opp_2PA_roll', 'opp_2P%_roll', 'opp_eFG%_roll',
+        'opp_FT_roll', 'opp_FTA_roll', 'opp_FT%_roll',
+        'opp_ORB_roll', 'opp_DRB_roll', 'opp_TRB_roll',
+        'opp_AST_roll', 'opp_STL_roll', 'opp_BLK_roll', 'opp_TOV_roll', 'opp_PF_roll',
+        'team_winpct_roll', 'opp_winpct_roll',
+        'team_SOS_roll', 'opp_SOS_roll', 'delta_SOS_roll',
+        'team_pace_roll', 'opp_pace_roll', 'delta_pace_roll',
+        'team_off_eff_roll', 'team_def_eff_roll', 'opp_off_eff_roll', 'opp_def_eff_roll',
+        # Torvik rankings (keep only these 4 per team)
+        'team_rank', 'team_barthag', 'team_adj_o', 'team_adj_d',
+        'opp_rank', 'opp_barthag', 'opp_adj_o', 'opp_adj_d',
+        # Matchup features
+        'team_offensive_matchup', 'team_defensive_matchup', 'team_matchup_advantage',
+        'expected_possessions', 'team_expected_points', 'opp_expected_points',
+        'pregame_margin_projection', 'pregame_total_projection',
+        # Betting lines
+        'bet_spread', 'bet_total', 'moneyline_a', 'moneyline_b',
+        'bookmakers_json',
+        # Identifiers
+        'game_id',
+    ]
+    
+    # Keep only columns that exist and are expected
+    available_cols = [col for col in expected_cols if col in features_df.columns]
+    
+    # Add missing columns with 0
+    for col in expected_cols:
+        if col not in features_df.columns:
+            if col in ['Team', 'Opp', 'Conference', 'OppConference', 'Type', 'Date', 'tipoff_datetime', 'game_id', 'team_key', 'opp_key', 'bookmakers_json']:
+                features_df[col] = ''
+            else:
+                features_df[col] = 0.0
+    
+    # Select only expected columns in order
+    features_df = features_df[expected_cols]
+    
+    return features_df
 
 
 def load_raw_day(date_str: str):
@@ -150,17 +238,11 @@ def load_raw_day(date_str: str):
     Load the three raw CSVs that ingest_raw.py produced for this date.
     Returns (games_df, teams_df, odds_df)
     """
-    day_dir = os.path.join(RAW_DATA_DIR, date_str)
-
-    games_path = os.path.join(day_dir, f"{date_str}_games.csv")
-    teams_path = os.path.join(day_dir, f"{date_str}_teams.csv")
-    odds_path = os.path.join(day_dir, f"{date_str}_odds.csv")
-
-    games_df = pd.read_csv(games_path)
-    teams_df = pd.read_csv(teams_path)
-    odds_df = pd.read_csv(odds_path)
-
-    return games_df, teams_df, odds_df
+    try:
+        return _build_snapshots_from_sources(date_str)
+    except FileNotFoundError:
+        print(f"[build_features] Live sources unavailable for {date_str}, trying stored snapshots.")
+        return _load_snapshots_from_storage(date_str)
 
 
 def index_team_stats(teams_df: pd.DataFrame):
@@ -177,9 +259,19 @@ def index_team_stats(teams_df: pd.DataFrame):
     team_map = {}
     for _, row in teams_df.iterrows():
         key = row["team_key"]
+        print("key: "   , key)
         team_map[key] = row.to_dict()
     return team_map
 
+def _recompute_deltas(features_df: pd.DataFrame) -> pd.DataFrame:
+    cols = [
+        ("team_pace_roll", "opp_pace_roll", "delta_pace_roll"),
+        ("team_off_eff_roll", "opp_off_eff_roll", "delta_off_eff_roll"),  # add whatever you need
+    ]
+    for team_col, opp_col, delta_col in cols:
+        if team_col in features_df.columns and opp_col in features_df.columns:
+            features_df[delta_col] = features_df[team_col] - features_df[opp_col]
+    return features_df
 
 def build_team_view_row(game_row: pd.Series,
                         team_key: str,
@@ -265,9 +357,15 @@ def build_team_view_row(game_row: pd.Series,
         row[k] = v
 
     # Attach opponent stats snapshot with prefix
+    # Attach opponent stats snapshot with prefix
     for k, v in opp_stats.items():
         if k in ["team_key", "as_of_date", "retrieved_at"]:
             continue
+        
+        # Skip columns that are already about opponents (avoid opp_opp_*)
+        if k.startswith("opp_") or k.startswith("delta_"):
+            continue
+            
         if k.startswith("team_"):
             opp_key = "opp_" + k[len("team_"):]
         else:
@@ -327,6 +425,30 @@ def infer_game_type(team_conf: str, opp_conf: str, game_row: pd.Series) -> str:
     return "REG (Non-Conf)"
 
 
+def _recompute_derived_metrics(features_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Backfill derived stats that may have been dropped when copying team snapshots.
+    """
+    if {"team_pace_roll", "opp_pace_roll"}.issubset(features_df.columns):
+        features_df["delta_pace_roll"] = features_df["team_pace_roll"] - features_df["opp_pace_roll"]
+
+    if {"opp_points_roll", "team_pace_roll"}.issubset(features_df.columns):
+        denom = features_df["team_pace_roll"].replace({0: np.nan})
+        inferred = (features_df["opp_points_roll"] / denom) * 100
+        features_df["team_def_eff_roll"] = features_df["team_def_eff_roll"].where(
+            features_df["team_def_eff_roll"].notna(), inferred
+        )
+
+    if {"team_points_roll", "opp_pace_roll"}.issubset(features_df.columns):
+        denom = features_df["opp_pace_roll"].replace({0: np.nan})
+        inferred = (features_df["team_points_roll"] / denom) * 100
+        features_df["opp_def_eff_roll"] = features_df["opp_def_eff_roll"].where(
+            features_df["opp_def_eff_roll"].notna(), inferred
+        )
+
+    return features_df
+
+
 def build_features_for_date(date_str: str) -> pd.DataFrame:
     """
     Core driver for a single date:
@@ -357,6 +479,8 @@ def build_features_for_date(date_str: str) -> pd.DataFrame:
 
         home_key = game_row["home_team_key"]
         away_key = game_row["away_team_key"]
+        print("home team key: ", home_key)
+        print("away team key: ", away_key)
 
         # lookup raw stats
         home_stats = team_lookup.get(home_key, {})
@@ -373,19 +497,24 @@ def build_features_for_date(date_str: str) -> pd.DataFrame:
         )
         feature_rows.append(row_home)
 
-        # Build "away team vs home team" row
-        row_away = build_team_view_row(
-            game_row=game_row,
-            team_key=away_key,
-            opp_key=home_key,
-            team_stats=away_stats,
-            opp_stats=home_stats,
-            odds_row=odds_row
-        )
-        feature_rows.append(row_away)
-
     features_df = pd.DataFrame(feature_rows)
+    features_df = _recompute_derived_metrics(features_df)
     features_df = _compute_matchup_features(features_df)
+    features_df = _recompute_deltas(features_df)
+    features_df = format_for_model(features_df)
+    missing_features = [
+    'team_winpct_roll', 'opp_winpct_roll',
+    'team_SOS_roll', 'opp_SOS_roll', 'delta_SOS_roll',
+    'team_pace_roll', 'opp_pace_roll', 'delta_pace_roll',
+    'team_off_eff_roll', 'team_def_eff_roll',
+    'opp_off_eff_roll', 'opp_def_eff_roll',
+    'expected_possessions', 'team_expected_points', 'opp_expected_points',
+    'pregame_margin_projection', 'pregame_total_projection'
+    ]
+
+    for col in missing_features:
+        if col not in features_df.columns:
+            features_df[col] = 0.0
 
     torvik_metrics = [
         ("barthag", True),

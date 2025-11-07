@@ -1,0 +1,3048 @@
+{
+  "source": "sports-reference.com",
+  "scraped_at": "2025-11-07T01:27:47.131175Z",
+  "conferences": {
+    "ACC": [
+      {
+        "name": "North Carolina",
+        "slug": "north-carolina"
+      },
+      {
+        "name": "Duke",
+        "slug": "duke"
+      },
+      {
+        "name": "NC State",
+        "slug": "north-carolina-state"
+      },
+      {
+        "name": "Virginia",
+        "slug": "virginia"
+      },
+      {
+        "name": "Wake Forest",
+        "slug": "wake-forest"
+      },
+      {
+        "name": "Clemson",
+        "slug": "clemson"
+      },
+      {
+        "name": "Maryland",
+        "slug": "maryland"
+      },
+      {
+        "name": "Georgia Tech",
+        "slug": "georgia-tech"
+      },
+      {
+        "name": "Florida State",
+        "slug": "florida-state"
+      },
+      {
+        "name": "Miami (FL)",
+        "slug": "miami-fl"
+      },
+      {
+        "name": "Virginia Tech",
+        "slug": "virginia-tech"
+      },
+      {
+        "name": "Boston College",
+        "slug": "boston-college"
+      },
+      {
+        "name": "Syracuse",
+        "slug": "syracuse"
+      },
+      {
+        "name": "Notre Dame",
+        "slug": "notre-dame"
+      },
+      {
+        "name": "South Carolina",
+        "slug": "south-carolina"
+      },
+      {
+        "name": "Louisville",
+        "slug": "louisville"
+      },
+      {
+        "name": "Pittsburgh",
+        "slug": "pittsburgh"
+      },
+      {
+        "name": "Southern Methodist",
+        "slug": "southern-methodist"
+      },
+      {
+        "name": "Stanford",
+        "slug": "stanford"
+      },
+      {
+        "name": "California",
+        "slug": "california"
+      }
+    ],
+    "AEC": [
+      {
+        "name": "Vermont",
+        "slug": "vermont"
+      },
+      {
+        "name": "Boston University",
+        "slug": "boston-university"
+      },
+      {
+        "name": "Maine",
+        "slug": "maine"
+      },
+      {
+        "name": "Hartford",
+        "slug": "hartford"
+      },
+      {
+        "name": "New Hampshire",
+        "slug": "new-hampshire"
+      },
+      {
+        "name": "Northeastern",
+        "slug": "northeastern"
+      },
+      {
+        "name": "Albany (NY)",
+        "slug": "albany-ny"
+      },
+      {
+        "name": "Stony Brook",
+        "slug": "stony-brook"
+      },
+      {
+        "name": "Maryland-Baltimore County",
+        "slug": "maryland-baltimore-county"
+      },
+      {
+        "name": "Binghamton",
+        "slug": "binghamton"
+      },
+      {
+        "name": "Drexel",
+        "slug": "drexel"
+      },
+      {
+        "name": "Delaware",
+        "slug": "delaware"
+      },
+      {
+        "name": "Massachusetts-Lowell",
+        "slug": "massachusetts-lowell"
+      },
+      {
+        "name": "Canisius",
+        "slug": "canisius"
+      },
+      {
+        "name": "Niagara",
+        "slug": "niagara"
+      },
+      {
+        "name": "Hofstra",
+        "slug": "hofstra"
+      },
+      {
+        "name": "Siena",
+        "slug": "siena"
+      },
+      {
+        "name": "Holy Cross",
+        "slug": "holy-cross"
+      },
+      {
+        "name": "Colgate",
+        "slug": "colgate"
+      },
+      {
+        "name": "Towson",
+        "slug": "towson"
+      },
+      {
+        "name": "Bryant",
+        "slug": "bryant"
+      },
+      {
+        "name": "NJIT",
+        "slug": "njit"
+      },
+      {
+        "name": "Rhode Island",
+        "slug": "rhode-island"
+      }
+    ],
+    "American": [
+      {
+        "name": "Memphis",
+        "slug": "memphis"
+      },
+      {
+        "name": "Houston",
+        "slug": "houston"
+      },
+      {
+        "name": "Cincinnati",
+        "slug": "cincinnati"
+      },
+      {
+        "name": "Southern Methodist",
+        "slug": "southern-methodist"
+      },
+      {
+        "name": "Temple",
+        "slug": "temple"
+      },
+      {
+        "name": "Tulsa",
+        "slug": "tulsa"
+      },
+      {
+        "name": "UCF",
+        "slug": "central-florida"
+      },
+      {
+        "name": "South Florida",
+        "slug": "south-florida"
+      },
+      {
+        "name": "Wichita State",
+        "slug": "wichita-state"
+      },
+      {
+        "name": "East Carolina",
+        "slug": "east-carolina"
+      },
+      {
+        "name": "Connecticut",
+        "slug": "connecticut"
+      },
+      {
+        "name": "Tulane",
+        "slug": "tulane"
+      },
+      {
+        "name": "UAB",
+        "slug": "alabama-birmingham"
+      },
+      {
+        "name": "North Texas",
+        "slug": "north-texas"
+      },
+      {
+        "name": "Florida Atlantic",
+        "slug": "florida-atlantic"
+      },
+      {
+        "name": "Charlotte",
+        "slug": "charlotte"
+      },
+      {
+        "name": "Louisville",
+        "slug": "louisville"
+      },
+      {
+        "name": "Rice",
+        "slug": "rice"
+      },
+      {
+        "name": "UTSA",
+        "slug": "texas-san-antonio"
+      },
+      {
+        "name": "Rutgers",
+        "slug": "rutgers"
+      }
+    ],
+    "Atlantic 10": [
+      {
+        "name": "Massachusetts",
+        "slug": "massachusetts"
+      },
+      {
+        "name": "George Washington",
+        "slug": "george-washington"
+      },
+      {
+        "name": "Saint Joseph's",
+        "slug": "saint-josephs"
+      },
+      {
+        "name": "Rhode Island",
+        "slug": "rhode-island"
+      },
+      {
+        "name": "St. Bonaventure",
+        "slug": "st-bonaventure"
+      },
+      {
+        "name": "Temple",
+        "slug": "temple"
+      },
+      {
+        "name": "Dayton",
+        "slug": "dayton"
+      },
+      {
+        "name": "Duquesne",
+        "slug": "duquesne"
+      },
+      {
+        "name": "Richmond",
+        "slug": "richmond"
+      },
+      {
+        "name": "Xavier",
+        "slug": "xavier"
+      },
+      {
+        "name": "La Salle",
+        "slug": "la-salle"
+      },
+      {
+        "name": "Saint Louis",
+        "slug": "saint-louis"
+      },
+      {
+        "name": "West Virginia",
+        "slug": "west-virginia"
+      },
+      {
+        "name": "Virginia Commonwealth",
+        "slug": "virginia-commonwealth"
+      },
+      {
+        "name": "Fordham",
+        "slug": "fordham"
+      },
+      {
+        "name": "Rutgers",
+        "slug": "rutgers"
+      },
+      {
+        "name": "Davidson",
+        "slug": "davidson"
+      },
+      {
+        "name": "George Mason",
+        "slug": "george-mason"
+      },
+      {
+        "name": "Penn State",
+        "slug": "penn-state"
+      },
+      {
+        "name": "Charlotte",
+        "slug": "charlotte"
+      },
+      {
+        "name": "Pittsburgh",
+        "slug": "pittsburgh"
+      },
+      {
+        "name": "Villanova",
+        "slug": "villanova"
+      },
+      {
+        "name": "Virginia Tech",
+        "slug": "virginia-tech"
+      },
+      {
+        "name": "Loyola (IL)",
+        "slug": "loyola-il"
+      },
+      {
+        "name": "Butler",
+        "slug": "butler"
+      }
+    ],
+    "Atlantic Sun": [
+      {
+        "name": "Mercer",
+        "slug": "mercer"
+      },
+      {
+        "name": "Stetson",
+        "slug": "stetson"
+      },
+      {
+        "name": "Jacksonville",
+        "slug": "jacksonville"
+      },
+      {
+        "name": "Lipscomb",
+        "slug": "lipscomb"
+      },
+      {
+        "name": "Samford",
+        "slug": "samford"
+      },
+      {
+        "name": "Florida Gulf Coast",
+        "slug": "florida-gulf-coast"
+      },
+      {
+        "name": "Georgia State",
+        "slug": "georgia-state"
+      },
+      {
+        "name": "Centenary (LA)",
+        "slug": "centenary-la"
+      },
+      {
+        "name": "North Florida",
+        "slug": "north-florida"
+      },
+      {
+        "name": "Little Rock",
+        "slug": "arkansas-little-rock"
+      },
+      {
+        "name": "Belmont",
+        "slug": "belmont"
+      },
+      {
+        "name": "Georgia Southern",
+        "slug": "georgia-southern"
+      },
+      {
+        "name": "UCF",
+        "slug": "central-florida"
+      },
+      {
+        "name": "Kennesaw State",
+        "slug": "kennesaw-state"
+      },
+      {
+        "name": "Campbell",
+        "slug": "campbell"
+      },
+      {
+        "name": "East Tennessee State",
+        "slug": "east-tennessee-state"
+      },
+      {
+        "name": "Houston Christian",
+        "slug": "houston-baptist"
+      },
+      {
+        "name": "College of Charleston",
+        "slug": "college-of-charleston"
+      },
+      {
+        "name": "South Carolina Upstate",
+        "slug": "south-carolina-upstate"
+      },
+      {
+        "name": "Jacksonville State",
+        "slug": "jacksonville-state"
+      },
+      {
+        "name": "Troy",
+        "slug": "troy"
+      },
+      {
+        "name": "Liberty",
+        "slug": "liberty"
+      },
+      {
+        "name": "Florida Atlantic",
+        "slug": "florida-atlantic"
+      },
+      {
+        "name": "Hardin-Simmons",
+        "slug": "hardin-simmons"
+      },
+      {
+        "name": "Florida International",
+        "slug": "florida-international"
+      },
+      {
+        "name": "North Alabama",
+        "slug": "north-alabama"
+      },
+      {
+        "name": "UTSA",
+        "slug": "texas-san-antonio"
+      },
+      {
+        "name": "NJIT",
+        "slug": "njit"
+      },
+      {
+        "name": "Louisiana-Monroe",
+        "slug": "louisiana-monroe"
+      },
+      {
+        "name": "Gardner-Webb",
+        "slug": "gardner-webb"
+      },
+      {
+        "name": "Eastern Kentucky",
+        "slug": "eastern-kentucky"
+      },
+      {
+        "name": "Southeastern Louisiana",
+        "slug": "southeastern-louisiana"
+      },
+      {
+        "name": "Bellarmine",
+        "slug": "bellarmine"
+      },
+      {
+        "name": "Queens (NC)",
+        "slug": "queens-nc"
+      },
+      {
+        "name": "Northwestern State",
+        "slug": "northwestern-state"
+      },
+      {
+        "name": "Austin Peay",
+        "slug": "austin-peay"
+      },
+      {
+        "name": "Central Arkansas",
+        "slug": "central-arkansas"
+      },
+      {
+        "name": "Nicholls State",
+        "slug": "nicholls-state"
+      },
+      {
+        "name": "Northern Kentucky",
+        "slug": "northern-kentucky"
+      },
+      {
+        "name": "Texas-Rio Grande Valley",
+        "slug": "texas-pan-american"
+      },
+      {
+        "name": "Oklahoma City",
+        "slug": "oklahoma-city"
+      },
+      {
+        "name": "West Georgia",
+        "slug": "west-georgia"
+      }
+    ],
+    "Big 12": [
+      {
+        "name": "Kansas",
+        "slug": "kansas"
+      },
+      {
+        "name": "Texas",
+        "slug": "texas"
+      },
+      {
+        "name": "Oklahoma",
+        "slug": "oklahoma"
+      },
+      {
+        "name": "Oklahoma State",
+        "slug": "oklahoma-state"
+      },
+      {
+        "name": "Baylor",
+        "slug": "baylor"
+      },
+      {
+        "name": "Iowa State",
+        "slug": "iowa-state"
+      },
+      {
+        "name": "Texas Tech",
+        "slug": "texas-tech"
+      },
+      {
+        "name": "Kansas State",
+        "slug": "kansas-state"
+      },
+      {
+        "name": "Missouri",
+        "slug": "missouri"
+      },
+      {
+        "name": "Texas A&M",
+        "slug": "texas-am"
+      },
+      {
+        "name": "Colorado",
+        "slug": "colorado"
+      },
+      {
+        "name": "West Virginia",
+        "slug": "west-virginia"
+      },
+      {
+        "name": "Nebraska",
+        "slug": "nebraska"
+      },
+      {
+        "name": "TCU",
+        "slug": "texas-christian"
+      },
+      {
+        "name": "Houston",
+        "slug": "houston"
+      },
+      {
+        "name": "Brigham Young",
+        "slug": "brigham-young"
+      },
+      {
+        "name": "Cincinnati",
+        "slug": "cincinnati"
+      },
+      {
+        "name": "UCF",
+        "slug": "central-florida"
+      },
+      {
+        "name": "Arizona",
+        "slug": "arizona"
+      },
+      {
+        "name": "Utah",
+        "slug": "utah"
+      },
+      {
+        "name": "Arizona State",
+        "slug": "arizona-state"
+      }
+    ],
+    "Big East": [
+      {
+        "name": "Villanova",
+        "slug": "villanova"
+      },
+      {
+        "name": "Georgetown",
+        "slug": "georgetown"
+      },
+      {
+        "name": "Connecticut",
+        "slug": "connecticut"
+      },
+      {
+        "name": "St. John's (NY)",
+        "slug": "st-johns-ny"
+      },
+      {
+        "name": "Syracuse",
+        "slug": "syracuse"
+      },
+      {
+        "name": "Providence",
+        "slug": "providence"
+      },
+      {
+        "name": "Seton Hall",
+        "slug": "seton-hall"
+      },
+      {
+        "name": "Pittsburgh",
+        "slug": "pittsburgh"
+      },
+      {
+        "name": "Boston College",
+        "slug": "boston-college"
+      },
+      {
+        "name": "Marquette",
+        "slug": "marquette"
+      },
+      {
+        "name": "Notre Dame",
+        "slug": "notre-dame"
+      },
+      {
+        "name": "West Virginia",
+        "slug": "west-virginia"
+      },
+      {
+        "name": "Creighton",
+        "slug": "creighton"
+      },
+      {
+        "name": "Xavier",
+        "slug": "xavier"
+      },
+      {
+        "name": "Rutgers",
+        "slug": "rutgers"
+      },
+      {
+        "name": "DePaul",
+        "slug": "depaul"
+      },
+      {
+        "name": "Butler",
+        "slug": "butler"
+      },
+      {
+        "name": "Louisville",
+        "slug": "louisville"
+      },
+      {
+        "name": "Miami (FL)",
+        "slug": "miami-fl"
+      },
+      {
+        "name": "Cincinnati",
+        "slug": "cincinnati"
+      },
+      {
+        "name": "South Florida",
+        "slug": "south-florida"
+      },
+      {
+        "name": "Virginia Tech",
+        "slug": "virginia-tech"
+      }
+    ],
+    "Big Sky": [
+      {
+        "name": "Weber State",
+        "slug": "weber-state"
+      },
+      {
+        "name": "Montana",
+        "slug": "montana"
+      },
+      {
+        "name": "Montana State",
+        "slug": "montana-state"
+      },
+      {
+        "name": "Idaho State",
+        "slug": "idaho-state"
+      },
+      {
+        "name": "Northern Arizona",
+        "slug": "northern-arizona"
+      },
+      {
+        "name": "Idaho",
+        "slug": "idaho"
+      },
+      {
+        "name": "Eastern Washington",
+        "slug": "eastern-washington"
+      },
+      {
+        "name": "Portland State",
+        "slug": "portland-state"
+      },
+      {
+        "name": "Boise State",
+        "slug": "boise-state"
+      },
+      {
+        "name": "Northern Colorado",
+        "slug": "northern-colorado"
+      },
+      {
+        "name": "Sacramento State",
+        "slug": "sacramento-state"
+      },
+      {
+        "name": "Gonzaga",
+        "slug": "gonzaga"
+      },
+      {
+        "name": "Nevada",
+        "slug": "nevada"
+      },
+      {
+        "name": "Southern Utah",
+        "slug": "southern-utah"
+      },
+      {
+        "name": "North Dakota",
+        "slug": "north-dakota"
+      },
+      {
+        "name": "Cal State Northridge",
+        "slug": "cal-state-northridge"
+      }
+    ],
+    "Big South": [
+      {
+        "name": "Winthrop",
+        "slug": "winthrop"
+      },
+      {
+        "name": "Radford",
+        "slug": "radford"
+      },
+      {
+        "name": "UNC Asheville",
+        "slug": "north-carolina-asheville"
+      },
+      {
+        "name": "Charleston Southern",
+        "slug": "charleston-southern"
+      },
+      {
+        "name": "Coastal Carolina",
+        "slug": "coastal-carolina"
+      },
+      {
+        "name": "High Point",
+        "slug": "high-point"
+      },
+      {
+        "name": "Liberty",
+        "slug": "liberty"
+      },
+      {
+        "name": "Campbell",
+        "slug": "campbell"
+      },
+      {
+        "name": "Gardner-Webb",
+        "slug": "gardner-webb"
+      },
+      {
+        "name": "Longwood",
+        "slug": "longwood"
+      },
+      {
+        "name": "Presbyterian",
+        "slug": "presbyterian"
+      },
+      {
+        "name": "Virginia Military Institute",
+        "slug": "virginia-military-institute"
+      },
+      {
+        "name": "Birmingham-Southern",
+        "slug": "birmingham-southern"
+      },
+      {
+        "name": "UNC Greensboro",
+        "slug": "north-carolina-greensboro"
+      },
+      {
+        "name": "South Carolina Upstate",
+        "slug": "south-carolina-upstate"
+      },
+      {
+        "name": "Augusta",
+        "slug": "augusta-state"
+      },
+      {
+        "name": "Maryland-Baltimore County",
+        "slug": "maryland-baltimore-county"
+      },
+      {
+        "name": "Hampton",
+        "slug": "hampton"
+      },
+      {
+        "name": "Towson",
+        "slug": "towson"
+      },
+      {
+        "name": "Elon",
+        "slug": "elon"
+      },
+      {
+        "name": "Davidson",
+        "slug": "davidson"
+      },
+      {
+        "name": "North Carolina A&T",
+        "slug": "north-carolina-at"
+      },
+      {
+        "name": "Armstrong",
+        "slug": "armstrong"
+      }
+    ],
+    "Big Ten": [
+      {
+        "name": "Purdue",
+        "slug": "purdue"
+      },
+      {
+        "name": "Indiana",
+        "slug": "indiana"
+      },
+      {
+        "name": "Illinois",
+        "slug": "illinois"
+      },
+      {
+        "name": "Ohio State",
+        "slug": "ohio-state"
+      },
+      {
+        "name": "Iowa",
+        "slug": "iowa"
+      },
+      {
+        "name": "Wisconsin",
+        "slug": "wisconsin"
+      },
+      {
+        "name": "Michigan",
+        "slug": "michigan"
+      },
+      {
+        "name": "Minnesota",
+        "slug": "minnesota"
+      },
+      {
+        "name": "Michigan State",
+        "slug": "michigan-state"
+      },
+      {
+        "name": "Northwestern",
+        "slug": "northwestern"
+      },
+      {
+        "name": "Penn State",
+        "slug": "penn-state"
+      },
+      {
+        "name": "Chicago",
+        "slug": "chicago"
+      },
+      {
+        "name": "Maryland",
+        "slug": "maryland"
+      },
+      {
+        "name": "Nebraska",
+        "slug": "nebraska"
+      },
+      {
+        "name": "Rutgers",
+        "slug": "rutgers"
+      },
+      {
+        "name": "Oregon",
+        "slug": "oregon"
+      },
+      {
+        "name": "UCLA",
+        "slug": "ucla"
+      },
+      {
+        "name": "Southern California",
+        "slug": "southern-california"
+      },
+      {
+        "name": "Washington",
+        "slug": "washington"
+      }
+    ],
+    "Big West": [
+      {
+        "name": "Long Beach State",
+        "slug": "long-beach-state"
+      },
+      {
+        "name": "UC Santa Barbara",
+        "slug": "california-santa-barbara"
+      },
+      {
+        "name": "UC Irvine",
+        "slug": "california-irvine"
+      },
+      {
+        "name": "Cal State Fullerton",
+        "slug": "cal-state-fullerton"
+      },
+      {
+        "name": "Pacific",
+        "slug": "pacific"
+      },
+      {
+        "name": "Utah State",
+        "slug": "utah-state"
+      },
+      {
+        "name": "Nevada-Las Vegas",
+        "slug": "nevada-las-vegas"
+      },
+      {
+        "name": "Fresno State",
+        "slug": "fresno-state"
+      },
+      {
+        "name": "New Mexico State",
+        "slug": "new-mexico-state"
+      },
+      {
+        "name": "Cal Poly",
+        "slug": "cal-poly"
+      },
+      {
+        "name": "Cal State Northridge",
+        "slug": "cal-state-northridge"
+      },
+      {
+        "name": "San Jose State",
+        "slug": "san-jose-state"
+      },
+      {
+        "name": "UC Riverside",
+        "slug": "california-riverside"
+      },
+      {
+        "name": "UC Davis",
+        "slug": "california-davis"
+      },
+      {
+        "name": "Hawaii",
+        "slug": "hawaii"
+      },
+      {
+        "name": "San Diego State",
+        "slug": "san-diego-state"
+      },
+      {
+        "name": "Nevada",
+        "slug": "nevada"
+      },
+      {
+        "name": "Idaho",
+        "slug": "idaho"
+      },
+      {
+        "name": "UC San Diego",
+        "slug": "california-san-diego"
+      },
+      {
+        "name": "Boise State",
+        "slug": "boise-state"
+      },
+      {
+        "name": "Cal State Bakersfield",
+        "slug": "cal-state-bakersfield"
+      },
+      {
+        "name": "Cal State Los Angeles",
+        "slug": "cal-state-los-angeles"
+      },
+      {
+        "name": "North Texas",
+        "slug": "north-texas"
+      }
+    ],
+    "Coastal Athletic Association": [
+      {
+        "name": "UNC Wilmington",
+        "slug": "north-carolina-wilmington"
+      },
+      {
+        "name": "James Madison",
+        "slug": "james-madison"
+      },
+      {
+        "name": "William & Mary",
+        "slug": "william-mary"
+      },
+      {
+        "name": "George Mason",
+        "slug": "george-mason"
+      },
+      {
+        "name": "Old Dominion",
+        "slug": "old-dominion"
+      },
+      {
+        "name": "Hofstra",
+        "slug": "hofstra"
+      },
+      {
+        "name": "Richmond",
+        "slug": "richmond"
+      },
+      {
+        "name": "Drexel",
+        "slug": "drexel"
+      },
+      {
+        "name": "Towson",
+        "slug": "towson"
+      },
+      {
+        "name": "Virginia Commonwealth",
+        "slug": "virginia-commonwealth"
+      },
+      {
+        "name": "Delaware",
+        "slug": "delaware"
+      },
+      {
+        "name": "Northeastern",
+        "slug": "northeastern"
+      },
+      {
+        "name": "East Carolina",
+        "slug": "east-carolina"
+      },
+      {
+        "name": "College of Charleston",
+        "slug": "college-of-charleston"
+      },
+      {
+        "name": "American",
+        "slug": "american"
+      },
+      {
+        "name": "Navy",
+        "slug": "navy"
+      },
+      {
+        "name": "Elon",
+        "slug": "elon"
+      },
+      {
+        "name": "Georgia State",
+        "slug": "georgia-state"
+      },
+      {
+        "name": "Stony Brook",
+        "slug": "stony-brook"
+      },
+      {
+        "name": "Monmouth",
+        "slug": "monmouth"
+      },
+      {
+        "name": "Hampton",
+        "slug": "hampton"
+      },
+      {
+        "name": "Campbell",
+        "slug": "campbell"
+      },
+      {
+        "name": "Saint Francis (PA)",
+        "slug": "saint-francis-pa"
+      },
+      {
+        "name": "North Carolina A&T",
+        "slug": "north-carolina-at"
+      },
+      {
+        "name": "Baltimore",
+        "slug": "baltimore"
+      },
+      {
+        "name": "Robert Morris",
+        "slug": "robert-morris"
+      },
+      {
+        "name": "Catholic",
+        "slug": "catholic"
+      }
+    ],
+    "Conference USA": [
+      {
+        "name": "UAB",
+        "slug": "alabama-birmingham"
+      },
+      {
+        "name": "Memphis",
+        "slug": "memphis"
+      },
+      {
+        "name": "Southern Mississippi",
+        "slug": "southern-mississippi"
+      },
+      {
+        "name": "UTEP",
+        "slug": "texas-el-paso"
+      },
+      {
+        "name": "Charlotte",
+        "slug": "charlotte"
+      },
+      {
+        "name": "Marshall",
+        "slug": "marshall"
+      },
+      {
+        "name": "Tulane",
+        "slug": "tulane"
+      },
+      {
+        "name": "Louisiana Tech",
+        "slug": "louisiana-tech"
+      },
+      {
+        "name": "Cincinnati",
+        "slug": "cincinnati"
+      },
+      {
+        "name": "Houston",
+        "slug": "houston"
+      },
+      {
+        "name": "Middle Tennessee",
+        "slug": "middle-tennessee"
+      },
+      {
+        "name": "Rice",
+        "slug": "rice"
+      },
+      {
+        "name": "Western Kentucky",
+        "slug": "western-kentucky"
+      },
+      {
+        "name": "Louisville",
+        "slug": "louisville"
+      },
+      {
+        "name": "Marquette",
+        "slug": "marquette"
+      },
+      {
+        "name": "North Texas",
+        "slug": "north-texas"
+      },
+      {
+        "name": "Old Dominion",
+        "slug": "old-dominion"
+      },
+      {
+        "name": "Tulsa",
+        "slug": "tulsa"
+      },
+      {
+        "name": "East Carolina",
+        "slug": "east-carolina"
+      },
+      {
+        "name": "Florida International",
+        "slug": "florida-international"
+      },
+      {
+        "name": "Saint Louis",
+        "slug": "saint-louis"
+      },
+      {
+        "name": "Florida Atlantic",
+        "slug": "florida-atlantic"
+      },
+      {
+        "name": "UCF",
+        "slug": "central-florida"
+      },
+      {
+        "name": "South Florida",
+        "slug": "south-florida"
+      },
+      {
+        "name": "DePaul",
+        "slug": "depaul"
+      },
+      {
+        "name": "UTSA",
+        "slug": "texas-san-antonio"
+      },
+      {
+        "name": "Southern Methodist",
+        "slug": "southern-methodist"
+      },
+      {
+        "name": "TCU",
+        "slug": "texas-christian"
+      },
+      {
+        "name": "Liberty",
+        "slug": "liberty"
+      },
+      {
+        "name": "Jacksonville State",
+        "slug": "jacksonville-state"
+      },
+      {
+        "name": "Sam Houston",
+        "slug": "sam-houston-state"
+      },
+      {
+        "name": "New Mexico State",
+        "slug": "new-mexico-state"
+      },
+      {
+        "name": "Kennesaw State",
+        "slug": "kennesaw-state"
+      },
+      {
+        "name": "Missouri State",
+        "slug": "missouri-state"
+      },
+      {
+        "name": "Delaware",
+        "slug": "delaware"
+      }
+    ],
+    "Horizon League": [
+      {
+        "name": "Detroit Mercy",
+        "slug": "detroit-mercy"
+      },
+      {
+        "name": "Butler",
+        "slug": "butler"
+      },
+      {
+        "name": "Wright State",
+        "slug": "wright-state"
+      },
+      {
+        "name": "Green Bay",
+        "slug": "green-bay"
+      },
+      {
+        "name": "Milwaukee",
+        "slug": "milwaukee"
+      },
+      {
+        "name": "Cleveland State",
+        "slug": "cleveland-state"
+      },
+      {
+        "name": "Loyola (IL)",
+        "slug": "loyola-il"
+      },
+      {
+        "name": "Illinois-Chicago",
+        "slug": "illinois-chicago"
+      },
+      {
+        "name": "Xavier",
+        "slug": "xavier"
+      },
+      {
+        "name": "Youngstown State",
+        "slug": "youngstown-state"
+      },
+      {
+        "name": "Evansville",
+        "slug": "evansville"
+      },
+      {
+        "name": "Valparaiso",
+        "slug": "valparaiso"
+      },
+      {
+        "name": "Oakland",
+        "slug": "oakland"
+      },
+      {
+        "name": "Northern Kentucky",
+        "slug": "northern-kentucky"
+      },
+      {
+        "name": "Saint Louis",
+        "slug": "saint-louis"
+      },
+      {
+        "name": "Oral Roberts",
+        "slug": "oral-roberts"
+      },
+      {
+        "name": "Purdue Fort Wayne",
+        "slug": "ipfw"
+      },
+      {
+        "name": "Dayton",
+        "slug": "dayton"
+      },
+      {
+        "name": "IU Indy",
+        "slug": "iupui"
+      },
+      {
+        "name": "Robert Morris",
+        "slug": "robert-morris"
+      },
+      {
+        "name": "Oklahoma City",
+        "slug": "oklahoma-city"
+      },
+      {
+        "name": "Northern Illinois",
+        "slug": "northern-illinois"
+      },
+      {
+        "name": "La Salle",
+        "slug": "la-salle"
+      },
+      {
+        "name": "Marquette",
+        "slug": "marquette"
+      },
+      {
+        "name": "Duquesne",
+        "slug": "duquesne"
+      }
+    ],
+    "Ivy League": [
+      {
+        "name": "Princeton",
+        "slug": "princeton"
+      },
+      {
+        "name": "Pennsylvania",
+        "slug": "pennsylvania"
+      },
+      {
+        "name": "Yale",
+        "slug": "yale"
+      },
+      {
+        "name": "Columbia",
+        "slug": "columbia"
+      },
+      {
+        "name": "Cornell",
+        "slug": "cornell"
+      },
+      {
+        "name": "Dartmouth",
+        "slug": "dartmouth"
+      },
+      {
+        "name": "Harvard",
+        "slug": "harvard"
+      },
+      {
+        "name": "Brown",
+        "slug": "brown"
+      }
+    ],
+    "MAAC": [
+      {
+        "name": "Iona",
+        "slug": "iona"
+      },
+      {
+        "name": "Saint Peter's",
+        "slug": "saint-peters"
+      },
+      {
+        "name": "Manhattan",
+        "slug": "manhattan"
+      },
+      {
+        "name": "Fairfield",
+        "slug": "fairfield"
+      },
+      {
+        "name": "Siena",
+        "slug": "siena"
+      },
+      {
+        "name": "Niagara",
+        "slug": "niagara"
+      },
+      {
+        "name": "Canisius",
+        "slug": "canisius"
+      },
+      {
+        "name": "Rider",
+        "slug": "rider"
+      },
+      {
+        "name": "Marist",
+        "slug": "marist"
+      },
+      {
+        "name": "Loyola (MD)",
+        "slug": "loyola-md"
+      },
+      {
+        "name": "La Salle",
+        "slug": "la-salle"
+      },
+      {
+        "name": "Quinnipiac",
+        "slug": "quinnipiac"
+      },
+      {
+        "name": "Monmouth",
+        "slug": "monmouth"
+      },
+      {
+        "name": "Fordham",
+        "slug": "fordham"
+      },
+      {
+        "name": "Army",
+        "slug": "army"
+      },
+      {
+        "name": "Holy Cross",
+        "slug": "holy-cross"
+      },
+      {
+        "name": "Mount St. Mary's",
+        "slug": "mount-st-marys"
+      },
+      {
+        "name": "Merrimack",
+        "slug": "merrimack"
+      },
+      {
+        "name": "Sacred Heart",
+        "slug": "sacred-heart"
+      }
+    ],
+    "MAC": [
+      {
+        "name": "Ohio",
+        "slug": "ohio"
+      },
+      {
+        "name": "Miami (OH)",
+        "slug": "miami-oh"
+      },
+      {
+        "name": "Toledo",
+        "slug": "toledo"
+      },
+      {
+        "name": "Kent State",
+        "slug": "kent-state"
+      },
+      {
+        "name": "Bowling Green",
+        "slug": "bowling-green-state"
+      },
+      {
+        "name": "Western Michigan",
+        "slug": "western-michigan"
+      },
+      {
+        "name": "Ball State",
+        "slug": "ball-state"
+      },
+      {
+        "name": "Eastern Michigan",
+        "slug": "eastern-michigan"
+      },
+      {
+        "name": "Central Michigan",
+        "slug": "central-michigan"
+      },
+      {
+        "name": "Akron",
+        "slug": "akron"
+      },
+      {
+        "name": "Northern Illinois",
+        "slug": "northern-illinois"
+      },
+      {
+        "name": "Buffalo",
+        "slug": "buffalo"
+      },
+      {
+        "name": "Marshall",
+        "slug": "marshall"
+      },
+      {
+        "name": "Cincinnati",
+        "slug": "cincinnati"
+      },
+      {
+        "name": "Case Western Reserve",
+        "slug": "case-western-reserve"
+      },
+      {
+        "name": "Butler",
+        "slug": "butler"
+      },
+      {
+        "name": "Wayne State (MI)",
+        "slug": "wayne-state-mi"
+      },
+      {
+        "name": "Massachusetts",
+        "slug": "massachusetts"
+      }
+    ],
+    "MEAC": [
+      {
+        "name": "South Carolina State",
+        "slug": "south-carolina-state"
+      },
+      {
+        "name": "North Carolina A&T",
+        "slug": "north-carolina-at"
+      },
+      {
+        "name": "Howard",
+        "slug": "howard"
+      },
+      {
+        "name": "Delaware State",
+        "slug": "delaware-state"
+      },
+      {
+        "name": "Coppin State",
+        "slug": "coppin-state"
+      },
+      {
+        "name": "Morgan State",
+        "slug": "morgan-state"
+      },
+      {
+        "name": "Norfolk State",
+        "slug": "norfolk-state"
+      },
+      {
+        "name": "Florida A&M",
+        "slug": "florida-am"
+      },
+      {
+        "name": "Bethune-Cookman",
+        "slug": "bethune-cookman"
+      },
+      {
+        "name": "Maryland-Eastern Shore",
+        "slug": "maryland-eastern-shore"
+      },
+      {
+        "name": "Hampton",
+        "slug": "hampton"
+      },
+      {
+        "name": "North Carolina Central",
+        "slug": "north-carolina-central"
+      },
+      {
+        "name": "Savannah State",
+        "slug": "savannah-state"
+      },
+      {
+        "name": "Winston-Salem",
+        "slug": "winston-salem"
+      }
+    ],
+    "MVC": [
+      {
+        "name": "Drake",
+        "slug": "drake"
+      },
+      {
+        "name": "Bradley",
+        "slug": "bradley"
+      },
+      {
+        "name": "Wichita State",
+        "slug": "wichita-state"
+      },
+      {
+        "name": "Creighton",
+        "slug": "creighton"
+      },
+      {
+        "name": "Southern Illinois",
+        "slug": "southern-illinois"
+      },
+      {
+        "name": "Tulsa",
+        "slug": "tulsa"
+      },
+      {
+        "name": "Illinois State",
+        "slug": "illinois-state"
+      },
+      {
+        "name": "Indiana State",
+        "slug": "indiana-state"
+      },
+      {
+        "name": "Missouri State",
+        "slug": "missouri-state"
+      },
+      {
+        "name": "Northern Iowa",
+        "slug": "northern-iowa"
+      },
+      {
+        "name": "Oklahoma State",
+        "slug": "oklahoma-state"
+      },
+      {
+        "name": "Saint Louis",
+        "slug": "saint-louis"
+      },
+      {
+        "name": "Evansville",
+        "slug": "evansville"
+      },
+      {
+        "name": "Washington (MO)",
+        "slug": "washington-mo"
+      },
+      {
+        "name": "Kansas",
+        "slug": "kansas"
+      },
+      {
+        "name": "Cincinnati",
+        "slug": "cincinnati"
+      },
+      {
+        "name": "Louisville",
+        "slug": "louisville"
+      },
+      {
+        "name": "Missouri",
+        "slug": "missouri"
+      },
+      {
+        "name": "New Mexico State",
+        "slug": "new-mexico-state"
+      },
+      {
+        "name": "Nebraska",
+        "slug": "nebraska"
+      },
+      {
+        "name": "West Texas A&M",
+        "slug": "west-texas-am"
+      },
+      {
+        "name": "Loyola (IL)",
+        "slug": "loyola-il"
+      },
+      {
+        "name": "Kansas State",
+        "slug": "kansas-state"
+      },
+      {
+        "name": "North Texas",
+        "slug": "north-texas"
+      },
+      {
+        "name": "Grinnell",
+        "slug": "grinnell"
+      },
+      {
+        "name": "Iowa State",
+        "slug": "iowa-state"
+      },
+      {
+        "name": "Houston",
+        "slug": "houston"
+      },
+      {
+        "name": "Detroit Mercy",
+        "slug": "detroit-mercy"
+      },
+      {
+        "name": "Valparaiso",
+        "slug": "valparaiso"
+      },
+      {
+        "name": "Oklahoma",
+        "slug": "oklahoma"
+      },
+      {
+        "name": "Memphis",
+        "slug": "memphis"
+      },
+      {
+        "name": "Belmont",
+        "slug": "belmont"
+      },
+      {
+        "name": "Murray State",
+        "slug": "murray-state"
+      },
+      {
+        "name": "Washburn",
+        "slug": "washburn"
+      },
+      {
+        "name": "Illinois-Chicago",
+        "slug": "illinois-chicago"
+      },
+      {
+        "name": "Butler",
+        "slug": "butler"
+      }
+    ],
+    "Mountain West": [
+      {
+        "name": "San Diego State",
+        "slug": "san-diego-state"
+      },
+      {
+        "name": "Nevada-Las Vegas",
+        "slug": "nevada-las-vegas"
+      },
+      {
+        "name": "New Mexico",
+        "slug": "new-mexico"
+      },
+      {
+        "name": "Colorado State",
+        "slug": "colorado-state"
+      },
+      {
+        "name": "Wyoming",
+        "slug": "wyoming"
+      },
+      {
+        "name": "Air Force",
+        "slug": "air-force"
+      },
+      {
+        "name": "Boise State",
+        "slug": "boise-state"
+      },
+      {
+        "name": "Brigham Young",
+        "slug": "brigham-young"
+      },
+      {
+        "name": "Nevada",
+        "slug": "nevada"
+      },
+      {
+        "name": "Utah State",
+        "slug": "utah-state"
+      },
+      {
+        "name": "Utah",
+        "slug": "utah"
+      },
+      {
+        "name": "Fresno State",
+        "slug": "fresno-state"
+      },
+      {
+        "name": "San Jose State",
+        "slug": "san-jose-state"
+      },
+      {
+        "name": "TCU",
+        "slug": "texas-christian"
+      },
+      {
+        "name": "Grand Canyon",
+        "slug": "grand-canyon"
+      }
+    ],
+    "NEC": [
+      {
+        "name": "FDU",
+        "slug": "fairleigh-dickinson"
+      },
+      {
+        "name": "Wagner",
+        "slug": "wagner"
+      },
+      {
+        "name": "Long Island University",
+        "slug": "long-island-university"
+      },
+      {
+        "name": "Robert Morris",
+        "slug": "robert-morris"
+      },
+      {
+        "name": "St. Francis (NY)",
+        "slug": "st-francis-ny"
+      },
+      {
+        "name": "Saint Francis (PA)",
+        "slug": "saint-francis-pa"
+      },
+      {
+        "name": "Mount St. Mary's",
+        "slug": "mount-st-marys"
+      },
+      {
+        "name": "Monmouth",
+        "slug": "monmouth"
+      },
+      {
+        "name": "Central Connecticut State",
+        "slug": "central-connecticut-state"
+      },
+      {
+        "name": "Sacred Heart",
+        "slug": "sacred-heart"
+      },
+      {
+        "name": "Marist",
+        "slug": "marist"
+      },
+      {
+        "name": "Quinnipiac",
+        "slug": "quinnipiac"
+      },
+      {
+        "name": "Bryant",
+        "slug": "bryant"
+      },
+      {
+        "name": "Loyola (MD)",
+        "slug": "loyola-md"
+      },
+      {
+        "name": "Rider",
+        "slug": "rider"
+      },
+      {
+        "name": "Merrimack",
+        "slug": "merrimack"
+      },
+      {
+        "name": "Maryland-Baltimore County",
+        "slug": "maryland-baltimore-county"
+      },
+      {
+        "name": "Siena",
+        "slug": "siena"
+      },
+      {
+        "name": "Iona",
+        "slug": "iona"
+      },
+      {
+        "name": "Saint Peter's",
+        "slug": "saint-peters"
+      },
+      {
+        "name": "Stonehill",
+        "slug": "stonehill"
+      },
+      {
+        "name": "Fordham",
+        "slug": "fordham"
+      },
+      {
+        "name": "Baltimore",
+        "slug": "baltimore"
+      },
+      {
+        "name": "Le Moyne",
+        "slug": "le-moyne"
+      },
+      {
+        "name": "Fairfield",
+        "slug": "fairfield"
+      },
+      {
+        "name": "Army",
+        "slug": "army"
+      },
+      {
+        "name": "Mercyhurst",
+        "slug": "mercyhurst"
+      },
+      {
+        "name": "Manhattan",
+        "slug": "manhattan"
+      },
+      {
+        "name": "Towson",
+        "slug": "towson"
+      },
+      {
+        "name": "Chicago State",
+        "slug": "chicago-state"
+      },
+      {
+        "name": "New Haven",
+        "slug": "new-haven"
+      }
+    ],
+    "OVC": [
+      {
+        "name": "Murray State",
+        "slug": "murray-state"
+      },
+      {
+        "name": "Morehead State",
+        "slug": "morehead-state"
+      },
+      {
+        "name": "Tennessee Tech",
+        "slug": "tennessee-tech"
+      },
+      {
+        "name": "Eastern Kentucky",
+        "slug": "eastern-kentucky"
+      },
+      {
+        "name": "Austin Peay",
+        "slug": "austin-peay"
+      },
+      {
+        "name": "Western Kentucky",
+        "slug": "western-kentucky"
+      },
+      {
+        "name": "Middle Tennessee",
+        "slug": "middle-tennessee"
+      },
+      {
+        "name": "Tennessee State",
+        "slug": "tennessee-state"
+      },
+      {
+        "name": "Southeast Missouri State",
+        "slug": "southeast-missouri-state"
+      },
+      {
+        "name": "Tennessee-Martin",
+        "slug": "tennessee-martin"
+      },
+      {
+        "name": "Eastern Illinois",
+        "slug": "eastern-illinois"
+      },
+      {
+        "name": "Belmont",
+        "slug": "belmont"
+      },
+      {
+        "name": "Jacksonville State",
+        "slug": "jacksonville-state"
+      },
+      {
+        "name": "East Tennessee State",
+        "slug": "east-tennessee-state"
+      },
+      {
+        "name": "Southern Illinois-Edwardsville",
+        "slug": "southern-illinois-edwardsville"
+      },
+      {
+        "name": "Akron",
+        "slug": "akron"
+      },
+      {
+        "name": "Youngstown State",
+        "slug": "youngstown-state"
+      },
+      {
+        "name": "Samford",
+        "slug": "samford"
+      },
+      {
+        "name": "Little Rock",
+        "slug": "arkansas-little-rock"
+      },
+      {
+        "name": "Lindenwood",
+        "slug": "lindenwood"
+      },
+      {
+        "name": "Southern Indiana",
+        "slug": "southern-indiana"
+      },
+      {
+        "name": "Western Illinois",
+        "slug": "western-illinois"
+      },
+      {
+        "name": "Louisville",
+        "slug": "louisville"
+      }
+    ],
+    "Patriot League": [
+      {
+        "name": "Bucknell",
+        "slug": "bucknell"
+      },
+      {
+        "name": "Colgate",
+        "slug": "colgate"
+      },
+      {
+        "name": "Holy Cross",
+        "slug": "holy-cross"
+      },
+      {
+        "name": "Navy",
+        "slug": "navy"
+      },
+      {
+        "name": "Lehigh",
+        "slug": "lehigh"
+      },
+      {
+        "name": "Lafayette",
+        "slug": "lafayette"
+      },
+      {
+        "name": "Army",
+        "slug": "army"
+      },
+      {
+        "name": "American",
+        "slug": "american"
+      },
+      {
+        "name": "Boston University",
+        "slug": "boston-university"
+      },
+      {
+        "name": "Loyola (MD)",
+        "slug": "loyola-md"
+      },
+      {
+        "name": "Fordham",
+        "slug": "fordham"
+      }
+    ],
+    "SEC": [
+      {
+        "name": "Kentucky",
+        "slug": "kentucky"
+      },
+      {
+        "name": "Alabama",
+        "slug": "alabama"
+      },
+      {
+        "name": "Tennessee",
+        "slug": "tennessee"
+      },
+      {
+        "name": "Florida",
+        "slug": "florida"
+      },
+      {
+        "name": "Vanderbilt",
+        "slug": "vanderbilt"
+      },
+      {
+        "name": "Louisiana State",
+        "slug": "louisiana-state"
+      },
+      {
+        "name": "Auburn",
+        "slug": "auburn"
+      },
+      {
+        "name": "Mississippi State",
+        "slug": "mississippi-state"
+      },
+      {
+        "name": "Georgia",
+        "slug": "georgia"
+      },
+      {
+        "name": "Mississippi",
+        "slug": "mississippi"
+      },
+      {
+        "name": "Arkansas",
+        "slug": "arkansas"
+      },
+      {
+        "name": "South Carolina",
+        "slug": "south-carolina"
+      },
+      {
+        "name": "Georgia Tech",
+        "slug": "georgia-tech"
+      },
+      {
+        "name": "Tulane",
+        "slug": "tulane"
+      },
+      {
+        "name": "Texas A&M",
+        "slug": "texas-am"
+      },
+      {
+        "name": "Missouri",
+        "slug": "missouri"
+      },
+      {
+        "name": "Oklahoma",
+        "slug": "oklahoma"
+      },
+      {
+        "name": "Texas",
+        "slug": "texas"
+      },
+      {
+        "name": "Sewanee",
+        "slug": "sewanee"
+      }
+    ],
+    "Southern Conference": [
+      {
+        "name": "Furman",
+        "slug": "furman"
+      },
+      {
+        "name": "Davidson",
+        "slug": "davidson"
+      },
+      {
+        "name": "Chattanooga",
+        "slug": "chattanooga"
+      },
+      {
+        "name": "The Citadel",
+        "slug": "citadel"
+      },
+      {
+        "name": "Virginia Military Institute",
+        "slug": "virginia-military-institute"
+      },
+      {
+        "name": "East Tennessee State",
+        "slug": "east-tennessee-state"
+      },
+      {
+        "name": "Western Carolina",
+        "slug": "western-carolina"
+      },
+      {
+        "name": "Appalachian State",
+        "slug": "appalachian-state"
+      },
+      {
+        "name": "North Carolina",
+        "slug": "north-carolina"
+      },
+      {
+        "name": "William & Mary",
+        "slug": "william-mary"
+      },
+      {
+        "name": "Wofford",
+        "slug": "wofford"
+      },
+      {
+        "name": "NC State",
+        "slug": "north-carolina-state"
+      },
+      {
+        "name": "UNC Greensboro",
+        "slug": "north-carolina-greensboro"
+      },
+      {
+        "name": "Richmond",
+        "slug": "richmond"
+      },
+      {
+        "name": "Duke",
+        "slug": "duke"
+      },
+      {
+        "name": "Virginia Tech",
+        "slug": "virginia-tech"
+      },
+      {
+        "name": "West Virginia",
+        "slug": "west-virginia"
+      },
+      {
+        "name": "Washington & Lee",
+        "slug": "washington-lee"
+      },
+      {
+        "name": "George Washington",
+        "slug": "george-washington"
+      },
+      {
+        "name": "Marshall",
+        "slug": "marshall"
+      },
+      {
+        "name": "South Carolina",
+        "slug": "south-carolina"
+      },
+      {
+        "name": "College of Charleston",
+        "slug": "college-of-charleston"
+      },
+      {
+        "name": "Maryland",
+        "slug": "maryland"
+      },
+      {
+        "name": "Georgia Southern",
+        "slug": "georgia-southern"
+      },
+      {
+        "name": "Clemson",
+        "slug": "clemson"
+      },
+      {
+        "name": "Samford",
+        "slug": "samford"
+      },
+      {
+        "name": "Wake Forest",
+        "slug": "wake-forest"
+      },
+      {
+        "name": "Virginia",
+        "slug": "virginia"
+      },
+      {
+        "name": "Georgia",
+        "slug": "georgia"
+      },
+      {
+        "name": "Mercer",
+        "slug": "mercer"
+      },
+      {
+        "name": "Alabama",
+        "slug": "alabama"
+      },
+      {
+        "name": "Elon",
+        "slug": "elon"
+      },
+      {
+        "name": "East Carolina",
+        "slug": "east-carolina"
+      },
+      {
+        "name": "Kentucky",
+        "slug": "kentucky"
+      },
+      {
+        "name": "Mississippi State",
+        "slug": "mississippi-state"
+      },
+      {
+        "name": "Tulane",
+        "slug": "tulane"
+      },
+      {
+        "name": "Georgia Tech",
+        "slug": "georgia-tech"
+      },
+      {
+        "name": "Mississippi",
+        "slug": "mississippi"
+      },
+      {
+        "name": "Tennessee",
+        "slug": "tennessee"
+      },
+      {
+        "name": "Vanderbilt",
+        "slug": "vanderbilt"
+      },
+      {
+        "name": "Louisiana State",
+        "slug": "louisiana-state"
+      },
+      {
+        "name": "Auburn",
+        "slug": "auburn"
+      },
+      {
+        "name": "Florida",
+        "slug": "florida"
+      },
+      {
+        "name": "Sewanee",
+        "slug": "sewanee"
+      },
+      {
+        "name": "Millsaps",
+        "slug": "millsaps"
+      },
+      {
+        "name": "Birmingham-Southern",
+        "slug": "birmingham-southern"
+      },
+      {
+        "name": "Newberry",
+        "slug": "newberry"
+      }
+    ],
+    "Southland Conference": [
+      {
+        "name": "McNeese State",
+        "slug": "mcneese-state"
+      },
+      {
+        "name": "Lamar",
+        "slug": "lamar"
+      },
+      {
+        "name": "Stephen F. Austin",
+        "slug": "stephen-f-austin"
+      },
+      {
+        "name": "UT Arlington",
+        "slug": "texas-arlington"
+      },
+      {
+        "name": "Sam Houston",
+        "slug": "sam-houston-state"
+      },
+      {
+        "name": "Northwestern State",
+        "slug": "northwestern-state"
+      },
+      {
+        "name": "Nicholls State",
+        "slug": "nicholls-state"
+      },
+      {
+        "name": "Louisiana-Monroe",
+        "slug": "louisiana-monroe"
+      },
+      {
+        "name": "Southeastern Louisiana",
+        "slug": "southeastern-louisiana"
+      },
+      {
+        "name": "Texas State",
+        "slug": "texas-state"
+      },
+      {
+        "name": "UTSA",
+        "slug": "texas-san-antonio"
+      },
+      {
+        "name": "Texas A&M-Corpus Christi",
+        "slug": "texas-am-corpus-christi"
+      },
+      {
+        "name": "Arkansas State",
+        "slug": "arkansas-state"
+      },
+      {
+        "name": "Louisiana Tech",
+        "slug": "louisiana-tech"
+      },
+      {
+        "name": "North Texas",
+        "slug": "north-texas"
+      },
+      {
+        "name": "Abilene Christian",
+        "slug": "abilene-christian"
+      },
+      {
+        "name": "Louisiana",
+        "slug": "louisiana-lafayette"
+      },
+      {
+        "name": "New Orleans",
+        "slug": "new-orleans"
+      },
+      {
+        "name": "Incarnate Word",
+        "slug": "incarnate-word"
+      },
+      {
+        "name": "Central Arkansas",
+        "slug": "central-arkansas"
+      },
+      {
+        "name": "Houston Christian",
+        "slug": "houston-baptist"
+      },
+      {
+        "name": "Oral Roberts",
+        "slug": "oral-roberts"
+      },
+      {
+        "name": "East Texas A&M",
+        "slug": "texas-am-commerce"
+      },
+      {
+        "name": "Texas-Rio Grande Valley",
+        "slug": "texas-pan-american"
+      },
+      {
+        "name": "Trinity (TX)",
+        "slug": "trinity-tx"
+      }
+    ],
+    "Summit League": [
+      {
+        "name": "Western Illinois",
+        "slug": "western-illinois"
+      },
+      {
+        "name": "Oral Roberts",
+        "slug": "oral-roberts"
+      },
+      {
+        "name": "Valparaiso",
+        "slug": "valparaiso"
+      },
+      {
+        "name": "South Dakota State",
+        "slug": "south-dakota-state"
+      },
+      {
+        "name": "North Dakota State",
+        "slug": "north-dakota-state"
+      },
+      {
+        "name": "Kansas City",
+        "slug": "missouri-kansas-city"
+      },
+      {
+        "name": "IU Indy",
+        "slug": "iupui"
+      },
+      {
+        "name": "Oakland",
+        "slug": "oakland"
+      },
+      {
+        "name": "Purdue Fort Wayne",
+        "slug": "ipfw"
+      },
+      {
+        "name": "South Dakota",
+        "slug": "south-dakota"
+      },
+      {
+        "name": "Cleveland State",
+        "slug": "cleveland-state"
+      },
+      {
+        "name": "Eastern Illinois",
+        "slug": "eastern-illinois"
+      },
+      {
+        "name": "Green Bay",
+        "slug": "green-bay"
+      },
+      {
+        "name": "Illinois-Chicago",
+        "slug": "illinois-chicago"
+      },
+      {
+        "name": "Southern Utah",
+        "slug": "southern-utah"
+      },
+      {
+        "name": "Omaha",
+        "slug": "nebraska-omaha"
+      },
+      {
+        "name": "Missouri State",
+        "slug": "missouri-state"
+      },
+      {
+        "name": "Denver",
+        "slug": "denver"
+      },
+      {
+        "name": "Northern Iowa",
+        "slug": "northern-iowa"
+      },
+      {
+        "name": "Youngstown State",
+        "slug": "youngstown-state"
+      },
+      {
+        "name": "North Dakota",
+        "slug": "north-dakota"
+      },
+      {
+        "name": "St. Thomas",
+        "slug": "st-thomas-mn"
+      },
+      {
+        "name": "Chicago State",
+        "slug": "chicago-state"
+      },
+      {
+        "name": "Buffalo",
+        "slug": "buffalo"
+      },
+      {
+        "name": "Northern Illinois",
+        "slug": "northern-illinois"
+      },
+      {
+        "name": "Centenary (LA)",
+        "slug": "centenary-la"
+      },
+      {
+        "name": "Wright State",
+        "slug": "wright-state"
+      },
+      {
+        "name": "Northeastern Illinois",
+        "slug": "northeastern-illinois"
+      },
+      {
+        "name": "Troy",
+        "slug": "troy"
+      },
+      {
+        "name": "Akron",
+        "slug": "akron"
+      },
+      {
+        "name": "Central Connecticut State",
+        "slug": "central-connecticut-state"
+      },
+      {
+        "name": "Milwaukee",
+        "slug": "milwaukee"
+      }
+    ],
+    "Sun Belt": [
+      {
+        "name": "South Alabama",
+        "slug": "south-alabama"
+      },
+      {
+        "name": "Western Kentucky",
+        "slug": "western-kentucky"
+      },
+      {
+        "name": "Louisiana",
+        "slug": "louisiana-lafayette"
+      },
+      {
+        "name": "Arkansas State",
+        "slug": "arkansas-state"
+      },
+      {
+        "name": "Little Rock",
+        "slug": "arkansas-little-rock"
+      },
+      {
+        "name": "New Orleans",
+        "slug": "new-orleans"
+      },
+      {
+        "name": "Troy",
+        "slug": "troy"
+      },
+      {
+        "name": "Jacksonville",
+        "slug": "jacksonville"
+      },
+      {
+        "name": "Georgia State",
+        "slug": "georgia-state"
+      },
+      {
+        "name": "UAB",
+        "slug": "alabama-birmingham"
+      },
+      {
+        "name": "Middle Tennessee",
+        "slug": "middle-tennessee"
+      },
+      {
+        "name": "Virginia Commonwealth",
+        "slug": "virginia-commonwealth"
+      },
+      {
+        "name": "Charlotte",
+        "slug": "charlotte"
+      },
+      {
+        "name": "Louisiana-Monroe",
+        "slug": "louisiana-monroe"
+      },
+      {
+        "name": "South Florida",
+        "slug": "south-florida"
+      },
+      {
+        "name": "Texas State",
+        "slug": "texas-state"
+      },
+      {
+        "name": "North Texas",
+        "slug": "north-texas"
+      },
+      {
+        "name": "Old Dominion",
+        "slug": "old-dominion"
+      },
+      {
+        "name": "Georgia Southern",
+        "slug": "georgia-southern"
+      },
+      {
+        "name": "Denver",
+        "slug": "denver"
+      },
+      {
+        "name": "Appalachian State",
+        "slug": "appalachian-state"
+      },
+      {
+        "name": "Florida International",
+        "slug": "florida-international"
+      },
+      {
+        "name": "UT Arlington",
+        "slug": "texas-arlington"
+      },
+      {
+        "name": "Louisiana Tech",
+        "slug": "louisiana-tech"
+      },
+      {
+        "name": "Coastal Carolina",
+        "slug": "coastal-carolina"
+      },
+      {
+        "name": "Florida Atlantic",
+        "slug": "florida-atlantic"
+      },
+      {
+        "name": "Lamar",
+        "slug": "lamar"
+      },
+      {
+        "name": "James Madison",
+        "slug": "james-madison"
+      },
+      {
+        "name": "New Mexico State",
+        "slug": "new-mexico-state"
+      },
+      {
+        "name": "Marshall",
+        "slug": "marshall"
+      },
+      {
+        "name": "Southern Mississippi",
+        "slug": "southern-mississippi"
+      },
+      {
+        "name": "Texas-Rio Grande Valley",
+        "slug": "texas-pan-american"
+      },
+      {
+        "name": "UCF",
+        "slug": "central-florida"
+      }
+    ],
+    "SWAC": [
+      {
+        "name": "Southern",
+        "slug": "southern"
+      },
+      {
+        "name": "Texas Southern",
+        "slug": "texas-southern"
+      },
+      {
+        "name": "Jackson State",
+        "slug": "jackson-state"
+      },
+      {
+        "name": "Alcorn State",
+        "slug": "alcorn-state"
+      },
+      {
+        "name": "Alabama State",
+        "slug": "alabama-state"
+      },
+      {
+        "name": "Grambling",
+        "slug": "grambling"
+      },
+      {
+        "name": "Mississippi Valley State",
+        "slug": "mississippi-valley-state"
+      },
+      {
+        "name": "Prairie View",
+        "slug": "prairie-view"
+      },
+      {
+        "name": "Alabama A&M",
+        "slug": "alabama-am"
+      },
+      {
+        "name": "Arkansas-Pine Bluff",
+        "slug": "arkansas-pine-bluff"
+      },
+      {
+        "name": "Bethune-Cookman",
+        "slug": "bethune-cookman"
+      },
+      {
+        "name": "Florida A&M",
+        "slug": "florida-am"
+      }
+    ],
+    "Western Athletic Conference": [
+      {
+        "name": "Utah",
+        "slug": "utah"
+      },
+      {
+        "name": "New Mexico",
+        "slug": "new-mexico"
+      },
+      {
+        "name": "UTEP",
+        "slug": "texas-el-paso"
+      },
+      {
+        "name": "Brigham Young",
+        "slug": "brigham-young"
+      },
+      {
+        "name": "Wyoming",
+        "slug": "wyoming"
+      },
+      {
+        "name": "Hawaii",
+        "slug": "hawaii"
+      },
+      {
+        "name": "Colorado State",
+        "slug": "colorado-state"
+      },
+      {
+        "name": "New Mexico State",
+        "slug": "new-mexico-state"
+      },
+      {
+        "name": "Fresno State",
+        "slug": "fresno-state"
+      },
+      {
+        "name": "Grand Canyon",
+        "slug": "grand-canyon"
+      },
+      {
+        "name": "Nevada",
+        "slug": "nevada"
+      },
+      {
+        "name": "San Diego State",
+        "slug": "san-diego-state"
+      },
+      {
+        "name": "Arizona",
+        "slug": "arizona"
+      },
+      {
+        "name": "Arizona State",
+        "slug": "arizona-state"
+      },
+      {
+        "name": "Utah Valley",
+        "slug": "utah-valley"
+      },
+      {
+        "name": "Seattle",
+        "slug": "seattle"
+      },
+      {
+        "name": "Utah State",
+        "slug": "utah-state"
+      },
+      {
+        "name": "Louisiana Tech",
+        "slug": "louisiana-tech"
+      },
+      {
+        "name": "Tulsa",
+        "slug": "tulsa"
+      },
+      {
+        "name": "Air Force",
+        "slug": "air-force"
+      },
+      {
+        "name": "Boise State",
+        "slug": "boise-state"
+      },
+      {
+        "name": "San Jose State",
+        "slug": "san-jose-state"
+      },
+      {
+        "name": "Southern Methodist",
+        "slug": "southern-methodist"
+      },
+      {
+        "name": "Rice",
+        "slug": "rice"
+      },
+      {
+        "name": "Texas-Rio Grande Valley",
+        "slug": "texas-pan-american"
+      },
+      {
+        "name": "California Baptist",
+        "slug": "california-baptist"
+      },
+      {
+        "name": "Cal State Bakersfield",
+        "slug": "cal-state-bakersfield"
+      },
+      {
+        "name": "Idaho",
+        "slug": "idaho"
+      },
+      {
+        "name": "TCU",
+        "slug": "texas-christian"
+      },
+      {
+        "name": "Kansas City",
+        "slug": "missouri-kansas-city"
+      },
+      {
+        "name": "Tarleton State",
+        "slug": "tarleton-state"
+      },
+      {
+        "name": "Abilene Christian",
+        "slug": "abilene-christian"
+      },
+      {
+        "name": "UT Arlington",
+        "slug": "texas-arlington"
+      },
+      {
+        "name": "Stephen F. Austin",
+        "slug": "stephen-f-austin"
+      },
+      {
+        "name": "Nevada-Las Vegas",
+        "slug": "nevada-las-vegas"
+      },
+      {
+        "name": "Utah Tech",
+        "slug": "dixie-state"
+      },
+      {
+        "name": "Chicago State",
+        "slug": "chicago-state"
+      },
+      {
+        "name": "Southern Utah",
+        "slug": "southern-utah"
+      },
+      {
+        "name": "Sam Houston",
+        "slug": "sam-houston-state"
+      },
+      {
+        "name": "Denver",
+        "slug": "denver"
+      },
+      {
+        "name": "Texas State",
+        "slug": "texas-state"
+      },
+      {
+        "name": "UTSA",
+        "slug": "texas-san-antonio"
+      },
+      {
+        "name": "Lamar",
+        "slug": "lamar"
+      }
+    ],
+    "West Coast Conference": [
+      {
+        "name": "San Francisco",
+        "slug": "san-francisco"
+      },
+      {
+        "name": "Santa Clara",
+        "slug": "santa-clara"
+      },
+      {
+        "name": "Saint Mary's (CA)",
+        "slug": "saint-marys-ca"
+      },
+      {
+        "name": "Gonzaga",
+        "slug": "gonzaga"
+      },
+      {
+        "name": "Pepperdine",
+        "slug": "pepperdine"
+      },
+      {
+        "name": "Loyola Marymount",
+        "slug": "loyola-marymount"
+      },
+      {
+        "name": "San Diego",
+        "slug": "san-diego"
+      },
+      {
+        "name": "Portland",
+        "slug": "portland"
+      },
+      {
+        "name": "Pacific",
+        "slug": "pacific"
+      },
+      {
+        "name": "Brigham Young",
+        "slug": "brigham-young"
+      },
+      {
+        "name": "San Jose State",
+        "slug": "san-jose-state"
+      },
+      {
+        "name": "Seattle",
+        "slug": "seattle"
+      },
+      {
+        "name": "Nevada",
+        "slug": "nevada"
+      },
+      {
+        "name": "Nevada-Las Vegas",
+        "slug": "nevada-las-vegas"
+      },
+      {
+        "name": "UC Santa Barbara",
+        "slug": "california-santa-barbara"
+      },
+      {
+        "name": "Fresno State",
+        "slug": "fresno-state"
+      },
+      {
+        "name": "Oregon State",
+        "slug": "oregon-state"
+      },
+      {
+        "name": "Washington State",
+        "slug": "washington-state"
+      }
+    ]
+  }
+}

@@ -3,97 +3,65 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from datetime import datetime, timezone
+import re
+import firebase_admin
+from firebase_admin import credentials, firestore
 
-################################################################################
-# Local paths
-################################################################################
+from team_keys import (
+    TEAM_MAPPING,
+    CONFERENCE_MAP,
+    canonicalize_team_key,
+)
+
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
-
-# Local staging directories for raw ingest, engineered features, and outputs.
-RAW_DATA_DIR = os.environ.get("BETBOARD_RAW_DATA_DIR", str(DATA_DIR / "raw"))
-PROCESSED_DATA_DIR = os.environ.get("BETBOARD_PROCESSED_DATA_DIR", str(DATA_DIR / "processed"))
-PREDICTIONS_DIR = os.environ.get("BETBOARD_PREDICTIONS_DIR", str(DATA_DIR / "predictions"))
-
-# Default model artifacts (can override via env BETBOARD_MODEL_DIR)
-_default_model_run = os.environ.get("BETBOARD_LOCAL_MODEL_RUN", "No_Bet_xgb_all_models_20251104_160154")
-_default_bet_model_run = os.environ.get("BETBOARD_LOCAL_BET_MODEL_RUN", "Bet_xgb_all_models_20251104_160047")
-_storage_model_version = os.environ.get("BETBOARD_MODEL_VERSION", "current_production")
-MODEL_DIR = os.environ.get(
-    "BETBOARD_MODEL_DIR",
-    f"models/{_storage_model_version}/no_bet",
-)
-MODEL_FALLBACK_LOCAL_DIR = str(DATA_DIR / "xgb_model" / _default_model_run / "models_production")
-BET_MODEL_DIR = os.environ.get(
-    "BETBOARD_BET_MODEL_DIR",
-    f"models/{_storage_model_version}/with_bet",
-)
-BET_MODEL_FALLBACK_LOCAL_DIR = str(DATA_DIR / "xgb_model" / _default_bet_model_run / "models_production")
 
 # Firebase credentials (service account JSON)
 FIREBASE_CREDENTIALS_PATH = os.environ.get(
     "BETBOARD_FIREBASE_CREDENTIALS",
     str(BASE_DIR / "services" / "firebase" / "betboardtest-firebase-adminsdk-fbsvc-196904ba56.json"),
 )
-################################################################################
-# Firebase / GCP
-################################################################################
-
 # GCP project / Firebase project info
-GCP_PROJECT_ID = "betboardtest"  # TODO: set to your actual Firebase project id
-FIREBASE_STORAGE_BUCKET = "betboardtest.firebasestorage.app"  # from screenshot
+GCP_PROJECT_ID = "betboardtest" 
+FIREBASE_STORAGE_BUCKET = "betboardtest.firebasestorage.app" 
 FIRESTORE_PREDICTIONS_COLLECTION = "games"
 
-# Service account / creds:
-# In Cloud Run or Cloud Functions you’ll probably rely on workload identity.
-# Locally you may point GOOGLE_APPLICATION_CREDENTIALS at your JSON key.
-# We don't hardcode here, but scripts should rely on env/auth being already set.
+cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+firebase_admin.initialize_app(cred)
+db = firestore.client()
+doc_ref = db.collection('models').document('current_production')
+doc = doc_ref.get()
+
+if doc.exists:
+    _storage_model_version =  doc.to_dict().get('version')
+else:
+    _storage_model_version = "20251104_160626" # default model
 
 
-################################################################################
-# Storage layout (Firebase Storage = GCS bucket)
-################################################################################
-# This is the canonical folder structure in your bucket. All jobs should use
-# these helpers instead of making up paths.
+MODEL_DIR = f"models/{_storage_model_version}/no_bet"
 
-# Raw ingest outputs (snapshotted daily):
-#   gs://<bucket>/raw_data/games/2025-10-28/games.csv
-#   gs://<bucket>/raw_data/team_snapshots/2025-10-28/teams.csv
-#   gs://<bucket>/raw_data/odds/2025-10-28/odds.csv
+
+BET_MODEL_DIR = f"models/{_storage_model_version}/with_bet"
+
 RAW_DATA_PREFIX = "raw_data"
 RAW_GAMES_PREFIX = f"{RAW_DATA_PREFIX}/games"
 RAW_TEAMS_PREFIX = f"{RAW_DATA_PREFIX}/team_snapshots"
 RAW_ODDS_PREFIX = f"{RAW_DATA_PREFIX}/odds"
-RAW_TORVIK_PREFIX = f"{RAW_DATA_PREFIX}/torvik_rankings"  # you already have this
+RAW_TORVIK_PREFIX = f"{RAW_DATA_PREFIX}/torvik_rankings"
 RAW_RESULTS_PREFIX = f"{RAW_DATA_PREFIX}/results"
 
 
-
-# Processed, model-ready features:
-#   gs://<bucket>/processed_features/2025-10-28/features.csv
 PROCESSED_FEATURES_PREFIX = "processed_features"
 
-# Model artifacts:
-#   gs://<bucket>/model_runs/run_2025_10_28/spread_model.pkl
-#   gs://<bucket>/model_runs/run_2025_10_28/total_model.pkl
-#   gs://<bucket>/model_runs/run_2025_10_28/moneyline_model.pkl
 MODEL_RUNS_PREFIX = "model_runs"
 
-# Output predictions we also want to keep historically (for auditing, backtests)
-#   gs://<bucket>/predictions_export/2025-10-28/top_picks.json
-#   gs://<bucket>/predictions_export/2025-10-28/game_preds.json
 PREDICTIONS_EXPORT_PREFIX = "predictions_export"
 
 def raw_results_path(date_str: str) -> str:
     return f"{RAW_RESULTS_PREFIX}/{date_str}/results.csv"
 
-def raw_games_path(date_str: str) -> str:
-    return f"{RAW_GAMES_PREFIX}/{date_str}/games.csv"
 
-
-def raw_teams_path(date_str: str) -> str:
-    return f"{RAW_TEAMS_PREFIX}/{date_str}/teams.csv"
 
 
 def raw_odds_path(date_str: str) -> str:
@@ -188,11 +156,6 @@ FEATURE_COLS_ORDER = [
     # "moneyline_away",
 ]
 
-
-################################################################################
-# Firestore schema helpers
-################################################################################
-
 def firestore_doc_for_game_pred(game_pred: dict, picks_for_game: list) -> dict:
     """
     Given game-level prediction data and any picks we like for that game,
@@ -201,17 +164,104 @@ def firestore_doc_for_game_pred(game_pred: dict, picks_for_game: list) -> dict:
 
     This is what the iOS app will read.
     """
-    doc = {
+    def _as_float(value):
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    game_date = game_pred.get("game_date")
+    tipoff = game_pred.get("tipoff_datetime")
+    home_team = game_pred.get("home_team")
+    away_team = game_pred.get("away_team")
+    home_conf = game_pred.get("home_conf") or game_pred.get("Conference")
+    away_conf = game_pred.get("away_conf") or game_pred.get("OppConference")
+
+    season = game_pred.get("season")
+
+    tipoff_time = None
+    tipoff_raw = game_pred.get("tipoff_datetime")
+    if isinstance(tipoff_raw, str):
+        match = re.search(r"T(\d{2}:\d{2})", tipoff_raw)
+        if match:
+            hh, mm = match.group(1).split(":")
+            try:
+                hour = int(hh)
+                suffix = "AM"
+                if hour == 0:
+                    hour = 12
+                elif hour == 12:
+                    suffix = "PM"
+                elif hour > 12:
+                    hour -= 12
+                    suffix = "PM"
+                tipoff_time = f"{hour}:{mm} {suffix} CT"
+            except ValueError:
+                tipoff_time = match.group(1) + " CT"
+
+    doc: dict = {
         "game_id": game_pred["game_id"],
-        "tipoff_datetime": game_pred.get("tipoff_datetime"),
-        "home_team": game_pred.get("home_team"),
-        "away_team": game_pred.get("away_team"),
-        "model_spread_home": game_pred.get("model_spread_home"),
-        "model_total": game_pred.get("model_total"),
-        "home_win_prob": game_pred.get("home_win_prob"),
+        "date": game_date,
+        "season": season or (str(game_date).split("-")[0] if game_date else None),
+        "tipoff_time": tipoff_time,
+        "home_team": home_team,
+        "away_team": away_team,
+        "home_conf": home_conf,
+        "away_conf": away_conf,
+        "neutral_site": bool(game_pred.get("is_neutral_site")),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "model_run_id": ACTIVE_MODEL_RUN_ID,
     }
+
+    # Moneyline block
+    ml_home = _as_float(game_pred.get("moneyline_home"))
+    ml_away = _as_float(game_pred.get("moneyline_away"))
+    prob_home = _as_float(game_pred.get("home_win_prob"))
+    moneyline: dict = {}
+    if ml_home is not None:
+        moneyline["odds_home"] = ml_home
+    if ml_away is not None:
+        moneyline["odds_away"] = ml_away
+    if prob_home is not None:
+        moneyline["p_win_home"] = prob_home
+        moneyline["p_win_away"] = 1 - prob_home
+        moneyline["predicted_winner"] = home_team if prob_home >= 0.5 else away_team
+    if moneyline:
+        doc["moneyline"] = moneyline
+
+    # Spread block
+    raw_spread_line = _as_float(game_pred.get("bet_spread_home"))
+    spread_line = -raw_spread_line if raw_spread_line is not None else None
+    predicted_margin = _as_float(game_pred.get("model_spread_home"))
+    spread: dict = {}
+    if spread_line is not None:
+        spread["line"] = spread_line
+    if predicted_margin is not None:
+        spread["predicted_margin"] = predicted_margin
+    if spread_line is not None and predicted_margin is not None:
+        edge = predicted_margin - spread_line
+        spread["edge"] = edge
+        spread["pick"] = home_team if edge >= 0 else away_team
+    if spread:
+        doc["spread"] = spread
+
+    # Total block
+    total_line = _as_float(game_pred.get("bet_total"))
+    predicted_total = _as_float(game_pred.get("model_total"))
+    total: dict = {}
+    if total_line is not None:
+        total["line"] = total_line
+    if predicted_total is not None:
+        total["predicted_total"] = predicted_total
+    if total_line is not None and predicted_total is not None:
+        diff = predicted_total - total_line
+        total["edge"] = diff
+        total["pick"] = "OVER" if diff > 0 else "UNDER"
+    if total:
+        doc["total"] = total
+
     if picks_for_game:
         doc["recommended"] = picks_for_game
     return doc
@@ -220,109 +270,15 @@ def firestore_doc_for_game_pred(game_pred: dict, picks_for_game: list) -> dict:
 
 
 # Direct mapping for teams with unusual names or abbreviations
-TEAM_MAPPING = {
-    "Rutgers Scarlet Knights":"rutgers",
-    "Rider Broncs": "rider",
-    "La Salle Explorers": "la-salle",
-    "Coppin St Eagles": "coppin-state",
-    "Butler Bulldogs": "butler",
-    "Southern Indiana Screaming Eagles": "southern-indiana",
-    "Temple Owls": "temple",
-    "Delaware St Hornets" : "delaware-state",
-    "Georgia Bulldogs": "georgia",
-    "Maryland-Eastern Shore Hawks": "maryland-eastern-shore",
-    "Indiana Hoosiers": "indiana",
-    "Alabama A&M Bulldogs": "alabama-am",
-    "Creighton Bluejays": "creighton",
-    "South Dakota Coyotes": "south-dakota",
-    "LSU Tigers": "louisiana-state",
-    "Tarleton State Texans": "tarleton-state",
-    "Marquette Golden Eagles": "marquette",
-    "Southern Jaguars": "southern",
-    "New Mexico Lobos": "new-mexico",
-    "East Texas A&M Lions": "texas-am-commerce",
-    "Fresno St Bulldogs": "fresno-state",
-    "South Carolina Upstate Spartans": "south-carolina-upstate",
-    "Mississippi St Bulldogs": "mississippi-state",
-    "North Alabama Lions": "north-alabama",
-    "UC Davis Aggies": "california-davis",
-    "North Dakota St Bison": "north-dakota-state",
-    "Loyola Marymount Lions": "loyola-marymount",
-    "Eastern Washington Eagles": "eastern-washington",
-    "Miami Hurricanes": "miami-fl",
-    "Bethune-Cookman Wildcats": "bethune-cookman",
-    "Boston College Eagles": "boston-college",
-    "The Citadel Bulldogs": "the-citadel",
-    "West Virginia Mountaineers": "west-virginia",
-    "Campbell Fighting Camels": "campbell",
-    "Ohio Bobcats": "ohio",
-    "Illinois St Redbirds": "illinois-state",
-    "Louisville Cardinals": "louisville",
-    "Jackson St Tigers": "jackson-state",
-    "Iowa State Cyclones": "iowa-state",
-    "Grambling St Tigers": "grambling-state",
-    "Drake Bulldogs": "drake",
-    "Robert Morris Colonials": "robert-morris",
-    "Abilene Christian Wildcats": "abilene-christian",
-    "Omaha Mavericks": "nebraska-omaha",
-    "Auburn Tigers": "auburn",
-    "Merrimack Warriors": "merrimack",
-    "Northern Iowa Panthers": "northern-iowa",
-    "CSU Northridge Matadors": "cal-state-northridge",
-    "Florida Gators": "florida",
-    "North Florida Ospreys": "north-florida",
-    "North Dakota Fighting Hawks": "north-dakota",
-    "UC Riverside Highlanders": "uc-riverside",
-    "TCU Horned Frogs": "texas-christian",
-    "St. Francis (PA) Red Flash": "saint-francis-pa",
-    "Texas A&M Aggies": "texas-am",
-    "Texas Southern Tigers": "texas-southern",
-    "California Golden Bears": "california",
-    "Wright St Raiders": "wright-state",
-    "Washington Huskies": "washington",
-    "Denver Pioneers": "denver",
-    "North Carolina Tar Heels": "north-carolina",
-    "Kansas Jayhawks": "kansas",
-    "St. John's Red Storm": "st-johns-ny",
-    "Alabama Crimson Tide": "alabama",
-    "Michigan St Spartans": "michigan-state",
-    "Arkansas Razorbacks": "arkansas",
-    "Gonzaga Bulldogs": "gonzaga",
-    "Oklahoma Sooners": "oklahoma",
-}
+TORVIK_MAP = {
+    "thecitadel": "citadel",
+    "centralconnecticut": "central-connecticut-state",
+    "ucriverside": "california-riverside",
+    "texasa&mcorpuschris": "texas-am-corpus-christi",
+    "grambling-state": "grambling",
+    "tcu": "texas-christian",
+    "saintfrancis": "saint-francis-pa",
+    "loyolachicago": "loyola-il",
+    "smu": "southern-methodist",
 
-
-
-CONFERENCE_MAP = {
-    "ACC": ["duke", "louisville", "clemson", "wake-forest", "north-carolina", "southern-methodist", "stanford", "georgia-tech", "virginia-tech", "florida-state", "virginia", "notre-dame", "pittsburgh", "syracuse", "california", "north-carolina-state", "boston-college", "miami-fl"],
-    "America East": ["bryant", "vermont", "maine", "albany-ny", "binghamton", "massachusetts-lowell", "new-hampshire", "maryland-baltimore-county", "njit"],
-    "American": ["memphis", "north-texas", "alabama-birmingham", "tulane", "east-carolina", "florida-atlantic", "temple", "wichita-state", "south-florida", "tulsa", "texas-san-antonio", "rice", "charlotte"],
-    "ASUN": ["lipscomb", "north-alabama", "florida-gulf-coast", "jacksonville", "eastern-kentucky", "queens-nc", "north-florida", "austin-peay", "stetson", "central-arkansas", "west-georgia", "bellarmine"],
-    "Atlantic 10": ["virginia-commonwealth", "george-mason", "loyola-il", "dayton", "saint-josephs", "saint-louis", "st-bonaventure", "george-washington", "duquesne", "rhode-island", "massachusetts", "davidson", "la-salle", "richmond", "fordham"],
-    "SEC": ["auburn", "florida", "alabama", "tennessee", "texas-am", "mississippi", "kentucky", "missouri", "arkansas", "mississippi-state", "georgia", "vanderbilt", "oklahoma", "texas", "louisiana-state", "south-carolina"],
-    "Big Ten": ["michigan-state", "maryland", "michigan", "wisconsin", "purdue", "ucla", "illinois", "oregon", "indiana", "ohio-state", "rutgers", "minnesota", "northwestern", "southern-california", "iowa", "nebraska", "penn-state", "washington"],
-    "Big 12": ["houston", "texas-tech", "brigham-young", "arizona", "iowa-state", "kansas", "baylor", "west-virginia", "texas-christian", "kansas-state", "utah", "cincinnati", "central-florida", "oklahoma-state", "arizona-state", "colorado"],
-    "Big East": ["st-johns-ny", "creighton", "connecticut", "marquette", "xavier", "villanova", "georgetown", "butler", "providence", "depaul", "seton-hall"],
-    "West Coast": ["saint-marys-ca", "gonzaga", "san-francisco", "santa-clara", "oregon-state", "washington-state", "loyola-marymount", "portland", "pepperdine", "pacific", "san-diego"],
-    "Big Sky": ["northern-colorado", "montana", "portland-state", "idaho-state", "montana-state", "northern-arizona", "idaho", "eastern-washington", "weber-state", "sacramento-state"],
-    "Big South": ["high-point", "winthrop", "north-carolina-asheville", "radford", "longwood", "presbyterian", "charleston-southern", "gardner-webb", "south-carolina-upstate"],
-    "Big West": ["california-san-diego", "california-irvine", "cal-state-northridge", "california-riverside", "california-santa-barbara", "california-davis", "cal-poly", "cal-state-bakersfield", "hawaii", "long-beach-state", "cal-state-fullerton"],
-    "CAA": ["towson", "north-carolina-wilmington", "college-of-charleston", "william-mary", "campbell", "monmouth", "drexel", "northeastern", "elon", "hampton", "hofstra", "delaware", "stony-brook", "north-carolina-at"],
-    "CUSA": ["liberty", "middle-tennessee", "jacksonville-state", "kennesaw-state", "new-mexico-state", "louisiana-tech", "western-kentucky", "texas-el-paso", "sam-houston-state", "florida-international"],
-    "Horizon": ["robert-morris", "milwaukee", "cleveland-state", "youngstown-state", "ipfw", "northern-kentucky", "oakland", "wright-state", "iupui", "detroit-mercy", "green-bay"],
-    "Ivy League": ["yale", "cornell", "princeton", "dartmouth", "harvard", "brown", "pennsylvania", "columbia"],
-    "MAAC": ["quinnipiac", "merrimack", "marist", "mount-st-marys", "manhattan", "iona", "sacred-heart", "siena", "rider", "fairfield", "saint-peters", "niagara", "canisius"],
-    "MAC": ["akron", "miami-oh", "kent-state", "toledo", "ohio", "eastern-michigan", "bowling-green-state", "central-michigan", "ball-state", "buffalo", "northern-illinois"],
-    "MEAC": ["norfolk-state", "south-carolina-state", "delaware-state", "morgan-state", "howard", "north-carolina-central", "coppin-state", "maryland-eastern-shore"],
-    "Mountain West": ["new-mexico", "colorado-state", "utah-state", "boise-state", "san-diego-state", "nevada-las-vegas", "nevada", "san-jose-state", "wyoming", "fresno-state", "air-force"],
-    "MVC": ["drake", "bradley", "northern-iowa", "belmont", "illinois-state", "illinois-chicago", "murray-state", "indiana-state", "southern-illinois", "evansville", "valparaiso", "missouri-state"],
-    "NEC": ["central-connecticut-state", "long-island-university", "mercyhurst", "saint-francis-pa", "fairleigh-dickinson", "stonehill", "wagner", "le-moyne", "chicago-state"],
-    "OVC": ["southeast-missouri-state", "southern-illinois-edwardsville", "arkansas-little-rock", "tennessee-state", "lindenwood", "tennessee-state", "morehead-state", "tennessee-martin", "eastern-illinois", "western-illinois", "southern-indiana"],
-    "Patriot": ["american", "bucknell", "army", "boston-university", "navy", "colgate", "lafayette", "loyola-md", "lehigh", "holy-cross"],
-    "SoCon": ["chattanooga", "north-carolina-greensboro", "samford", "east-tennessee-state", "furman", "wofford", "virginia-military-institute", "mercer", "western-carolina", "citadel"],
-    "Southland": ["mcneese-state", "lamar", "nicholls-state", "texas-am-corpus-christi", "southeastern-louisiana", "northwestern-state", "incarnate-word", "houston-baptist", "texas-pan-american", "stephen-f-austin", "texas-am-commerce", "new-orleans"],
-    "Summit League": ["nebraska-omaha", "st-thomas-mn", "south-dakota-state", "north-dakota-state", "south-dakota", "north-dakota", "denver", "missouri-kansas-city", "oral-roberts"],
-    "Sun Belt": ["arkansas-state", "troy", "south-alabama", "james-madison", "marshall", "appalachian-state", "texas-state", "georgia-southern", "old-dominion", "georgia-state", "louisiana-lafayette", "southern-mississippi", "coastal-carolina", "louisiana-monroe"],
-    "SWAC": ["southern", "jackson-state", "bethune-cookman", "alabama-state", "texas-southern", "alcorn-state", "florida-am", "grambling", "alabama-am", "prairie-view", "arkansas-pine-bluff", "mississippi-valley-state"],
-    "WAC": ["utah-valley", "grand-canyon", "california-baptist", "abilene-christian", "seattle", "tarleton-state", "texas-arlington", "southern-utah", "dixie-state"]
 }

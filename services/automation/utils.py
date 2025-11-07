@@ -5,7 +5,11 @@ import pandas as pd
 import numpy as np
 
 # Import TEAM_ALIASES - assumes name_map.py is in the same directory (ncaa_pipeline/)
-from config import TEAM_MAPPING as TEAM_ALIASES
+from config import (
+    TEAM_MAPPING as TEAM_ALIASES,
+    CONFERENCE_MAP,
+    canonicalize_team_key,
+)
 
 # Global cache for alias map
 _ALIAS_MAP_CACHE = None
@@ -66,18 +70,24 @@ def load_alias_map() -> dict[str, str]:
     
     alias: dict[str, str] = {}
 
-    def _load(source: dict[str, str], overwrite: bool = True):
-        for bet_key, canon_key in source.items():
-            bk = _slug(bet_key)
-            ck = _slug(canon_key)
-            if not bk or not ck:
-                continue
-            if not overwrite and bk in alias:
-                continue
-            alias[bk] = ck
+    def _register(bet_key: str, canon_key: str, overwrite: bool = True) -> None:
+        bk = _slug(bet_key)
+        canonical = canonicalize_team_key(canon_key)
+        if not bk or not canonical:
+            return
+        if not overwrite and bk in alias:
+            return
+        alias[bk] = canonical
+
+    # Seed with canonical conference keys so slugs like "northcarolina"
+    # always map back to "north-carolina".
+    for teams in CONFERENCE_MAP.values():
+        for canonical in teams:
+            _register(canonical, canonical, overwrite=False)
 
     # Primary alias table takes precedence
-    _load(TEAM_ALIASES, overwrite=True)
+    for bet_key, canon_key in TEAM_ALIASES.items():
+        _register(bet_key, canon_key, overwrite=True)
     
     _ALIAS_MAP_CACHE = alias
     return _ALIAS_MAP_CACHE
@@ -93,7 +103,7 @@ def normalize_key(s: pd.Series) -> pd.Series:
     """Normalize team names to canonical keys using alias map."""
     alias = load_alias_map()
     sl = s.astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
-    return sl.map(lambda x: alias.get(x, x))
+    return sl.map(lambda x: alias.get(x, canonicalize_team_key(x)))
 
 
 def _normalize_stat_token(token: str) -> str:

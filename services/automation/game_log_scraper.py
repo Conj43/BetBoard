@@ -25,7 +25,7 @@ if not firebase_admin._apps:
     else:
         firebase_admin.initialize_app()
 
-bucket = storage.bucket()
+bucket = storage.bucket(name=FIREBASE_STORAGE_BUCKET)
 
 
 def download_latest_odds():
@@ -226,7 +226,7 @@ def main():
             skipped_count += 1
         
         # Polite delay
-        time.sleep(2)
+        time.sleep(5)
     
     print(f"\n{'='*80}")
     print(f"📊 SCRAPING COMPLETE")
@@ -254,7 +254,7 @@ def main():
         # Update latest
         latest_blob = bucket.blob("raw_data/gamelogs/latest.csv")
         latest_blob.upload_from_string(csv_string, content_type="text/csv")
-        print(f"  📤 Latest: gs://{FIREBASE_STORAGE_BUCKET}/raw_data/sports_reference_gamelogs/latest.csv")
+        print(f"  📤 Latest: gs://{FIREBASE_STORAGE_BUCKET}/raw_data/gamelogs/latest.csv")
         
         print(f"\n✅ All done!")
 

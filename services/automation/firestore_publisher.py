@@ -88,7 +88,7 @@ def publish_predictions_to_firestore(
 
     root_doc = db.collection(FIRESTORE_PREDICTIONS_COLLECTION).document(date_str)
     games_collection = root_doc.collection("games")
-    meta_collection = root_doc.collection("meta")
+    meta_collection = root_doc.collection("picks_metadata")
 
     # Create lookup of picks per game for doc assembly
     picks_by_game: Dict[str, List[Dict[str, Any]]] = {}
@@ -137,18 +137,19 @@ def publish_predictions_to_firestore(
                 odds_collection.document(book_key).set(_to_serializable(merged))
 
         # Minimal model predictions document
-        bet_pred = bet_lookup.get(game_id, game_pred)
-        minimal_doc = {
-            "model_spread_home": bet_pred.get("model_spread_home"),
-            "model_total": bet_pred.get("model_total"),
-            "home_win_prob": bet_pred.get("home_win_prob"),
-            "model_run_id": ACTIVE_MODEL_RUN_ID,
-            "generated_at": generated_at,
-        }
-        minimal_doc = {k: v for k, v in minimal_doc.items() if v is not None}
-        if minimal_doc:
-            model_collection = games_collection.document(game_id).collection("betModel")
-            model_collection.document("bet_model_document").set(_to_serializable(minimal_doc))
+        bet_pred = bet_lookup.get(game_id)
+        if bet_pred:
+            minimal_doc = {
+                "model_spread_home": bet_pred.get("model_spread_home"),
+                "model_total": bet_pred.get("model_total"),
+                "home_win_prob": bet_pred.get("home_win_prob"),
+                "model_run_id": ACTIVE_MODEL_RUN_ID,
+                "generated_at": generated_at,
+            }
+            minimal_doc = {k: v for k, v in minimal_doc.items() if v is not None}
+            if minimal_doc:
+                model_collection = games_collection.document(game_id).collection("betModel")
+                model_collection.document("bet_model_document").set(_to_serializable(minimal_doc))
 
     summary_payload = {
         "generated_at": generated_at,

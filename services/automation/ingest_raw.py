@@ -1,17 +1,10 @@
-import os
-import sys
 import json
-from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from io import StringIO
 from typing import List, Dict, Any, Optional
 
 import numpy as np
 import pandas as pd
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
 
 try:
     import firebase_admin
@@ -22,42 +15,50 @@ except ImportError:  # pragma: no cover - optional dependency
     storage = None  # type: ignore
 
 # --- CONFIG IMPORTS ---------------------------------------------------------
-try:
-    from config import (
-        RAW_DATA_DIR,
-        FIREBASE_CREDENTIALS_PATH,
-        FIREBASE_STORAGE_BUCKET,
-        RAW_GAMES_PREFIX,
-        RAW_TEAMS_PREFIX,
-        RAW_ODDS_PREFIX,
-        TEAM_MAPPING,
-        CONFERENCE_MAP,
-    )
-except ImportError:
-    RAW_DATA_DIR = "data/raw"
-    FIREBASE_CREDENTIALS_PATH = ""
-    FIREBASE_STORAGE_BUCKET = ""
-    RAW_GAMES_PREFIX = "raw_data/games"
-    RAW_TEAMS_PREFIX = "raw_data/team_snapshots"
-    RAW_ODDS_PREFIX = "raw_data/odds"
-    TEAM_MAPPING = {}
-    CONFERENCE_MAP = {}
+
+from config import (
+    FIREBASE_CREDENTIALS_PATH,
+    FIREBASE_STORAGE_BUCKET,
+    RAW_GAMES_PREFIX,
+    RAW_TEAMS_PREFIX,
+    RAW_ODDS_PREFIX,
+    TEAM_MAPPING,
+    CONFERENCE_MAP,
+    TORVIK_MAP,
+    canonicalize_team_key,
+)
+
+
+from os import getenv
 
 from feature_engineering import prepare_rolling
 from utils import load_alias_map, standardize_opponent_columns
 
 
-UPLOAD_TO_FIREBASE = os.environ.get("BETBOARD_SKIP_FIREBASE_UPLOAD", "0") != "1"
-_FIREBASE_BUCKET: Optional["storage.bucket"] = None
+UPLOAD_TO_FIREBASE = getenv("BETBOARD_SKIP_FIREBASE_UPLOAD", "0") != "1"
 
+
+# --- DATA SOURCE HELPERS ----------------------------------------------------
+_ODDS_CACHE: Optional[Dict[str, Any]] = None
+_TORVIK_LOOKUP: Optional[Dict[str, Dict[str, float]]] = None
+_TEAM_METRICS_CACHE: Dict[str, Dict[str, float]] = {}
+_TEAM_METRICS_DATE: Optional[str] = None
+_ALIAS_MAP: Optional[Dict[str, str]] = None
+_FIREBASE_BUCKET: Optional["storage.bucket"] = None  # Add this cache variable
+
+print(f"[DEBUG] FIREBASE_STORAGE_BUCKET = '{FIREBASE_STORAGE_BUCKET}'")
+print(f"[DEBUG] FIREBASE_CREDENTIALS_PATH = '{FIREBASE_CREDENTIALS_PATH}'")
 
 def _get_firebase_bucket(allow_when_upload_disabled: bool = False) -> Optional["storage.bucket"]:
     """
     Lazily initialize and cache the Firebase Storage bucket.
     Returns None if firebase_admin is unavailable or initialization fails.
     """
-
     global _FIREBASE_BUCKET
+
+    # Return cached bucket if available
+    if _FIREBASE_BUCKET is not None:
+        return _FIREBASE_BUCKET
 
     if not UPLOAD_TO_FIREBASE and not allow_when_upload_disabled:
         return None
@@ -70,22 +71,18 @@ def _get_firebase_bucket(allow_when_upload_disabled: bool = False) -> Optional["
         print("[ingest_raw] FIREBASE_STORAGE_BUCKET not configured; skipping upload.")
         return None
 
-    if _FIREBASE_BUCKET is not None:
-        return _FIREBASE_BUCKET
-
     try:
         if not firebase_admin._apps:
-            if FIREBASE_CREDENTIALS_PATH and os.path.exists(FIREBASE_CREDENTIALS_PATH):
+            if FIREBASE_CREDENTIALS_PATH:
                 cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
                 firebase_admin.initialize_app(cred, {"storageBucket": FIREBASE_STORAGE_BUCKET})
             else:
                 firebase_admin.initialize_app(options={"storageBucket": FIREBASE_STORAGE_BUCKET})
 
-        _FIREBASE_BUCKET = storage.bucket()
+        _FIREBASE_BUCKET = storage.bucket(name=FIREBASE_STORAGE_BUCKET)
         return _FIREBASE_BUCKET
     except Exception as exc:  # pragma: no cover - environment dependent
         print(f"[ingest_raw][WARN] Failed to initialize Firebase Storage: {exc}")
-        _FIREBASE_BUCKET = None
         return None
 
 
@@ -106,14 +103,11 @@ def upload_snapshots_to_firebase(game_date: str,
                                  teams_df: pd.DataFrame,
                                  odds_df: pd.DataFrame) -> None:
     uploads = [
-        (games_df, f"{RAW_GAMES_PREFIX}/{game_date}/games.csv", f"{RAW_GAMES_PREFIX}/latest.csv"),
-        (teams_df, f"{RAW_TEAMS_PREFIX}/{game_date}/teams.csv", f"{RAW_TEAMS_PREFIX}/latest.csv"),
-        (odds_df, f"{RAW_ODDS_PREFIX}/{game_date}/odds.csv", f"{RAW_ODDS_PREFIX}/latest.csv"),
+        (odds_df, f"{RAW_ODDS_PREFIX}/latest.csv", f"{RAW_ODDS_PREFIX}/latest.csv"),
     ]
 
     for df, dated_path, latest_path in uploads:
         csv_content = df.to_csv(index=False)
-        _upload_csv_string(csv_content, dated_path)
         _upload_csv_string(csv_content, latest_path)
 
 
@@ -156,11 +150,26 @@ def _team_metrics_from_gamelogs(game_date: str) -> Dict[str, Dict[str, float]]:
 
     try:
         logs = standardize_opponent_columns(raw_logs)
+        
+        # Filter out future games with no stats
+        logs = logs[logs["Tm"].notna()]
+        
+        print(f"[DEBUG] After filtering: {len(logs)} games with stats")  # ADD THIS
+        
         logs["Date"] = pd.to_datetime(logs["Date"], errors="coerce")
         logs = logs.dropna(subset=["Date", "Team", "Opp"])
         logs = logs.sort_values("Date")
+        
+        print(f"[DEBUG] After date filtering: {len(logs)} games")  # ADD THIS
+        print(f"[DEBUG] Unique teams: {logs['Team'].nunique()}")  # ADD THIS
+        print(f"[DEBUG] Date range: {logs['Date'].min()} to {logs['Date'].max()}")  # ADD THIS
 
         rolling = prepare_rolling(logs)
+        
+        print(f"[DEBUG] prepare_rolling returned {len(rolling)} rows")  # ADD THIS
+        if not rolling.empty:
+            print(f"[DEBUG] Rolling columns: {list(rolling.columns)}")  # ADD THIS
+        
         if rolling.empty:
             return {}
 
@@ -177,9 +186,9 @@ def _team_metrics_from_gamelogs(game_date: str) -> Dict[str, Dict[str, float]]:
             for col, val in row.items():
                 if not isinstance(col, str):
                     continue
-                if not col.startswith("team_"):
+                if not (col.startswith("team_") or col.startswith("opp_") or col.startswith("delta")):
                     continue
-                if col in {"team_key"}:
+                if col in {"team_key", "opp_key"}:
                     continue
 
                 value = row[col]
@@ -202,7 +211,6 @@ def _team_metrics_from_gamelogs(game_date: str) -> Dict[str, Dict[str, float]]:
         print(f"[ingest_raw][WARN] Exception computing team metrics from gamelogs: {exc}")
         return {}
 
-
 def _load_team_metrics(game_date: str) -> Dict[str, Dict[str, float]]:
     global _TEAM_METRICS_CACHE, _TEAM_METRICS_DATE
 
@@ -219,14 +227,6 @@ def _load_team_metrics(game_date: str) -> Dict[str, Dict[str, float]]:
     return _TEAM_METRICS_CACHE
 
 
-# --- DATA SOURCE HELPERS ----------------------------------------------------
-_ODDS_CACHE: Optional[Dict[str, Any]] = None
-_TORVIK_LOOKUP: Optional[Dict[str, Dict[str, float]]] = None
-_TEAM_METRICS_CACHE: Dict[str, Dict[str, float]] = {}
-_TEAM_METRICS_DATE: Optional[str] = None
-_ALIAS_MAP: Optional[Dict[str, str]] = None
-
-
 def _slugify_team(name: str) -> str:
     if not isinstance(name, str):
         return ""
@@ -237,16 +237,14 @@ def _slugify_team(name: str) -> str:
 def _team_slug_from_name(name: str) -> str:
     if not name:
         return ""
-    if name in TEAM_MAPPING:
-        mapped = TEAM_MAPPING[name]
-        return "".join(ch for ch in str(mapped).lower() if ch.isalnum())
-    return _slugify_team(name)
+    mapped = TEAM_MAPPING.get(name, name)
+    return canonicalize_team_key(mapped)
 
 
 def _team_conference_from_name(name: str) -> Optional[str]:
-    slug = _team_slug_from_name(name)
+    team_key = _team_slug_from_name(name)
     for conference, teams in CONFERENCE_MAP.items():
-        if slug in teams:
+        if team_key in teams:
             return conference
     return None
 
@@ -256,7 +254,6 @@ def _load_latest_odds_data() -> Dict[str, Any]:
     if _ODDS_CACHE is not None:
         return _ODDS_CACHE
 
-    # Try Firebase storage
     try:
         bucket = _get_firebase_bucket(allow_when_upload_disabled=True)
         if bucket:
@@ -267,20 +264,6 @@ def _load_latest_odds_data() -> Dict[str, Any]:
                 return _ODDS_CACHE
     except Exception as exc:  # pragma: no cover - environment dependent
         print(f"[ingest_raw][WARN] Unable to download odds from Firebase: {exc}")
-
-    # Fallback to local cache if present
-    local_candidates = [
-        os.path.join(RAW_DATA_DIR, "odds_latest.json"),
-        os.path.join(RAW_DATA_DIR, "odds", "latest.json"),
-    ]
-    for path in local_candidates:
-        if os.path.exists(path):
-            try:
-                with open(path, "r", encoding="utf-8") as fh:
-                    _ODDS_CACHE = json.load(fh)
-                    return _ODDS_CACHE
-            except Exception as exc:  # pragma: no cover
-                print(f"[ingest_raw][WARN] Failed reading local odds cache {path}: {exc}")
 
     print("[ingest_raw][WARN] No odds data available; returning empty schedule.")
     _ODDS_CACHE = {"games": []}
@@ -304,26 +287,23 @@ def _load_torvik_lookup() -> Dict[str, Dict[str, float]]:
     except Exception as exc:  # pragma: no cover
         print(f"[ingest_raw][WARN] Unable to download Torvik rankings: {exc}")
 
-    if df is None:
-        local_candidates = [
-            os.path.join(RAW_DATA_DIR, "torvik_rankings_latest.csv"),
-            os.path.join(RAW_DATA_DIR, "torvik_rankings", "latest.csv"),
-        ]
-        for path in local_candidates:
-            if os.path.exists(path):
-                try:
-                    df = pd.read_csv(path)
-                    break
-                except Exception as exc:  # pragma: no cover
-                    print(f"[ingest_raw][WARN] Failed reading Torvik cache {path}: {exc}")
-
     lookup: Dict[str, Dict[str, float]] = {}
     if df is not None and not df.empty:
         possible_team_cols = [c for c in df.columns if c.lower() in {"team", "school", "team_name"}]
         team_col = possible_team_cols[0] if possible_team_cols else None
         if team_col:
             for _, row in df.iterrows():
-                slug = _slugify_team(str(row[team_col]))
+                torvik_team_name = str(row[team_col])
+                torvik_team_name = torvik_team_name.replace(" St.", "-state")
+                torvik_team_name_clean = torvik_team_name.lower().replace(" ", "")
+                print(f"[DEBUG] Processing Torvik team name: '{torvik_team_name}' -> '{torvik_team_name_clean}'")  # ADD THIS
+                # Apply both mappings: torvik_name -> normalized_key
+                # First check torvik_map, then torvik_map_two (which overrides)
+                team_key = TORVIK_MAP.get(torvik_team_name_clean, torvik_team_name_clean)
+                team_key = canonicalize_team_key(team_key)
+                if not team_key:
+                    team_key = _slugify_team(torvik_team_name)
+                print(f"[DEBUG] Mapped to team key: '{team_key}'")  # ADD THIS
                 numeric_values: Dict[str, float] = {}
                 for col, val in row.items():
                     if col == team_col:
@@ -332,13 +312,12 @@ def _load_torvik_lookup() -> Dict[str, Dict[str, float]]:
                     if pd.notna(num_val):
                         numeric_values[col] = float(num_val)
                 if numeric_values:
-                    lookup[slug] = numeric_values
+                    lookup[team_key] = numeric_values
 
     _TORVIK_LOOKUP = lookup
     return _TORVIK_LOOKUP
 
 
-# --- UTILS / NORMALIZATION --------------------------------------------------
 # --- UTILS / NORMALIZATION --------------------------------------------------
 def normalize_team_key(name: str) -> str:
     """
@@ -355,11 +334,10 @@ def normalize_team_key(name: str) -> str:
             _ALIAS_MAP = {}
 
     slug = _slugify_team(name)
-    return _ALIAS_MAP.get(slug, slug)
-
-
-def ensure_dir(path: str):
-    os.makedirs(path, exist_ok=True)
+    canonical = _ALIAS_MAP.get(slug)
+    if canonical:
+        return canonical
+    return canonicalize_team_key(slug)
 
 
 def make_game_id(game_date: str, home_key: str, away_key: str) -> str:
@@ -371,8 +349,6 @@ def make_game_id(game_date: str, home_key: str, away_key: str) -> str:
 
 
 # --- DATA SOURCE PLACEHOLDERS ----------------------------------------------
-# These are the 3 things you'll eventually need to hook up to real scrapers/APIs.
-
 
 def fetch_schedule_for_date(game_date: str) -> pd.DataFrame:
     """
@@ -453,9 +429,9 @@ def fetch_team_snapshot(team_key: str, as_of_date: str, team_name: Optional[str]
     Pulls the latest Torvik rankings snapshot from Firebase (or local cache)
     and returns numeric metrics for the requested team.
     """
-    slug = _team_slug_from_name(team_name or team_key)
+    # slug = _team_slug_from_name(team_name or team_key)
     torvik_lookup = _load_torvik_lookup()
-    metrics = torvik_lookup.get(slug, {})
+    metrics = torvik_lookup.get(team_key, {})
 
     team_metrics = _load_team_metrics(as_of_date)
     rolling_stats = team_metrics.get(team_key, {})
@@ -474,6 +450,11 @@ def fetch_team_snapshot(team_key: str, as_of_date: str, team_name: Optional[str]
     for key, value in metrics.items():
         prefixed = f"team_{key}"
         snapshot[prefixed] = value
+
+    if 'team_adjoe' in snapshot:
+        snapshot['team_adj_o'] = snapshot.pop('team_adjoe')
+    if 'team_adjde' in snapshot:
+        snapshot['team_adj_d'] = snapshot.pop('team_adjde')
 
     # Convenience flags
     if "team_rank" not in snapshot and "team_rank" in metrics:
@@ -704,22 +685,6 @@ def ingest_raw_for_date(game_date: str, now_iso: str) -> None:
         odds_records.append(odds_record)
 
     odds_df = pd.DataFrame(odds_records)
-
-    # 5. write out
-    out_dir = os.path.join(RAW_DATA_DIR, game_date)
-    ensure_dir(out_dir)
-
-    # You now get repeatable daily snapshots:
-    games_path = os.path.join(out_dir, f"{game_date}_games.csv")
-    teams_path = os.path.join(out_dir, f"{game_date}_teams.csv")
-    odds_path = os.path.join(out_dir, f"{game_date}_odds.csv")
-
-    # Local CSV persistence disabled for cloud deployment.
-    # games_df.to_csv(games_path, index=False)
-    # team_df.to_csv(teams_path, index=False)
-    # odds_df.to_csv(odds_path, index=False)
-
-    print(f"[ingest_raw] {game_date}: skipped local write (cloud storage only)")
 
     if UPLOAD_TO_FIREBASE:
         upload_snapshots_to_firebase(

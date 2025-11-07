@@ -33,8 +33,8 @@ def save_to_firebase(data, sport_key):
     now = datetime.now(central)
     
     # Create timestamped path: raw_data/odds/sport_key/YYYYMMDD/HH.json
-    timestamp_path = f"raw_data/odds/{sport_key}/{now.strftime('%Y%m%d/%H')}.json"
-    latest_path = f"raw_data/odds/latest.json"
+    latest_path = "raw_data/odds/latest.json"
+    # latest_csv_path = "raw_data/odds/latest.csv"
     
     # Prepare data with metadata
     output_data = {
@@ -47,17 +47,24 @@ def save_to_firebase(data, sport_key):
     
     json_str = json.dumps(output_data, indent=2)
     
-    # Upload timestamped version
-    blob_timestamp = bucket.blob(timestamp_path)
-    blob_timestamp.upload_from_string(json_str, content_type='application/json')
-    print(f"✅ Saved timestamped: {timestamp_path}")
-    
-    # Upload as latest
     blob_latest = bucket.blob(latest_path)
     blob_latest.upload_from_string(json_str, content_type='application/json')
-    print(f"✅ Saved latest: {latest_path}")
+    print(f"✅ Saved latest JSON: {latest_path}")
+
+    # Also publish a CSV snapshot if needed
+    # try:
+    #     import pandas as pd
+
+    #     df = pd.DataFrame(data)
+    #     if not df.empty:
+    #         csv_content = df.to_csv(index=False)
+    #         blob_csv = bucket.blob(latest_csv_path)
+    #         blob_csv.upload_from_string(csv_content, content_type='text/csv')
+    #         print(f"✅ Saved latest CSV: {latest_csv_path}")
+    # except Exception as exc:
+    #     print(f"⚠️ Could not write latest CSV: {exc}")
     
-    return timestamp_path, latest_path
+    return latest_path
 
 
 def check_available_sports():
@@ -144,8 +151,9 @@ def get_college_basketball_games(sport_key='basketball_ncaab'):
             
             # Check if game is today
             if central_time.date() == today:
-                # Save back as ISO string (with timezone info)
-                game['commence_time'] = central_time.isoformat()
+                # Save back as ISO string WITHOUT timezone suffix so downstream
+                # systems don't append "-06:00" or similar offsets
+                game['commence_time'] = central_time.strftime('%Y-%m-%dT%H:%M:%S')
                 # Also add a human-readable version
                 game['commence_time_formatted'] = central_time.strftime('%m/%d/%Y %I:%M %p %Z')
                 todays_games.append(game)
@@ -176,11 +184,10 @@ def get_college_basketball_games(sport_key='basketball_ncaab'):
         print(f"{'='*80}\n")
         
         try:
-            timestamp_path, latest_path = save_to_firebase(games, sport_key)
-            
+            json_path, csv_path = save_to_firebase(games, sport_key)
             print(f"\n✅ Firebase upload complete!")
-            print(f"   Timestamped: gs://{FIREBASE_STORAGE_BUCKET}/{timestamp_path}")
-            print(f"   Latest: gs://{FIREBASE_STORAGE_BUCKET}/{latest_path}")
+            print(f"   Latest JSON: gs://{FIREBASE_STORAGE_BUCKET}/{json_path}")
+            print(f"   Latest CSV: gs://{FIREBASE_STORAGE_BUCKET}/{csv_path}")
         except Exception as e:
             print(f"❌ Firebase upload failed: {e}")
 
@@ -259,9 +266,9 @@ def main():
         print("\n🔄 Trying basketball_ncaab anyway...")
         games = get_college_basketball_games('basketball_ncaab')
         
-        if not games:
-            print("\n🔄 Trying basketball_ncaaw...")
-            games = get_college_basketball_games('basketball_ncaaw')
+        # if not games:
+        #     print("\n🔄 Trying basketball_ncaaw...")
+        #     games = get_college_basketball_games('basketball_ncaaw')
     else:
         # Try each active college basketball sport
         for sport in cbb_sports:
