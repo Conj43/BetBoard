@@ -67,7 +67,7 @@ struct PredictionSectionView: View {
                     }
                 case .spread:
                     if let bet = prediction.spreadBet, prediction.spreadConfidence > 0 {
-                        predictionView(betType: "Spread", bet: bet, confidence: prediction.spreadConfidence)
+                        predictionView(betType: "Our Pick \nOur Predicted Spread", bet: bet, confidence: prediction.spreadConfidence, isSpread: true)
                     } else {
                         fallbackView()
                     }
@@ -128,12 +128,14 @@ struct PredictionSectionView: View {
         }
     }
     
-    private func predictionView(betType: String, bet: String, confidence: Double) -> some View {
+    // Added an isSpread parameter with default value of false for backwards compatibility
+    private func predictionView(betType: String, bet: String, confidence: Double, isSpread: Bool = false) -> some View {
         // Format the bet string based on bet type
         let formattedBet: String
         if betType == "Moneyline" {
             formattedBet = TeamNameFormatter.formatTeamName(bet)
-        } else if betType == "Spread" {
+        } else if betType.contains("Spread") || isSpread {
+            // Now checking if betType contains "Spread" OR isSpread parameter is true
             let components = bet.components(separatedBy: " ")
             if components.count >= 2 {
                 let teamName = components[0]

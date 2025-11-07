@@ -30,7 +30,6 @@ struct PredictionsView: View {
                     predictionsList
                 }
             }
-            .navigationTitle("Predictions")
             .background(Color(.systemGroupedBackground))
             .refreshable {
                 Task {

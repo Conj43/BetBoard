@@ -117,11 +117,11 @@ struct PredictionRowView: View {
     private func getBetTypeText() -> String {
         switch predictionsViewModel.selectedBetType {
         case .moneyline:
-            return "Moneyline"
+            return "Moneyline Pick"
         case .spread:
-            return "Spread"
+            return "Spread Pick"
         case .total:
-            return "Total"
+            return "Total Pick"
         }
     }
     
@@ -141,8 +141,8 @@ struct PredictionRowView: View {
                    let components = bet.components(separatedBy: " ")
                    if components.count >= 2 {
                        let teamName = components[0]
-                       let spreadValue = components[1...].joined(separator: " ")
-                       return "\(TeamNameFormatter.formatTeamName(teamName)) \(spreadValue)"
+
+                       return "\(TeamNameFormatter.formatTeamName(teamName))"
                    }
                    return bet
                }
