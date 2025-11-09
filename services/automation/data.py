@@ -18,10 +18,10 @@ FIREBASE_CREDENTIALS_PATH = "services/firebase/betboardtest-firebase-adminsdk-fb
 FIREBASE_STORAGE_BUCKET = "betboardtest.firebasestorage.app"
 
 # Change this to inspect different files
-FILE_PATH = "processed_features/latest.csv"
-# FILE_PATH = "raw_data/torvik_rankings/latest.csv"
+# FILE_PATH = "gamelogs/alabama-birmingham/2026.csv"
+FILE_PATH = "raw_data/torvik_rankings/latest.csv"
 # Examples:
-# FILE_PATH = "raw_data/gamelogs/2025-11-06/gamelogs.csv"
+# FILE_PATH = "raw_data/gamelogs/kansas-state/2026.csv"
 # FILE_PATH = "raw_data/odds/latest.json"
 # FILE_PATH = "raw_data/torvik_rankings/latest.csv"
 # FILE_PATH = "raw_data/games/latest.csv"
@@ -48,7 +48,7 @@ def inspect_file(file_path: str):
     if not blob.exists():
         print(f"❌ File does NOT exist at: {file_path}")
         print("\nTry one of these paths:")
-        print("  - raw_data/gamelogs/latest.csv")
+        print("  - raw_data/gamelogs/<team>/2026.csv")
         print("  - raw_data/odds/latest.json")
         print("  - raw_data/torvik_rankings/latest.csv")
         print("  - raw_data/games/latest.csv")
@@ -82,7 +82,7 @@ def inspect_file(file_path: str):
     elif file_path.endswith('.csv'):
 
         df = pd.read_csv(StringIO(content))
-        df.to_csv('services/automation/features.csv', index=False) 
+        df.to_csv('services/automation/torvik.csv', index=False) 
         
 
 

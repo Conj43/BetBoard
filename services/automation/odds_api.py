@@ -25,16 +25,15 @@ def initialize_firebase():
 
 
 def save_to_firebase(data, sport_key):
-    """Save odds data to Firebase Storage with timestamp and latest."""
+    """Save odds data to Firebase Storage with timestamped + latest objects."""
     bucket = initialize_firebase()
     
     # Get current time in Central
     central = pytz.timezone('US/Central')
     now = datetime.now(central)
     
-    # Create timestamped path: raw_data/odds/sport_key/YYYYMMDD/HH.json
     latest_path = "raw_data/odds/latest.json"
-    # latest_csv_path = "raw_data/odds/latest.csv"
+    dated_path = f"raw_data/odds/{now.strftime('%Y-%m-%d')}/odds.json"
     
     # Prepare data with metadata
     output_data = {
@@ -51,20 +50,11 @@ def save_to_firebase(data, sport_key):
     blob_latest.upload_from_string(json_str, content_type='application/json')
     print(f"✅ Saved latest JSON: {latest_path}")
 
-    # Also publish a CSV snapshot if needed
-    # try:
-    #     import pandas as pd
-
-    #     df = pd.DataFrame(data)
-    #     if not df.empty:
-    #         csv_content = df.to_csv(index=False)
-    #         blob_csv = bucket.blob(latest_csv_path)
-    #         blob_csv.upload_from_string(csv_content, content_type='text/csv')
-    #         print(f"✅ Saved latest CSV: {latest_csv_path}")
-    # except Exception as exc:
-    #     print(f"⚠️ Could not write latest CSV: {exc}")
+    dated_blob = bucket.blob(dated_path)
+    dated_blob.upload_from_string(json_str, content_type='application/json')
+    print(f"✅ Saved dated JSON: {dated_path}")
     
-    return latest_path
+    return latest_path, dated_path
 
 
 def check_available_sports():
@@ -184,10 +174,10 @@ def get_college_basketball_games(sport_key='basketball_ncaab'):
         print(f"{'='*80}\n")
         
         try:
-            json_path, csv_path = save_to_firebase(games, sport_key)
+            latest_path, dated_path = save_to_firebase(games, sport_key)
             print(f"\n✅ Firebase upload complete!")
-            print(f"   Latest JSON: gs://{FIREBASE_STORAGE_BUCKET}/{json_path}")
-            print(f"   Latest CSV: gs://{FIREBASE_STORAGE_BUCKET}/{csv_path}")
+            print(f"   Latest JSON: gs://{FIREBASE_STORAGE_BUCKET}/{latest_path}")
+            print(f"   Daily JSON:  gs://{FIREBASE_STORAGE_BUCKET}/{dated_path}")
         except Exception as e:
             print(f"❌ Firebase upload failed: {e}")
 

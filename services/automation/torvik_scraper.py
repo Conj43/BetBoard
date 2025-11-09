@@ -28,7 +28,7 @@ def scrape_torvik(request=None):
     """
     try:
         # URL for Torvik's rankings CSV
-        url = "https://barttorvik.com/2025_team_results.csv"
+        url = "https://barttorvik.com/2026_team_results.csv"
         
         # Download the CSV
         response = requests.get(url, timeout=30)

@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import timedelta
 from datetime import datetime, timezone
 import re
+from typing import Optional
 import firebase_admin
 from firebase_admin import credentials, firestore
 
@@ -12,7 +13,6 @@ from team_keys import (
     CONFERENCE_MAP,
     canonicalize_team_key,
 )
-
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
@@ -50,6 +50,8 @@ RAW_TEAMS_PREFIX = f"{RAW_DATA_PREFIX}/team_snapshots"
 RAW_ODDS_PREFIX = f"{RAW_DATA_PREFIX}/odds"
 RAW_TORVIK_PREFIX = f"{RAW_DATA_PREFIX}/torvik_rankings"
 RAW_RESULTS_PREFIX = f"{RAW_DATA_PREFIX}/results"
+GAMELOG_STORAGE_PREFIX = f"{RAW_DATA_PREFIX}/gamelogs"
+SPORTS_REFERENCE_SEASON = "2026"
 
 
 PROCESSED_FEATURES_PREFIX = "processed_features"
@@ -156,7 +158,20 @@ FEATURE_COLS_ORDER = [
     # "moneyline_away",
 ]
 
-def firestore_doc_for_game_pred(game_pred: dict, picks_for_game: list) -> dict:
+def _resolve_team_key(name: Optional[str]) -> str:
+    if not isinstance(name, str):
+        return ""
+    mapped = TEAM_MAPPING.get(name)
+    if mapped:
+        return canonicalize_team_key(mapped)
+    return canonicalize_team_key(name)
+
+
+def firestore_doc_for_game_pred(
+    game_pred: dict,
+    picks_for_game: list,
+    torvik_ranks: Optional[dict[str, int]] = None,
+) -> dict:
     """
     Given game-level prediction data and any picks we like for that game,
     build the Firestore document body we store at
@@ -262,6 +277,18 @@ def firestore_doc_for_game_pred(game_pred: dict, picks_for_game: list) -> dict:
     if total:
         doc["total"] = total
 
+    if torvik_ranks:
+        home_key = _resolve_team_key(home_team)
+        away_key = _resolve_team_key(away_team)
+
+        home_rank = torvik_ranks.get(home_key)
+        away_rank = torvik_ranks.get(away_key)
+
+        if home_rank is not None:
+            doc["torvik_home_rank"] = home_rank
+        if away_rank is not None:
+            doc["torvik_away_rank"] = away_rank
+
     if picks_for_game:
         doc["recommended"] = picks_for_game
     return doc
@@ -280,5 +307,36 @@ TORVIK_MAP = {
     "saintfrancis": "saint-francis-pa",
     "loyolachicago": "loyola-il",
     "smu": "southern-methodist",
-
+    "utsa": "texas-san-antonio",
+    "charleston": "college-of-charleston",
+    "purduefortwayne": "ipfw",
+    "umasslowell": "massachusetts-lowell",
+    "umkc": "missouri-kansas-city",
+    "vcu": "virginia-commonwealth",
+    "louisiana": "louisiana-lafayette",
+    "vmi": "virginia-military-institute",
+    "utahtech": "dixie-state",
+    "uab": "alabama-birmingham",
+    "n.c.state": "north-carolina-state",
+    "ucirvine": "california-irvine",
+    "calbaptist": "california-baptist",
+    "saintmary's": "saint-marys-ca",
+    "siuedwardsville": "southern-illinois-edwardsville",
+    "st.john's": "st-johns-ny",
+    "fiu": "florida-international",
+    "umbc": "maryland-baltimore-county",
+    "uncgreensboro": "north-carolina-greensboro",
+    "utarlington": "texas-arlington",
+    "ucsantabarbara": "california-santa-barbara",
+    "ucf": "central-florida",
+    "prairieviewa&m": "prairie-view",
+    "queens": "queens-nc",
+    "utriograndevalley": "texas-pan-american",
+    "byu": "brigham-young",
+    "unlv": "nevada-las-vegas",
+    "ucsandiego": "california-san-diego",
+    "houstonchristian": "houston-baptist",
+    "ucdavis": "california-davis",
+    "usc": "southern-california",
+    "southernmiss": "southern-mississippi",
 }

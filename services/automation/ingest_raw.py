@@ -26,6 +26,8 @@ from config import (
     CONFERENCE_MAP,
     TORVIK_MAP,
     canonicalize_team_key,
+    SPORTS_REFERENCE_SEASON,
+    GAMELOG_STORAGE_PREFIX,
 )
 
 
@@ -114,29 +116,45 @@ def upload_snapshots_to_firebase(game_date: str,
 # --- OPTIONAL GAMELOG RETRIEVAL ---------------------------------------------
 def download_gamelogs_snapshot(game_date: str) -> Optional[pd.DataFrame]:
     """
-    Load the Sports Reference gamelog snapshot for the given date from Firebase.
-    Returns a DataFrame or None if not available.
+    Load Sports Reference gamelog data for the teams playing on `game_date`.
+    Each team stores its season-long log at gamelogs/<team>/<season>.csv.
     """
     bucket = _get_firebase_bucket(allow_when_upload_disabled=True)
     if not bucket:
         return None
 
-    dated_blob = bucket.blob(f"raw_data/gamelogs/{game_date}/gamelogs.csv")
-    latest_blob = bucket.blob("raw_data/gamelogs/latest.csv")
-
-    target_blob = dated_blob if dated_blob.exists() else latest_blob if latest_blob.exists() else None
-    if target_blob is None:
-        print(f"[ingest_raw][WARN] No gamelog snapshot found for {game_date}.")
+    team_slugs = _team_slugs_playing_on_date(game_date)
+    if not team_slugs:
+        print(f"[ingest_raw][WARN] No teams scheduled for {game_date}; skipping gamelog download.")
         return None
 
-    try:
-        data = target_blob.download_as_text()
-        df = pd.read_csv(StringIO(data))
-        print(f"[ingest_raw] Loaded gamelogs for {game_date} from Firebase")
-        return df
-    except Exception as exc:  # pragma: no cover
-        print(f"[ingest_raw][WARN] Failed to download gamelogs: {exc}")
+    frames: list[pd.DataFrame] = []
+    missing: list[str] = []
+
+    for slug in sorted(team_slugs):
+        remote_path = f"{GAMELOG_STORAGE_PREFIX}/{slug}/{SPORTS_REFERENCE_SEASON}.csv"
+        blob = bucket.blob(remote_path)
+        if not blob.exists():
+            missing.append(slug)
+            continue
+        try:
+            csv_text = blob.download_as_text()
+            df = pd.read_csv(StringIO(csv_text))
+            df["Team"] = df.get("Team", slug)
+            frames.append(df)
+        except Exception as exc:  # pragma: no cover
+            print(f"[ingest_raw][WARN] Failed to download {remote_path}: {exc}")
+
+    if missing:
+        print(f"[ingest_raw][WARN] Missing gamelog files for {len(missing)} team(s): {', '.join(missing[:10])}")
+
+    if not frames:
+        print(f"[ingest_raw][WARN] No gamelog data available for {game_date}.")
         return None
+
+    combined = pd.concat(frames, ignore_index=True)
+    print(f"[ingest_raw] Loaded {combined.shape[0]} gamelog rows across {len(frames)} teams for {game_date}")
+    return combined
 
 
 # --- TEAM METRICS COMPUTATION -----------------------------------------------
@@ -420,6 +438,24 @@ def fetch_schedule_for_date(game_date: str) -> pd.DataFrame:
         ])
 
     return pd.DataFrame(rows)
+
+
+def _team_slugs_playing_on_date(game_date: str) -> List[str]:
+    """
+    Determine which Sports Reference slugs correspond to teams on the card for `game_date`.
+    """
+    schedule_df = fetch_schedule_for_date(game_date)
+    if schedule_df.empty:
+        return []
+
+    slugs: set[str] = set()
+    for column in ("home_team_name", "away_team_name"):
+        for name in schedule_df[column].dropna().unique():
+            slug = _team_slug_from_name(name)
+            if slug:
+                slugs.add(slug)
+
+    return sorted(slugs)
 
 
 def fetch_team_snapshot(team_key: str, as_of_date: str, team_name: Optional[str] = None) -> Dict[str, Any]:

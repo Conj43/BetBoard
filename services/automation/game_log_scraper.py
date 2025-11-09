@@ -5,12 +5,15 @@ from io import StringIO
 import time
 import json
 import os
-from datetime import datetime, timedelta
 
 import firebase_admin
 from firebase_admin import credentials, storage
-from config import TEAM_MAPPING as direct_mapping
-from config import CONFERENCE_MAP as d1_teams
+from config import (
+    TEAM_MAPPING as direct_mapping,
+    CONFERENCE_MAP as d1_teams,
+    SPORTS_REFERENCE_SEASON,
+    GAMELOG_STORAGE_PREFIX,
+)
 
 FIREBASE_CREDENTIALS_PATH = "services/firebase/betboardtest-firebase-adminsdk-fbsvc-196904ba56.json"
 FIREBASE_STORAGE_BUCKET = "betboardtest.firebasestorage.app"
@@ -134,6 +137,26 @@ def clean_table(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def filter_completed_games(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Keep only rows that contain box score data.
+    Sports Reference includes upcoming games as empty rows—those should be dropped.
+    """
+    stat_cols = [col for col in ["Tm", "Opp", "FG", "FGA"] if col in df.columns]
+    if not stat_cols:
+        return df
+
+    # Coerce numeric columns so empty strings/whitespace become NaN before filtering
+    stat_values = df[stat_cols].apply(pd.to_numeric, errors="coerce")
+    has_stats = stat_values.notna().any(axis=1)
+
+    date_mask = pd.Series(True, index=df.index)
+    if "Date" in df.columns:
+        date_mask = pd.to_datetime(df["Date"], errors="coerce").notna()
+
+    return df[has_stats & date_mask]
+
+
 session = requests.Session()
 session.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -193,16 +216,19 @@ def main():
     print(f"🌐 SCRAPING SPORTS REFERENCE")
     print(f"{'='*80}\n")
     
-    all_logs = []
     scraped_count = 0
     skipped_count = 0
+    uploaded_count = 0
     
     for team_slug in sorted(teams_playing_today):
         conference = get_conference_for_team(team_slug)
         
         print(f"🏀 {team_slug} ({conference})")
         
-        url = f"https://www.sports-reference.com/cbb/schools/{team_slug}/men/2026-gamelogs.html"
+        url = (
+            "https://www.sports-reference.com/"
+            f"cbb/schools/{team_slug}/men/{SPORTS_REFERENCE_SEASON}-gamelogs.html"
+        )
         resp = fetch_with_retry(url)
         
         if resp.status_code != 200:
@@ -216,11 +242,22 @@ def main():
         if table:
             df = pd.read_html(StringIO(str(table)), flavor="lxml")[0]
             df = clean_table(df)
+            df = filter_completed_games(df)
             df.insert(0, "Team", team_slug)
             df.insert(1, "Conference", conference)
-            all_logs.append(df)
+
+            if df.empty:
+                print("  ⚠️ No completed games with stats yet; skipping upload")
+                skipped_count += 1
+                continue
+
+            csv_string = df.to_csv(index=False)
+            firebase_path = f"{GAMELOG_STORAGE_PREFIX}/{team_slug}/{SPORTS_REFERENCE_SEASON}.csv"
+            blob = bucket.blob(firebase_path)
+            blob.upload_from_string(csv_string, content_type="text/csv")
+            uploaded_count += 1
             scraped_count += 1
-            print(f"  ✅ Scraped successfully")
+            print(f"  📤 Uploaded {len(df)} games → {firebase_path}")
         else:
             print(f"  ⚠️  No game log table found")
             skipped_count += 1
@@ -233,30 +270,9 @@ def main():
     print(f"{'='*80}")
     print(f"  ✅ Successfully scraped: {scraped_count}")
     print(f"  ❌ Skipped/Failed: {skipped_count}")
-    print(f"  📋 Total teams: {len(teams_playing_today)}")
-    
-    # Save results
-    if all_logs:
-        combined_df = pd.concat(all_logs, ignore_index=True)
-        csv_string = combined_df.to_csv(index=False)
-        target_date = datetime.now().strftime("%Y-%m-%d")
-        # os.makedirs(f"raw_data/gamelogs/{target_date}", exist_ok=True)
-        # local_path = f"raw_data/gamelogs/{target_date}/{target_date}_gamelog.csv"
-        # combined_df.to_csv(local_path, index=False)
-        
-    
-        firebase_path = f"raw_data/gamelogs/{target_date}/gamelogs.csv"
-        
-        blob = bucket.blob(firebase_path)
-        blob.upload_from_string(csv_string, content_type="text/csv")
-        print(f"  📤 Firebase: gs://{FIREBASE_STORAGE_BUCKET}/{firebase_path}")
-        
-        # Update latest
-        latest_blob = bucket.blob("raw_data/gamelogs/latest.csv")
-        latest_blob.upload_from_string(csv_string, content_type="text/csv")
-        print(f"  📤 Latest: gs://{FIREBASE_STORAGE_BUCKET}/raw_data/gamelogs/latest.csv")
-        
-        print(f"\n✅ All done!")
+    print(f"  📤 Uploaded team files: {uploaded_count}")
+    print(f"  📋 Total teams considered: {len(teams_playing_today)}")
+    print(f"\n✅ All done!")
 
 
 

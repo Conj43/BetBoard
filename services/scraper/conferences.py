@@ -11,7 +11,7 @@ import re
 import sys
 import time
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -22,6 +22,7 @@ REQUEST_DELAY_SEC = 10.0
 BASE = "https://www.sports-reference.com"
 INDEX_URL = f"{BASE}/cbb/conferences/"
 HEADERS = {"User-Agent": "AcademicScraper/1.0"}
+CURRENT_SEASON = "2026"
 # =====================================================
 
 # /cbb/conferences/acc/men/
@@ -90,20 +91,34 @@ def extract_conference_title(soup: BeautifulSoup, fallback_slug: str) -> str:
     return fallback_slug.upper()
 
 
-def extract_team_name_slug(soup: BeautifulSoup) -> List[Dict[str, str]]:
+def _get_table_rows(soup: BeautifulSoup) -> List:
+    table = soup.find("table", {"id": "schools"}) or soup.find("table")
+    if not table or not table.tbody:
+        return []
+    return table.tbody.find_all("tr")
+
+
+def extract_team_name_slug(soup: BeautifulSoup, current_season: Optional[str] = None) -> List[Dict[str, str]]:
     """
     Parse the Schools table; return [{name, slug}, ...]
     """
     teams: List[Dict[str, str]] = []
 
-    # Primary: table#schools with td[data-stat="school_name"] > a
-    anchors = soup.select('table#schools tbody td[data-stat="school_name"] a[href]')
-    if not anchors:
-        # Fallback if the id changes
-        anchors = soup.select('table tbody td[data-stat="school_name"] a[href]')
-
     seen = set()
-    for a in anchors:
+    for row in _get_table_rows(soup):
+        name_cell = row.find("td", {"data-stat": "school_name"})
+        if not name_cell:
+            continue
+        a = name_cell.find("a", href=True)
+        if not a:
+            continue
+
+        if current_season:
+            year_max_cell = row.find("td", {"data-stat": "year_max"})
+            year_max = year_max_cell.get_text(strip=True) if year_max_cell else ""
+            if year_max and year_max != current_season:
+                continue
+
         href = a.get("href", "")
         m = TEAM_LINK_RE.match(href)
         if not m:
@@ -133,7 +148,7 @@ def run():
                 url = conference_schools_url(slug)
                 page = fetch_soup(url)
                 conf_title = extract_conference_title(page, slug)
-                teams = extract_team_name_slug(page)
+                teams = extract_team_name_slug(page, CURRENT_SEASON)
                 result[conf_title] = teams
                 print(f"[OK] {conf_title}: {len(teams)} teams")
             except requests.HTTPError as e:

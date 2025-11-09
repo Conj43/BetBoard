@@ -433,6 +433,8 @@ def _recompute_derived_metrics(features_df: pd.DataFrame) -> pd.DataFrame:
         features_df["delta_pace_roll"] = features_df["team_pace_roll"] - features_df["opp_pace_roll"]
 
     if {"opp_points_roll", "team_pace_roll"}.issubset(features_df.columns):
+        if "team_def_eff_roll" not in features_df.columns:
+            features_df["team_def_eff_roll"] = np.nan
         denom = features_df["team_pace_roll"].replace({0: np.nan})
         inferred = (features_df["opp_points_roll"] / denom) * 100
         features_df["team_def_eff_roll"] = features_df["team_def_eff_roll"].where(
@@ -440,6 +442,8 @@ def _recompute_derived_metrics(features_df: pd.DataFrame) -> pd.DataFrame:
         )
 
     if {"team_points_roll", "opp_pace_roll"}.issubset(features_df.columns):
+        if "opp_def_eff_roll" not in features_df.columns:
+            features_df["opp_def_eff_roll"] = np.nan
         denom = features_df["opp_pace_roll"].replace({0: np.nan})
         inferred = (features_df["team_points_roll"] / denom) * 100
         features_df["opp_def_eff_roll"] = features_df["opp_def_eff_roll"].where(
