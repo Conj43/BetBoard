@@ -305,9 +305,18 @@ TEAM_MAPPING = {
     "San Diego St Aztecs": "san-diego-state",
     "South Carolina Gamecocks": "south-carolina",
     "Southern Miss Golden Eagles": "southern-mississippi",
-    "St. Thomas (MN) Tommies": "saint-thomas-mn",
+    "St. Thomas (MN) Tommies": "st-thomas-mn",
     "UNC Wilmington Seahawks": "north-carolina-wilmington",
     "USC Trojans": "southern-california",
+    "Arkansas-Little Rock Trojans": "arkansas-little-rock",
+    "Charleston Southern Buccaneers": "charleston-southern",
+    "Cleveland St Vikings": "cleveland-state",
+    "Eastern Kentucky Colonels": "eastern-kentucky",
+    "Indiana St Sycamores": "indiana-state",
+    "North Carolina A&T Aggies": "north-carolina-at",
+    "Stetson Hatters": "stetson",
+    "West Georgia Wolves": "west-georgia",
+    "Western Kentucky Hilltoppers": "western-kentucky",
 }
 
 

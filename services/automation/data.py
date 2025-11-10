@@ -19,7 +19,7 @@ FIREBASE_STORAGE_BUCKET = "betboardtest.firebasestorage.app"
 
 # Change this to inspect different files
 # FILE_PATH = "gamelogs/alabama-birmingham/2026.csv"
-FILE_PATH = "raw_data/torvik_rankings/latest.csv"
+FILE_PATH = "processed_features/latest.csv"
 # Examples:
 # FILE_PATH = "raw_data/gamelogs/kansas-state/2026.csv"
 # FILE_PATH = "raw_data/odds/latest.json"

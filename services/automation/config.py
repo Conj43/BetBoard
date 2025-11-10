@@ -339,4 +339,8 @@ TORVIK_MAP = {
     "ucdavis": "california-davis",
     "usc": "southern-california",
     "southernmiss": "southern-mississippi",
+    "uncwilmington": "north-carolina-wilmington",
+    "littlerock": "arkansas-little-rock",
+    "lsu": "louisiana-state",
+    "st.thomas": "st-thomas-mn",
 }
