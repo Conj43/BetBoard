@@ -108,7 +108,7 @@ struct PredictionInfo: Codable {
         let spreadBet: String?
         
         if let spread = spreadData {
-            if let edge = spread["edge"] as? Double, let line = spread["line"] as? Double, let pick = spread["pick"] as? String {
+            if let edge = spread["edge"] as? Double, let line = spread["predicted_margin"] as? Double, let pick = spread["pick"] as? String {
                 // Calculate confidence based on edge (could adjust this algorithm)
                 spreadConfidence = min(abs(edge) * 10, 100) // Simple scaling
                 // Format spread bet string
@@ -127,7 +127,7 @@ struct PredictionInfo: Codable {
         let totalBet: String?
         
         if let total = totalData {
-            if let edge = total["edge"] as? Double, let line = total["line"] as? Double, let pick = total["pick"] as? String {
+            if let edge = total["edge"] as? Double, let line = total["predicted_total"] as? Double, let pick = total["pick"] as? String {
                 // Calculate confidence based on edge
                 totalConfidence = min(abs(edge) * 10, 100) // Simple scaling
                 // Format total bet string

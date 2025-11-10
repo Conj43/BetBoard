@@ -167,7 +167,7 @@ struct TeamNameFormatter {
         "CHARLOTTE": "Charlotte",
         "CINCINNATI": "Cincinnati",
         "CITADEL": "The Citadel",
-        "CSU Fullerton": "CSU Fullerton",
+        "CSUFULLERTON": "CSU Fullerton",
         "COASTAL-CAROLINA": "Coastal Carolina",
         "COLGATE": "Colgate",
         "COLORADO-STATE": "Colorado State",

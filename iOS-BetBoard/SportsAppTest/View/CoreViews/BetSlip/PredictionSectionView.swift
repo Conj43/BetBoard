@@ -5,13 +5,6 @@
 //  Created by Trenton Roney on 10/1/25.
 //
 
-//
-//  PredictionSectionView.swift
-//  SportsAppTest
-//
-//  Created by Trenton Roney on 10/1/25.
-//
-
 import SwiftUI
 
 struct PredictionSectionView: View {
@@ -62,13 +55,13 @@ struct PredictionSectionView: View {
                 switch selectedBetType {
                 case .spread:
                     if let bet = prediction.spreadBet {
-                        predictionView(betType: "Our Pick \nOur Predicted Spread", bet: bet, isSpread: true)
+                        spreadPredictionView(bet: bet)
                     } else {
                         fallbackView()
                     }
                 case .total:
                     if let bet = prediction.totalBet {
-                        predictionView(betType: "Total", bet: bet)
+                        totalPredictionView(bet: bet)
                     } else {
                         fallbackView()
                     }
@@ -126,42 +119,97 @@ struct PredictionSectionView: View {
         }
     }
     
-    // Simplified predictionView without confidence parameter
-    private func predictionView(betType: String, bet: String, isSpread: Bool = false) -> some View {
-        // Format the bet string based on bet type
-        let formattedBet: String
-        if betType.contains("Spread") || isSpread {
-            // Process spread bet formatting
-            let components = bet.components(separatedBy: " ")
-            if components.count >= 2 {
-                let teamName = components[0]
-                let spreadValue = components[1...].joined(separator: " ")
-                formattedBet = "\(TeamNameFormatter.formatTeamName(teamName)) \(spreadValue)"
-            } else {
-                formattedBet = bet
-            }
+    // Spread prediction view
+    private func spreadPredictionView(bet: String) -> some View {
+        // Improved parsing logic to correctly separate team name from spread value
+        let teamName: String
+        let spreadValue: String
+        
+        // Find the index of the first + or - character which should mark the start of the spread value
+        if let rangeOfPlus = bet.range(of: "+"), let rangeOfMinus = bet.range(of: "-") {
+            // Both + and - exist, use the one that comes first
+            let spreadStartIndex = min(rangeOfPlus.lowerBound, rangeOfMinus.lowerBound)
+            teamName = String(bet[..<spreadStartIndex]).trimmingCharacters(in: .whitespaces)
+            spreadValue = String(bet[spreadStartIndex...])
+        } else if let rangeOfPlus = bet.range(of: "+") {
+            // Only + exists
+            teamName = String(bet[..<rangeOfPlus.lowerBound]).trimmingCharacters(in: .whitespaces)
+            spreadValue = String(bet[rangeOfPlus.lowerBound...])
+        } else if let rangeOfMinus = bet.range(of: "-") {
+            // Only - exists
+            teamName = String(bet[..<rangeOfMinus.lowerBound]).trimmingCharacters(in: .whitespaces)
+            spreadValue = String(bet[rangeOfMinus.lowerBound...])
         } else {
-            formattedBet = bet
+            // No + or - found, use the entire string as the team name
+            teamName = bet
+            spreadValue = ""
         }
         
-        return HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(betType)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Text(formattedBet)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.purple)
-            }
-            
-            Spacer()
-            
-            Text("DK line")
+        let formattedTeamName = TeamNameFormatter.formatTeamName(teamName)
+        
+        return VStack(alignment: .leading, spacing: 4) {
+            Text("Our Pick:")
                 .font(.caption)
-                .foregroundColor(.green)
-                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+            
+            Text(formattedTeamName)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.purple)
+            
+            Text("Our Predicted Spread:")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.top, 8)
+            
+            Text(spreadValue)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.purple)
+        }
+    }
+    
+    // Total prediction view
+    private func totalPredictionView(bet: String) -> some View {
+        // Parse OVER/UNDER from the total value
+        let overUnder: String
+        let totalValue: String
+        
+        if bet.uppercased().contains("OVER") {
+            overUnder = "OVER"
+            let startIndex = bet.uppercased().range(of: "OVER")!.upperBound
+            let remainder = bet[startIndex...].trimmingCharacters(in: .whitespaces)
+            totalValue = remainder
+        } else if bet.uppercased().contains("UNDER") {
+            overUnder = "UNDER"
+            let startIndex = bet.uppercased().range(of: "UNDER")!.upperBound
+            let remainder = bet[startIndex...].trimmingCharacters(in: .whitespaces)
+            totalValue = remainder
+        } else {
+            // If no OVER/UNDER found, use entire string as the total value
+            overUnder = ""
+            totalValue = bet
+        }
+        
+        return VStack(alignment: .leading, spacing: 4) {
+            Text("Our Pick:")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Text(overUnder)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.purple)
+            
+            Text("Our Predicted Total:")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.top, 8)
+            
+            Text(totalValue)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.purple)
         }
     }
     
