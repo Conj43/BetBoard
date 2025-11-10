@@ -95,14 +95,6 @@ struct GameSearchResultRowView: View {
             if let predictionInfo = betSlip.predictionInfo {
                 VStack(spacing: 8) {
                     // Show individual prediction types
-                    if let moneylineBet = predictionInfo.moneylineBet {
-                        PredictionBadgeView(
-                            title: "Moneyline",
-                            selection: moneylineBet,
-                            confidence: predictionInfo.moneylineConfidence,
-                            iconName: "arrow.right"
-                        )
-                    }
                     
                     if let spreadBet = predictionInfo.spreadBet {
                         PredictionBadgeView(
@@ -221,8 +213,6 @@ struct PredictionBadgeView: View {
         ),
         allBettingLines: nil,
         predictionInfo: PredictionInfo(
-            moneylineConfidence: 75.0,
-            moneylineBet: "DUKE",
             spreadConfidence: 85.0,
             spreadBet: "UNC +3.5",
             totalConfidence: 65.0,
@@ -232,7 +222,7 @@ struct PredictionBadgeView: View {
         neutralSite: false
     )
     
-    return GameSearchResultRowView(betSlip: sampleBetSlip)
+    GameSearchResultRowView(betSlip: sampleBetSlip)
         .previewLayout(.sizeThatFits)
         .padding()
 }

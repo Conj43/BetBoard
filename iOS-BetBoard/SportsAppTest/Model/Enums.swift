@@ -1,16 +1,43 @@
 //
 //  Enums.swift
-//  SportsAppOG
+//  SportsAppTest
 //
 //  Created by Trenton Roney on 8/26/25.
-//
+//  Updated to mark moneyline as deprecated
 
 import Foundation
 
 enum BetType: String, Codable {
-    case moneyline
+    case moneyline // Kept for backward compatibility with existing bets
     case spread
     case total
+    
+    // Check if bet type is supported in current version
+    var isSupported: Bool {
+        switch self {
+        case .moneyline:
+            return false // Moneyline is no longer supported
+        case .spread, .total:
+            return true
+        }
+    }
+    
+    // Display name for UI
+    var displayName: String {
+        switch self {
+        case .moneyline:
+            return "Moneyline (Deprecated)"
+        case .spread:
+            return "Spread"
+        case .total:
+            return "Total"
+        }
+    }
+    
+    // Available bet types for new bets
+    static var supportedTypes: [BetType] {
+        return [.spread, .total]
+    }
 }
 
 enum BetResult: String, Codable {

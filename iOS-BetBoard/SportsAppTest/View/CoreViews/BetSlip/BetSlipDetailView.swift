@@ -125,8 +125,6 @@ struct BetSlipDetailView: View {
         ),
         allBettingLines: nil, // No multiple sportsbooks for this preview
         predictionInfo: PredictionInfo(
-            moneylineConfidence: 75.0,
-            moneylineBet: "DUKE",
             spreadConfidence: 85.0,
             spreadBet: "UNC +3.5",
             totalConfidence: 65.0,

@@ -75,37 +75,6 @@ struct PredictionRowView: View {
                 }
             }
             
-            // Confidence Bar
-            HStack {
-                Text("Confidence")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-                
-                HStack(spacing: 8) {
-                    // Confidence Bar
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            Rectangle()
-                                .fill(Color(.systemGray5))
-                                .frame(height: 6)
-                                .cornerRadius(3)
-                            
-                            Rectangle()
-                                .fill(confidenceColor(for: getTypeSpecificConfidence()))
-                                .frame(width: geometry.size.width * CGFloat(getTypeSpecificConfidence() / 100.0), height: 6)
-                                .cornerRadius(3)
-                        }
-                    }
-                    .frame(width: 80, height: 6)
-                    
-                    Text("\(Int(getTypeSpecificConfidence()))%")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(confidenceColor(for: getTypeSpecificConfidence()))
-                }
-            }
         }
         .padding()
         .background(Color(.systemBackground))

@@ -1,9 +1,9 @@
 //
 //  PredictionsViewModel.swift
-//  SportsAppOG
+//  SportsAppTest
 //
 //  Created by Trenton Roney on 8/26/25.
-//
+//  Updated to remove moneyline handling
 
 import SwiftUI
 import FirebaseAuth
@@ -14,7 +14,7 @@ import Firebase
 class PredictionsViewModel: ObservableObject {
     @Published var predictions: [PredictionGame] = []
     @Published var filteredPredictions: [PredictionGame] = []
-    @Published var selectedBetType: BetType = .spread
+    @Published var selectedBetType: BetType = .spread // Default to spread instead of moneyline
     @Published var isLoading: Bool = true
     @Published var errorMessage: String?
     
@@ -102,21 +102,6 @@ class PredictionsViewModel: ObservableObject {
     private func createPredictionGames(for betSlip: BetSlip, with predictionInfo: PredictionInfo) -> [PredictionGame] {
         var games: [PredictionGame] = []
         
-        // Process moneyline bet if available
-        if let moneylineBet = predictionInfo.moneylineBet, predictionInfo.moneylineConfidence > 0 {
-            print("🔍 Processing moneyline prediction: \(moneylineBet) with \(predictionInfo.moneylineConfidence)% confidence")
-            
-            if let game = createPredictionGame(
-                for: betSlip,
-                betType: .moneyline,
-                selection: moneylineBet,
-                confidence: predictionInfo.moneylineConfidence
-            ) {
-                games.append(game)
-                print("✅ Created moneyline prediction game")
-            }
-        }
-        
         // Process spread bet if available
         if let spreadBet = predictionInfo.spreadBet, predictionInfo.spreadConfidence > 0 {
             print("🔍 Processing spread prediction: \(spreadBet) with \(predictionInfo.spreadConfidence)% confidence")
@@ -152,10 +137,11 @@ class PredictionsViewModel: ObservableObject {
         if games.isEmpty, let recommendedBet = predictionInfo.recommendedBet, predictionInfo.confidence > 0 {
             print("🔍 Falling back to legacy prediction: \(recommendedBet) with \(predictionInfo.confidence)% confidence")
             
-            // Determine bet type from recommended bet
+            // Determine bet type from recommended bet (now only spread or total)
             let betType = determineBetType(from: recommendedBet)
             
-            if let game = createPredictionGame(
+            if betType.isSupported, // Only create if the bet type is supported
+               let game = createPredictionGame(
                 for: betSlip,
                 betType: betType,
                 selection: recommendedBet,
@@ -170,12 +156,11 @@ class PredictionsViewModel: ObservableObject {
     }
     
     private func determineBetType(from betString: String) -> BetType {
-        if betString.contains("ML") || betString.contains("MONEY") {
-            return .moneyline
-        } else if betString.contains("OVER") || betString.contains("UNDER") || betString.contains("Over") || betString.contains("Under") {
+        // No longer check for moneyline indicators
+        if betString.contains("OVER") || betString.contains("UNDER") || betString.contains("Over") || betString.contains("Under") {
             return .total
         } else {
-            return .spread
+            return .spread // Default to spread if not total
         }
     }
     
@@ -187,26 +172,16 @@ class PredictionsViewModel: ObservableObject {
     ) -> PredictionGame? {
         print("🏀 Creating prediction game for: \(betSlip.homeTeam.shortName) vs \(betSlip.awayTeam.shortName), bet: \(selection)")
         
+        // Skip if betType is moneyline
+        guard betType.isSupported else {
+            print("⚠️ Skipping unsupported bet type: \(betType.rawValue)")
+            return nil
+        }
+        
         // Find corresponding odds
         let odds: Double
         
         switch betType {
-        case .moneyline:
-            // Extract team name from selection (which might be just the team name or include "ML")
-            let teamName: String
-            if selection.contains("ML") {
-                teamName = selection.replacingOccurrences(of: " ML", with: "")
-            } else {
-                teamName = selection
-            }
-            
-            if let foundOdds = betSlip.bettingLines.moneyline[teamName.uppercased()] {
-                odds = foundOdds
-            } else {
-                print("⚠️ Could not find moneyline odds for \(teamName) - available keys: \(betSlip.bettingLines.moneyline.keys)")
-                odds = -110 // Default odds
-            }
-            
         case .spread:
             if let foundOdds = betSlip.bettingLines.spread[selection] {
                 odds = foundOdds
@@ -222,6 +197,11 @@ class PredictionsViewModel: ObservableObject {
                 print("⚠️ Could not find total odds for \(selection) - available keys: \(betSlip.bettingLines.total.keys)")
                 odds = -110 // Default odds
             }
+            
+        case .moneyline:
+            // This case should never be hit since we're checking betType.isSupported above
+            print("⚠️ Moneyline betting is not supported anymore")
+            return nil
         }
         
         let bestBet = BestBet(
@@ -239,7 +219,7 @@ class PredictionsViewModel: ObservableObject {
             gameTime: betSlip.gameTime,
             bestBet: bestBet,
             confidence: confidence,
-            analysis: betSlip.predictionInfo?.analysis,
+            analysis: nil, // No analysis available in current data
             keyFactors: keyFactors,
             betSlip: betSlip
         )
@@ -250,57 +230,32 @@ class PredictionsViewModel: ObservableObject {
     private func generateKeyFactors(for betSlip: BetSlip, betType: BetType) -> [String] {
         var factors: [String] = []
         
-        // Add team-specific factors
-        if let homeRanking = betSlip.homeTeam.ranking {
-            factors.append("Home team ranked #\(homeRanking)")
-        }
+        // Add team records
+        factors.append("\(betSlip.homeTeam.shortName) record: \(betSlip.homeTeam.record.wins)-\(betSlip.homeTeam.record.losses)")
+        factors.append("\(betSlip.awayTeam.shortName) record: \(betSlip.awayTeam.record.wins)-\(betSlip.awayTeam.record.losses)")
         
-        if let awayRanking = betSlip.awayTeam.ranking {
-            factors.append("Away team ranked #\(awayRanking)")
-        }
-        
-        // Add conference info
-        if betSlip.homeTeam.conference == betSlip.awayTeam.conference {
-            factors.append("Conference matchup (\(betSlip.homeTeam.conference))")
-        }
-        
-        // Add neutral site factor
-        if betSlip.neutralSite {
-            factors.append("Neutral site game")
-        }
-        
-        // Add bet-specific factors based on type
-        switch betType {
-        case .spread:
-            factors.append("Strong defensive matchup")
-            factors.append("Home court advantage considerations")
-        case .moneyline:
-            factors.append("Recent head-to-head record")
-            factors.append("Current team momentum")
-        case .total:
-            factors.append("Teams' pace of play analysis")
-            factors.append("Weather/venue conditions")
+        // Add matchup specific factors (simplified for this example)
+        if betType == .spread {
+            factors.append("Historical spread performance")
+        } else if betType == .total {
+            factors.append("Historical scoring trends")
         }
         
         return factors
     }
     
     func filterPredictions(by betType: BetType) {
-        print("🔍 Filtering \(predictions.count) predictions by bet type: \(betType.rawValue)")
-        
-        // First, filter all predictions to only include those matching the selected bet type
-        filteredPredictions = predictions.filter { prediction in
-            return prediction.bestBet.type == betType
+        // Only filter by supported bet types
+        guard betType.isSupported else {
+            self.selectedBetType = .spread // Default to spread if unsupported type is selected
+            filterPredictions(by: .spread)
+            return
         }
         
-        // The filteredPredictions now only contain games with the selected bet type
-        // Since each PredictionGame already has the appropriate confidence value for its bet type,
-        // we can just sort by the confidence property
-        filteredPredictions = filteredPredictions.sorted { first, second in
-            return first.confidence > second.confidence
-        }
+        self.selectedBetType = betType
+        self.filteredPredictions = self.predictions.filter { $0.bestBet.type == betType }
         
-        print("✅ Filtered to \(filteredPredictions.count) predictions for \(betType.rawValue)")
+        print("🔍 Filtered predictions: \(self.filteredPredictions.count) for bet type: \(betType.rawValue)")
     }
     
     func refreshPredictions() async {

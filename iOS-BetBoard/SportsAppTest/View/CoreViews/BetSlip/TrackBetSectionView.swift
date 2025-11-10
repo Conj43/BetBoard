@@ -15,112 +15,79 @@ struct TrackBetSectionView: View {
     @Binding var betAmount: String
     var onTrackBet: ((BetType, String, Double, Double) -> Void)?
     
+    // Add state variables for validation
     @State private var showingValidationError = false
     @State private var validationErrorMessage = ""
+    @State private var showPotentialWinnings = true
     
-    // Format the selection string based on bet type
-    private var formattedSelection: String {
-        if selectedBetType == .moneyline {
-            // For moneyline, the selection is just the team name
-            return TeamNameFormatter.formatTeamName(selection)
-        } else if selectedBetType == .spread {
-            // For spread, extract team name and preserve the spread value
-            // Format: "TEAMNAME -7.5" or "TEAMNAME +7.5"
-            let components = selection.components(separatedBy: " ")
-            if components.count >= 2 {
-                let teamName = components[0]
-                let spreadValue = components[1...].joined(separator: " ")
-                return "\(TeamNameFormatter.formatTeamName(teamName)) \(spreadValue)"
-            }
-        }
-        // For other bet types like totals, keep as is
-        return selection
+    private var formattedOdds: String {
+        return formatOdds(odds)
+    }
+    
+    private var betAmountDouble: Double {
+        return Double(betAmount.replacingOccurrences(of: ",", with: "")) ?? 0
+    }
+    
+    private var isValidAmount: Bool {
+        return betAmountDouble > 0
     }
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Bet Summary
+        VStack(spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Tracking Bet")
+                    Text("Track Bet")
                         .font(.headline)
-                        .fontWeight(.semibold)
                     
-                    // Use formatted selection here
-                    Text("\(formattedSelection) @ \(formatOdds(odds))")
+                    Text("\(selectedBetType.displayName): \(selection) (\(formattedOdds))")
                         .font(.subheadline)
-                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
                 }
                 
                 Spacer()
                 
-                HStack(spacing: 8) {
-                    Image(systemName: "sportscourt")
-                        .foregroundColor(.purple)
-                    
-                    Text(selectedSportsbook.displayName)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+                TextField("$", text: $betAmount)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 80)
+                    .padding(8)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
             }
             
-            // Custom Bet Amount Input (inline implementation)
-            VStack(spacing: 8) {
+            // Show potential winnings if bet amount is valid
+            if isValidAmount && showPotentialWinnings {
                 HStack {
-                    Text("Amount")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
                     Spacer()
-                    
-                    if let amount = Double(betAmount.replacingOccurrences(of: ",", with: "")), amount > 0 {
-                        Text(potentialWinText(for: amount))
-                            .font(.caption)
-                            .foregroundColor(.green)
-                    }
-                }
-                
-                HStack {
-                    Text("$")
-                        .foregroundColor(.secondary)
-                    
-                    TextField("0", text: $betAmount)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(8)
-            }
-            
-            // Validation Error (if any)
-            if showingValidationError {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.red)
-                    
-                    Text(validationErrorMessage)
+                    Text(potentialWinText(for: betAmountDouble))
                         .font(.caption)
-                        .foregroundColor(.red)
-                    
-                    Spacer()
+                        .foregroundColor(.green)
+                        .padding(.trailing, 4)
                 }
-                .padding(.horizontal)
             }
             
-            // Track Button
-            Button(action: trackBet) {
+            Button(action: {
+                trackBet()
+            }) {
                 Text("Track Bet")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
+                    .fontWeight(.bold)
+                    .padding(.vertical, 12)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(12)
+                    .background(isValidAmount ? Color.green : Color.gray)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
             }
+            .disabled(!isValidAmount)
         }
-        .padding()
+        .padding(16)
+        .background(Color.gray.opacity(0.05))
+        .alert(isPresented: $showingValidationError) {
+            Alert(
+                title: Text("Invalid Input"),
+                message: Text(validationErrorMessage),
+                dismissButton: .default(Text("OK"))
+            )
+        }
     }
     
     private func trackBet() {

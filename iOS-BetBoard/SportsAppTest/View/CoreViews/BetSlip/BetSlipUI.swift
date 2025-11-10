@@ -11,7 +11,7 @@ struct BetSlipUI: View {
     let betSlip: BetSlip
     var onTrackBet: ((BetType, String, Double, Double) -> Void)?
     
-    @State private var selectedBetType: BetType = .spread
+    @State private var selectedBetType: BetType = .spread // Default to spread instead of moneyline
     @State private var selectedBet: (String, Double)?
     @State private var betAmount: String = ""
     @State private var selectedSportsbook: Sportsbook = .draftkings

@@ -1,9 +1,9 @@
 //
 //  BetSlip.swift
-//  SportsAppOG
+//  SportsAppTest
 //
 //  Created by Trenton Roney on 8/26/25.
-//
+//  Updated to remove moneyline features
 
 import Foundation
 
@@ -76,9 +76,10 @@ struct AllSportsbookLines: Codable {
 }
 
 struct PredictionInfo: Codable {
-    // Moneyline prediction
-    let moneylineConfidence: Double // 0.0 to 100.0
-    let moneylineBet: String?
+    // Removed moneyline prediction fields
+    // Keeping with default values for backward compatibility
+    let moneylineConfidence: Double = 0.0 // Fixed to 0.0
+    let moneylineBet: String? = nil       // Fixed to nil
     
     // Spread prediction
     let spreadConfidence: Double // 0.0 to 100.0
@@ -91,11 +92,83 @@ struct PredictionInfo: Codable {
     // Optional analysis
     let analysis: String?
     
+    // Custom initializer for creating without moneyline
+    init(spreadConfidence: Double, spreadBet: String?, totalConfidence: Double, totalBet: String?, analysis: String?) {
+        self.spreadConfidence = spreadConfidence
+        self.spreadBet = spreadBet
+        self.totalConfidence = totalConfidence
+        self.totalBet = totalBet
+        self.analysis = analysis
+    }
+    
+    // For backward compatibility: create from new Firebase structure
+    static func fromFirebaseData(spreadData: [String: Any]?, totalData: [String: Any]?, analysis: String?) -> PredictionInfo? {
+        // Extract spread data
+        let spreadConfidence: Double
+        let spreadBet: String?
+        
+        if let spread = spreadData {
+            if let edge = spread["edge"] as? Double, let line = spread["line"] as? Double, let pick = spread["pick"] as? String {
+                // Calculate confidence based on edge (could adjust this algorithm)
+                spreadConfidence = min(abs(edge) * 10, 100) // Simple scaling
+                // Format spread bet string
+                spreadBet = formatSpreadBet(pick: pick, line: line)
+            } else {
+                spreadConfidence = 0
+                spreadBet = nil
+            }
+        } else {
+            spreadConfidence = 0
+            spreadBet = nil
+        }
+        
+        // Extract total data
+        let totalConfidence: Double
+        let totalBet: String?
+        
+        if let total = totalData {
+            if let edge = total["edge"] as? Double, let line = total["line"] as? Double, let pick = total["pick"] as? String {
+                // Calculate confidence based on edge
+                totalConfidence = min(abs(edge) * 10, 100) // Simple scaling
+                // Format total bet string
+                totalBet = formatTotalBet(pick: pick, line: line)
+            } else {
+                totalConfidence = 0
+                totalBet = nil
+            }
+        } else {
+            totalConfidence = 0
+            totalBet = nil
+        }
+        
+        // Only create prediction info if we have valid data
+        if spreadConfidence > 0 || totalConfidence > 0 {
+            return PredictionInfo(
+                spreadConfidence: spreadConfidence,
+                spreadBet: spreadBet,
+                totalConfidence: totalConfidence,
+                totalBet: totalBet,
+                analysis: analysis
+            )
+        }
+        
+        return nil
+    }
+    
+    // Helper to format spread bet string
+    private static func formatSpreadBet(pick: String, line: Double) -> String {
+        return "\(pick) \(line > 0 ? "+" : "")\(String(format: "%.1f", line))"
+    }
+    
+    // Helper to format total bet string
+    private static func formatTotalBet(pick: String, line: Double) -> String {
+        return "\(pick) \(String(format: "%.1f", line))"
+    }
+    
     // Computed property to get the highest confidence bet (for backward compatibility)
     var recommendedBet: String? {
-        // Find the bet with highest confidence
+        // Find the bet with highest confidence (only spread and total now)
         let confidences: [(bet: String?, confidence: Double)] = [
-            (moneylineBet, moneylineConfidence),
             (spreadBet, spreadConfidence),
             (totalBet, totalConfidence)
         ]
@@ -108,7 +181,12 @@ struct PredictionInfo: Codable {
     
     // Computed property to get the highest confidence value (for backward compatibility)
     var confidence: Double {
-        return max(moneylineConfidence, max(spreadConfidence, totalConfidence))
+        return max(spreadConfidence, totalConfidence)
+    }
+    
+    // CodingKeys to handle the absence of moneyline fields in serialization
+    enum CodingKeys: String, CodingKey {
+        case spreadConfidence, spreadBet, totalConfidence, totalBet, analysis
     }
 }
 

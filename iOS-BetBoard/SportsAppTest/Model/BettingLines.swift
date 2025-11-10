@@ -1,7 +1,9 @@
 //
 //  BettingLines.swift
-//  Updated to support multiple sportsbooks
+//  SportsAppTest
 //
+//  Created by Trenton Roney on 8/26/25.
+//  Updated to remove moneyline features
 
 import Foundation
 
@@ -9,9 +11,14 @@ import Foundation
 struct BettingLines: Identifiable, Codable {
     let id: String
     let gameID: String
-    let moneyline: [String: Double]
+    let moneyline: [String: Double] // Keep for backward compatibility but will be empty
     let spread: [String: Double]
     let total: [String: Double]
+    
+    // Factory method to create an instance with empty moneyline
+    static func create(id: String, gameID: String, spread: [String: Double], total: [String: Double]) -> BettingLines {
+        return BettingLines(id: id, gameID: gameID, moneyline: [:], spread: spread, total: total)
+    }
 }
 
 // New structure to hold all sportsbook data
@@ -44,10 +51,9 @@ struct MultipleSportsbookLines: Identifiable, Codable {
     // Convert to old BettingLines format for a specific sportsbook
     func toBettingLines(for sportsbook: Sportsbook) -> BettingLines {
         let lines = self.lines(for: sportsbook) ?? SportsbookLines.empty()
-        return BettingLines(
+        return BettingLines.create(
             id: id,
             gameID: gameID,
-            moneyline: lines.moneyline,
             spread: lines.spread,
             total: lines.total
         )
@@ -55,11 +61,17 @@ struct MultipleSportsbookLines: Identifiable, Codable {
 }
 
 struct SportsbookLines: Codable {
+    // Keeping moneyline for backward compatibility but it will be empty
     let moneyline: [String: Double]
     let spread: [String: Double]
     let total: [String: Double]
     
     static func empty() -> SportsbookLines {
         return SportsbookLines(moneyline: [:], spread: [:], total: [:])
+    }
+    
+    // Factory method to create without moneyline
+    static func create(spread: [String: Double], total: [String: Double]) -> SportsbookLines {
+        return SportsbookLines(moneyline: [:], spread: spread, total: total)
     }
 }
