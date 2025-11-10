@@ -1,136 +1,158 @@
+//
+//  PredictionRowView.swift
+//  SportsAppTest
+//
+//  Created by Trenton Roney on 9/22/25.
+//
+
 import SwiftUI
 
 struct PredictionRowView: View {
     let prediction: PredictionGame
     @EnvironmentObject var predictionsViewModel: PredictionsViewModel
     
-    var body: some View {
-        VStack(spacing: 12) {
-            // Game Info Header
-            HStack {
-                // Away Team
-                HStack(spacing: 6) {
-                    if let awayRanking = prediction.awayTeam.ranking {
-                        Text("#\(awayRanking)")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(.blue)
-                    }
-                    
-                    Text(prediction.awayTeam.displayName)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                }
-                
-                Text("@")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                // Home Team
-                HStack(spacing: 6) {
-                    if let homeRanking = prediction.homeTeam.ranking {
-                        Text("#\(homeRanking)")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(.blue)
-                    }
-                    
-                    Text(prediction.homeTeam.displayName)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                }
-                
-                Spacer()
-                
-                // Game Time
-                Text(prediction.formattedGameTime)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            // Best Bet Info
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(getBetTypeText())
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .textCase(.uppercase)
-                    
-                    Text(getBestSelection())
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("(\(prediction.bestBet.sportsbook.displayName))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text(formatOdds(prediction.bestBet.odds))
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.blue)
-                }
-            }
-            
+    // Get win probability from key factors
+    private var winProbability: Double {
+        if let probFactor = prediction.keyFactors.first(where: { $0.starts(with: "Win Probability:") }) {
+            let probString = probFactor.dropFirst(16).dropLast(1).trimmingCharacters(in: .whitespaces)
+            return Double(probString) ?? 0.0
         }
-        .padding()
+        return 0.0
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Game header with team info
+            gameHeaderView
+            
+            // Prediction details
+            predictionDetailsView
+        }
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .padding(.bottom, 4)
     }
     
-    // Get the appropriate bet type text based on the selected bet type
-    private func getBetTypeText() -> String {
-        switch predictionsViewModel.selectedBetType {
-        case .moneyline:
-            return "Moneyline Pick"
-        case .spread:
-            return "Spread Pick"
-        case .total:
-            return "Total Pick"
+    private var gameHeaderView: some View {
+        VStack(spacing: 8) {
+            HStack {
+                // Game time
+                Text(prediction.formattedGameTime)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                // Confidence indicator based on win probability
+                HStack(spacing: 4) {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.caption2)
+                    
+                    Text("\(Int(winProbability))% Win Probability")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(confidenceColor(for: winProbability).opacity(0.1))
+                .foregroundColor(confidenceColor(for: winProbability))
+                .cornerRadius(8)
+            }
+            
+            // Team matchup
+            HStack(alignment: .center, spacing: 8) {
+                // Away team
+                TeamLogoView(team: prediction.awayTeam, size: 36)
+                
+                Text(prediction.awayTeam.shortName)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Spacer()
+                
+                // Versus
+                Text("vs")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                // Home team
+                Text(prediction.homeTeam.shortName)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                TeamLogoView(team: prediction.homeTeam, size: 36)
+            }
+            .padding(.vertical, 2)
+        }
+        .padding(12)
+    }
+    
+    private var predictionDetailsView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Divider
+            Rectangle()
+                .fill(Color.secondary.opacity(0.2))
+                .frame(height: 1)
+            
+            HStack(alignment: .center) {
+                // Bet type and selection
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(getBetTypeText())
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        // Sportsbook and odds
+                        HStack(spacing: 4) {
+                            Text(prediction.bestBet.sportsbook.displayName)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Text(formatOdds(prediction.bestBet.odds))
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Text(prediction.bestBet.selection)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                }
+                
+                Spacer()
+                
+                // Edge Strength indicator
+                if let edgeFactor = prediction.keyFactors.first(where: { $0.starts(with: "Edge Strength:") }) {
+                    let edgeStrength = edgeFactor.dropFirst(15).trimmingCharacters(in: .whitespaces)
+                    Text("Edge: \(edgeStrength)")
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.purple.opacity(0.1))
+                        .foregroundColor(.purple)
+                        .cornerRadius(8)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
     }
     
-    // Get the appropriate selection based on the selected bet type
-    // Get the appropriate selection based on the selected bet type
-       private func getBestSelection() -> String {
-           switch predictionsViewModel.selectedBetType {
-           case .moneyline:
-               if let bet = prediction.betSlip.predictionInfo?.moneylineBet {
-                   return TeamNameFormatter.formatTeamName(bet)
-               }
-               return "N/A"
-               
-           case .spread:
-               if let bet = prediction.betSlip.predictionInfo?.spreadBet {
-                   // Format team name in spread bet (e.g., "CHARLESTON-SOUTHERN -2.0")
-                   let components = bet.components(separatedBy: " ")
-                   if components.count >= 2 {
-                       let teamName = components[0]
-
-                       return "\(TeamNameFormatter.formatTeamName(teamName))"
-                   }
-                   return bet
-               }
-               return "N/A"
-               
-           case .total:
-               return prediction.betSlip.predictionInfo?.totalBet ?? "N/A"
-           }
-       }
-    
-    // Get the confidence specific to the selected bet type
-    private func getTypeSpecificConfidence() -> Double {
-        switch predictionsViewModel.selectedBetType {
+    // Get the appropriate bet type text
+    private func getBetTypeText() -> String {
+        switch prediction.bestBet.type {
         case .moneyline:
-            return prediction.betSlip.predictionInfo?.moneylineConfidence ?? 0
+            return "Moneyline"
         case .spread:
-            return prediction.betSlip.predictionInfo?.spreadConfidence ?? 0
+            return "Spread"
         case .total:
-            return prediction.betSlip.predictionInfo?.totalConfidence ?? 0
+            return "Total"
         }
     }
     
@@ -142,13 +164,13 @@ struct PredictionRowView: View {
         }
     }
     
-    private func confidenceColor(for confidence: Double) -> Color {
-        if confidence >= 55 {
+    private func confidenceColor(for probability: Double) -> Color {
+        if probability >= 60 {
             return .green
-        } else if confidence >= 50 {
+        } else if probability >= 55 {
+            return .blue
+        } else if probability >= 50 {
             return .orange
-        } else if confidence >= 40 {
-            return .yellow
         } else {
             return .red
         }

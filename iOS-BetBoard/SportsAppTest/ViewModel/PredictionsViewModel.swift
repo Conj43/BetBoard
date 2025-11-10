@@ -3,7 +3,7 @@
 //  SportsAppTest
 //
 //  Created by Trenton Roney on 8/26/25.
-//  Updated to remove moneyline handling
+//  Updated to filter by recommended predictions and sort by odds_to_prob
 
 import SwiftUI
 import FirebaseAuth
@@ -14,9 +14,12 @@ import Firebase
 class PredictionsViewModel: ObservableObject {
     @Published var predictions: [PredictionGame] = []
     @Published var filteredPredictions: [PredictionGame] = []
-    @Published var selectedBetType: BetType = .spread // Default to spread instead of moneyline
     @Published var isLoading: Bool = true
     @Published var errorMessage: String?
+    
+    // We're not using selectedBetType anymore as we're showing all predictions
+    // But keeping it for compatibility with other views that might depend on it
+    @Published var selectedBetType: BetType = .spread
     
     private var gameStatusCache: [String: GameStatus] = [:]
     private let firebaseService = FirebaseService()
@@ -52,13 +55,25 @@ class PredictionsViewModel: ObservableObject {
             
             print("🎯 Active bet slips after filtering: \(activeBetSlips.count)")
             
-            let predictionGames = convertBetSlipsToPredictions(activeBetSlips)
-            print("🧠 Created \(predictionGames.count) prediction games")
+            // Load prediction games from bet slips, but only include those with recommendations
+            let predictionGames = await loadPredictionsWithRecommendations(from: activeBetSlips)
+            print("🧠 Created \(predictionGames.count) prediction games with recommendations")
             
-            self.predictions = predictionGames
-            self.filterPredictions(by: self.selectedBetType)
+            // Sort predictions by odds_to_prob (high to low) instead of ranking
+            let sortedPredictions = predictionGames.sorted { (game1, game2) -> Bool in
+                let prob1 = game1.keyFactors.first(where: { $0.starts(with: "Win Probability:") })?
+                    .dropFirst(16).dropLast(1).trimmingCharacters(in: .whitespaces) ?? "0"
+                let prob2 = game2.keyFactors.first(where: { $0.starts(with: "Win Probability:") })?
+                    .dropFirst(16).dropLast(1).trimmingCharacters(in: .whitespaces) ?? "0"
+                
+                return (Double(prob1) ?? 0) > (Double(prob2) ?? 0)
+            }
+            
+            self.predictions = sortedPredictions
+            // Instead of filtering, we just set filteredPredictions to all predictions
+            self.filteredPredictions = sortedPredictions
             self.isLoading = false
-            print("✅ Predictions loaded successfully: \(self.filteredPredictions.count) filtered predictions")
+            print("✅ Predictions loaded successfully: \(self.filteredPredictions.count) predictions")
         } catch {
             self.errorMessage = "Failed to load predictions: \(error.localizedDescription)"
             self.isLoading = false
@@ -78,148 +93,190 @@ class PredictionsViewModel: ObservableObject {
         print("✅ Loaded game statuses")
     }
     
-    private func convertBetSlipsToPredictions(_ betSlips: [BetSlip]) -> [PredictionGame] {
-        print("🔄 Converting \(betSlips.count) bet slips to predictions...")
+    // MARK: - Load Predictions with Recommendations
+    private func loadPredictionsWithRecommendations(from betSlips: [BetSlip]) async -> [PredictionGame] {
+        print("🔄 Loading predictions with recommendations from \(betSlips.count) bet slips")
         
         var predictionGames: [PredictionGame] = []
         
         for betSlip in betSlips {
-            print("🎯 Processing bet slip: \(betSlip.id) - \(betSlip.homeTeam.shortName) vs \(betSlip.awayTeam.shortName)")
-            
-            guard let predictionInfo = betSlip.predictionInfo else {
-                print("⚠️ No prediction info for bet slip: \(betSlip.id)")
-                continue
+            // Fetch game data with recommended field from Firebase
+            if let gameData = await fetchGameWithRecommendations(gameID: betSlip.gameID) {
+                // Check if recommended exists and is an array
+                if let recommendedArray = gameData["recommended"] as? [[String: Any]] {
+                    print("✅ Found recommended data for game: \(betSlip.gameID) with \(recommendedArray.count) recommendations")
+                    
+                    // Process each recommendation in the array
+                    for (index, recommendationData) in recommendedArray.enumerated() {
+                        if let game = createPredictionGameFromRecommendation(
+                            for: betSlip,
+                            recommendationData: recommendationData,
+                            ranking: index
+                        ) {
+                            predictionGames.append(game)
+                            print("✅ Created prediction game with recommendation ranking: \(index)")
+                        }
+                    }
+                } else {
+                    // Try if it's a map with indices instead of an array
+                    if let recommendedMap = gameData["recommended"] as? [String: [String: Any]] {
+                        print("✅ Found recommended data (as map) for game: \(betSlip.gameID) with \(recommendedMap.count) recommendations")
+                        
+                        // Convert map to an array of (index, data) tuples and sort by index
+                        let recommendations = recommendedMap.compactMap { key, value -> (Int, [String: Any])? in
+                            if let index = Int(key) {
+                                return (index, value)
+                            }
+                            return nil
+                        }.sorted(by: { $0.0 < $1.0 })
+                        
+                        // Process each recommendation
+                        for (index, recommendationData) in recommendations {
+                            if let game = createPredictionGameFromRecommendation(
+                                for: betSlip,
+                                recommendationData: recommendationData,
+                                ranking: index
+                            ) {
+                                predictionGames.append(game)
+                                print("✅ Created prediction game with recommendation ranking: \(index)")
+                            }
+                        }
+                    } else {
+                        print("⚠️ No recommended field (or invalid format) for game: \(betSlip.gameID)")
+                        print("⚠️ Available fields: \(gameData.keys.joined(separator: ", "))")
+                        if let recValue = gameData["recommended"] {
+                            print("⚠️ Recommended is of type: \(type(of: recValue))")
+                        }
+                    }
+                }
+            } else {
+                print("⚠️ Could not fetch game data for: \(betSlip.gameID)")
             }
-            
-            // Create predictions for each bet type if available
-            let games = createPredictionGames(for: betSlip, with: predictionInfo)
-            predictionGames.append(contentsOf: games)
         }
         
         return predictionGames
     }
     
-    private func createPredictionGames(for betSlip: BetSlip, with predictionInfo: PredictionInfo) -> [PredictionGame] {
-        var games: [PredictionGame] = []
+    // Fetch game data with recommendations from Firebase
+    private func fetchGameWithRecommendations(gameID: String) async -> [String: Any]? {
+        print("🔍 Fetching game data with recommendations for: \(gameID)")
         
-        // Process spread bet if available
-        if let spreadBet = predictionInfo.spreadBet, predictionInfo.spreadConfidence > 0 {
-            print("🔍 Processing spread prediction: \(spreadBet) with \(predictionInfo.spreadConfidence)% confidence")
-            
-            if let game = createPredictionGame(
-                for: betSlip,
-                betType: .spread,
-                selection: spreadBet,
-                confidence: predictionInfo.spreadConfidence
-            ) {
-                games.append(game)
-                print("✅ Created spread prediction game")
-            }
+        // Extract date from gameID
+        let gameIDComponents = gameID.components(separatedBy: "_")
+        guard gameIDComponents.count >= 2 else {
+            print("❌ Invalid game ID format: \(gameID)")
+            return nil
         }
         
-        // Process total bet if available
-        if let totalBet = predictionInfo.totalBet, predictionInfo.totalConfidence > 0 {
-            print("🔍 Processing total prediction: \(totalBet) with \(predictionInfo.totalConfidence)% confidence")
-            
-            if let game = createPredictionGame(
-                for: betSlip,
-                betType: .total,
-                selection: totalBet,
-                confidence: predictionInfo.totalConfidence
-            ) {
-                games.append(game)
-                print("✅ Created total prediction game")
-            }
-        }
+        let dateStr = gameIDComponents[0]
         
-        // If no predictions were created but we have the old-style recommendedBet,
-        // fall back to using that for backward compatibility
-        if games.isEmpty, let recommendedBet = predictionInfo.recommendedBet, predictionInfo.confidence > 0 {
-            print("🔍 Falling back to legacy prediction: \(recommendedBet) with \(predictionInfo.confidence)% confidence")
+        do {
+            // Get the game document
+            let gameDoc = try await Firestore.firestore().collection("games")
+                                     .document(dateStr)
+                                     .collection("games")
+                                     .document(gameID)
+                                     .getDocument()
             
-            // Determine bet type from recommended bet (now only spread or total)
-            let betType = determineBetType(from: recommendedBet)
-            
-            if betType.isSupported, // Only create if the bet type is supported
-               let game = createPredictionGame(
-                for: betSlip,
-                betType: betType,
-                selection: recommendedBet,
-                confidence: predictionInfo.confidence
-            ) {
-                games.append(game)
-                print("✅ Created legacy prediction game")
+            guard gameDoc.exists else {
+                print("❌ Game document not found: \(gameID)")
+                return nil
             }
-        }
-        
-        return games
-    }
-    
-    private func determineBetType(from betString: String) -> BetType {
-        // No longer check for moneyline indicators
-        if betString.contains("OVER") || betString.contains("UNDER") || betString.contains("Over") || betString.contains("Under") {
-            return .total
-        } else {
-            return .spread // Default to spread if not total
+            
+            return gameDoc.data()
+        } catch {
+            print("❌ Error fetching game data: \(error.localizedDescription)")
+            return nil
         }
     }
     
-    private func createPredictionGame(
+    // Create a prediction game from recommendation data
+    private func createPredictionGameFromRecommendation(
         for betSlip: BetSlip,
-        betType: BetType,
-        selection: String,
-        confidence: Double
+        recommendationData: [String: Any],
+        ranking: Int
     ) -> PredictionGame? {
-        print("🏀 Creating prediction game for: \(betSlip.homeTeam.shortName) vs \(betSlip.awayTeam.shortName), bet: \(selection)")
-        
-        // Skip if betType is moneyline
-        guard betType.isSupported else {
-            print("⚠️ Skipping unsupported bet type: \(betType.rawValue)")
+        // Extract bet information from recommendation
+        guard
+            let betType = recommendationData["bet_type"] as? String,
+            let bookLine = recommendationData["book_line"] as? Double,
+            let bookmaker = recommendationData["bookmaker"] as? String,
+            let edgeStrength = recommendationData["edge_strength"] as? Double,
+            let selection = recommendationData["selection"] as? String
+        else {
+            print("❌ Missing required fields in recommendation data")
+            print("⚠️ bet_type: \(recommendationData["bet_type"] ?? "missing")")
+            print("⚠️ book_line: \(recommendationData["book_line"] ?? "missing")")
+            print("⚠️ bookmaker: \(recommendationData["bookmaker"] ?? "missing")")
+            print("⚠️ edge_strength: \(recommendationData["edge_strength"] ?? "missing")")
+            print("⚠️ selection: \(recommendationData["selection"] ?? "missing")")
             return nil
         }
         
-        // Find corresponding odds
-        let odds: Double
+        // Optional fields
+        let gameId = recommendationData["game_id"] as? String
+        let modelProjection = recommendationData["model_projection"] as? Double
+        let odds = recommendationData["odds"] as? Double ?? -110.0
         
-        switch betType {
-        case .spread:
-            if let foundOdds = betSlip.bettingLines.spread[selection] {
-                odds = foundOdds
-            } else {
-                print("⚠️ Could not find spread odds for \(selection) - available keys: \(betSlip.bettingLines.spread.keys)")
-                odds = -110 // Default odds
-            }
-            
-        case .total:
-            if let foundOdds = betSlip.bettingLines.total[selection] {
-                odds = foundOdds
-            } else {
-                print("⚠️ Could not find total odds for \(selection) - available keys: \(betSlip.bettingLines.total.keys)")
-                odds = -110 // Default odds
-            }
-            
-        case .moneyline:
-            // This case should never be hit since we're checking betType.isSupported above
-            print("⚠️ Moneyline betting is not supported anymore")
-            return nil
+        // Parse odds_to_prob which could be String or Double
+        let oddsToProbDouble: Double
+        if let probStr = recommendationData["odds_to_prob"] as? String {
+            oddsToProbDouble = Double(probStr) ?? 0.0
+        } else if let probDouble = recommendationData["odds_to_prob"] as? Double {
+            oddsToProbDouble = probDouble
+        } else {
+            oddsToProbDouble = 0.0
         }
         
+        // Map bet type to enum
+        let betTypeEnum: BetType
+        if betType.lowercased() == "total" {
+            betTypeEnum = .total
+        } else {
+            betTypeEnum = .spread
+        }
+        
+        // Map bookmaker to enum
+        var sportsbookEnum: Sportsbook = .draftkings
+        if let sbEnum = Sportsbook.allCases.first(where: { $0.rawValue.lowercased() == bookmaker.lowercased() }) {
+            sportsbookEnum = sbEnum
+        }
+        
+        // Create BestBet
         let bestBet = BestBet(
-            type: betType,
+            type: betTypeEnum,
             selection: selection,
             odds: odds,
-            sportsbook: betSlip.sportsbook
+            sportsbook: sportsbookEnum
         )
         
-        let keyFactors = generateKeyFactors(for: betSlip, betType: betType)
+        // Create key factors from recommendation data
+        var keyFactors: [String] = [
+            "Ranking: \(ranking)",
+            "Book Line: \(bookLine)",
+            "Edge Strength: \(String(format: "%.2f", edgeStrength))"
+        ]
         
+        if let modelProj = modelProjection {
+            keyFactors.append("Model Projection: \(String(format: "%.2f", modelProj))")
+        }
+        
+        if oddsToProbDouble > 0 {
+            let percentage = oddsToProbDouble * 100
+            keyFactors.append("Win Probability: \(String(format: "%.1f", percentage))%")
+        }
+        
+        // Calculate confidence based on edge strength
+        let confidence = min(max(50 + (edgeStrength * 100) / 2, 50), 95) // Scale to 50-95 range
+        
+        // Create the prediction game
         let predictionGame = PredictionGame(
             homeTeam: betSlip.homeTeam,
             awayTeam: betSlip.awayTeam,
             gameTime: betSlip.gameTime,
             bestBet: bestBet,
             confidence: confidence,
-            analysis: nil, // No analysis available in current data
+            analysis: "Edge strength: \(String(format: "%.1f", edgeStrength * 100))pts, Win probability: \(String(format: "%.1f", oddsToProbDouble * 100))%",
             keyFactors: keyFactors,
             betSlip: betSlip
         )
@@ -227,41 +284,23 @@ class PredictionsViewModel: ObservableObject {
         return predictionGame
     }
     
-    private func generateKeyFactors(for betSlip: BetSlip, betType: BetType) -> [String] {
-        var factors: [String] = []
-        
-        // Add team records
-        factors.append("\(betSlip.homeTeam.shortName) record: \(betSlip.homeTeam.record.wins)-\(betSlip.homeTeam.record.losses)")
-        factors.append("\(betSlip.awayTeam.shortName) record: \(betSlip.awayTeam.record.wins)-\(betSlip.awayTeam.record.losses)")
-        
-        // Add matchup specific factors (simplified for this example)
-        if betType == .spread {
-            factors.append("Historical spread performance")
-        } else if betType == .total {
-            factors.append("Historical scoring trends")
-        }
-        
-        return factors
-    }
-    
+    // Keep filterPredictions for backwards compatibility but make it a no-op
     func filterPredictions(by betType: BetType) {
-        // Only filter by supported bet types
-        guard betType.isSupported else {
-            self.selectedBetType = .spread // Default to spread if unsupported type is selected
-            filterPredictions(by: .spread)
-            return
-        }
-        
+        // We're no longer filtering by bet type, just maintaining all predictions
         self.selectedBetType = betType
-        self.filteredPredictions = self.predictions.filter { $0.bestBet.type == betType }
-        
-        print("🔍 Filtered predictions: \(self.filteredPredictions.count) for bet type: \(betType.rawValue)")
+        self.filteredPredictions = self.predictions
+        print("📊 Showing all \(self.filteredPredictions.count) predictions (no filtering)")
     }
     
+    // MARK: - Refresh
     func refreshPredictions() async {
+        print("🔄 Refreshing predictions...")
+        self.isLoading = true
+        self.errorMessage = nil
         await loadPredictions()
     }
     
+    // MARK: - Bet Tracking Functions
     func trackSpecificBet(from prediction: PredictionGame, betType: BetType, selection: String, odds: Double, amount: Double) async {
         guard let currentUser = Auth.auth().currentUser else {
             errorMessage = "Please log in to track bets"
