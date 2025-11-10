@@ -20,7 +20,7 @@ class FirebaseService: ObservableObject {
         dateFormatter.dateFormat = "yyyy-MM-dd"
         // For development, use a fixed date that has data
         // In production, you'd use Date()
-        return "2025-11-09" // Using the example date from your description
+        return "2025-11-10" // Using the example date from your description
     }
     
     // MARK: - Games
