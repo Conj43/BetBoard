@@ -13,7 +13,7 @@ struct BetTypeFilterView: View {
     var body: some View {
         HStack(spacing: 0) {
             // Define fixed bet types to ensure proper type safety
-            let betTypes: [BetType] = [.spread, .total]
+            let betTypes: [BetType] = [.spread, .total, .moneyline]
             
             ForEach(0..<betTypes.count, id: \.self) { index in
                 let betType = betTypes[index]
@@ -45,7 +45,7 @@ struct BetTypeFilterView: View {
     private func getBetTypeDisplayName(_ betType: BetType) -> String {
         switch betType {
         case .moneyline:
-            return "Moneyline2"
+            return "Moneyline"
         case .spread:
             return "Spread"
         case .total:

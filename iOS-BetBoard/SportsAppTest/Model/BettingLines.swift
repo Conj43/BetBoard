@@ -11,13 +11,13 @@ import Foundation
 struct BettingLines: Identifiable, Codable {
     let id: String
     let gameID: String
-    let moneyline: [String: Double] // Keep for backward compatibility but will be empty
+    let moneyline: [String: Double]
     let spread: [String: Double]
     let total: [String: Double]
     
     // Factory method to create an instance with empty moneyline
-    static func create(id: String, gameID: String, spread: [String: Double], total: [String: Double]) -> BettingLines {
-        return BettingLines(id: id, gameID: gameID, moneyline: [:], spread: spread, total: total)
+    static func create(id: String, gameID: String, moneyline: [String: Double], spread: [String: Double], total: [String: Double]) -> BettingLines {
+        return BettingLines(id: id, gameID: gameID, moneyline: moneyline, spread: spread, total: total)
     }
 }
 
@@ -54,6 +54,7 @@ struct MultipleSportsbookLines: Identifiable, Codable {
         return BettingLines.create(
             id: id,
             gameID: gameID,
+            moneyline: lines.moneyline,
             spread: lines.spread,
             total: lines.total
         )

@@ -23,10 +23,7 @@ struct PredictionDetailView: View {
                 BetSlipUI(betSlip: prediction.betSlip) { betType, selection, odds, amount in
                     trackSpecificBet(betType: betType, selection: selection, odds: odds, amount: amount)
                 }
-                
-                // Additional Analysis
-                additionalAnalysisSection
-            }
+                            }
             .padding()
         }
         .background(Color(.systemGroupedBackground))
@@ -38,32 +35,6 @@ struct PredictionDetailView: View {
             Text("Successfully tracked: \(trackedBetDetails)")
         }
         .disabled(trackingInProgress)
-    }
-    
-    
-    private var additionalAnalysisSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Key Factors")
-                .font(.headline)
-                .fontWeight(.semibold)
-            
-            ForEach(prediction.keyFactors, id: \.self) { factor in
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.caption)
-                        .foregroundColor(.green)
-                        .padding(.top, 2)
-                    
-                    Text(factor)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
     }
     
     private func trackSpecificBet(betType: BetType, selection: String, odds: Double, amount: Double) {

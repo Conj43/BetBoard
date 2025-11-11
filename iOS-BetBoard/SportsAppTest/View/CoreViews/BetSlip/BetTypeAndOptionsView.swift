@@ -3,7 +3,6 @@
 //  SportsAppTest
 //
 //  Created by Trenton Roney on 8/26/25.
-//  Updated to remove moneyline options
 
 import SwiftUI
 
@@ -13,11 +12,16 @@ struct BetTypeAndOptionsView: View {
     @Binding var selectedBet: (String, Double)?
     var onBetAmountChange: () -> Void
     
+    // Define the order of bet types to display
+    private var orderedBetTypes: [BetType] {
+        return [.moneyline, .spread, .total]
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
-            // Bet type selector - Only show supported bet types
+            // Bet type selector with custom order
             HStack(spacing: 0) {
-                ForEach(BetType.supportedTypes, id: \.self) { betType in
+                ForEach(orderedBetTypes, id: \.self) { betType in
                     Button(action: {
                         if selectedBetType != betType {
                             selectedBetType = betType
@@ -42,6 +46,25 @@ struct BetTypeAndOptionsView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 12) {
                     switch selectedBetType {
+                        case .moneyline:
+                            // Display moneyline options
+                            if currentBettingLines.moneyline.isEmpty {
+                                Text("No moneyline odds available for this game")
+                                    .padding()
+                                    .foregroundColor(.secondary)
+                            } else {
+                                ForEach(currentBettingLines.moneyline.sorted(by: { $0.key < $1.key }), id: \.key) { key, odds in
+                                    BetOptionRow(
+                                        label: key,
+                                        odds: odds,
+                                        isSelected: selectedBet?.0 == key,
+                                        onSelect: {
+                                            selectedBet = (key, odds)
+                                            onBetAmountChange()
+                                        }
+                                    )
+                                }
+                            }
                     case .spread:
                         ForEach(currentBettingLines.spread.sorted(by: { $0.key < $1.key }), id: \.key) { key, odds in
                             BetOptionRow(
@@ -66,11 +89,6 @@ struct BetTypeAndOptionsView: View {
                                 }
                             )
                         }
-                    case .moneyline:
-                        // This case should never be hit as we're using BetType.supportedTypes
-                        Text("Moneyline betting is no longer supported")
-                            .padding()
-                            .foregroundColor(.secondary)
                     }
                 }
                 .padding(.vertical, 8)

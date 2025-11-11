@@ -16,7 +16,7 @@ enum BetType: String, Codable {
     var isSupported: Bool {
         switch self {
         case .moneyline:
-            return false // Moneyline is no longer supported
+            return true
         case .spread, .total:
             return true
         }
@@ -26,7 +26,7 @@ enum BetType: String, Codable {
     var displayName: String {
         switch self {
         case .moneyline:
-            return "Moneyline (Deprecated)"
+            return "Moneyline"
         case .spread:
             return "Spread"
         case .total:
@@ -36,7 +36,7 @@ enum BetType: String, Codable {
     
     // Available bet types for new bets
     static var supportedTypes: [BetType] {
-        return [.spread, .total]
+        return [.spread, .total, .moneyline]
     }
 }
 

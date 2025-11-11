@@ -229,6 +229,44 @@ class FirebaseService: ObservableObject {
                 let sportsbookData = sportsbookDoc.data()
                 
                 print("🏢 Processing sportsbook: \(sportsbookName)")
+                print("💵 Data contains moneyline? \(sportsbookData["moneyline"] != nil)")
+                
+                // Process moneyline data
+                var moneylineMap: [String: Double] = [:]
+                if let moneylineData = sportsbookData["moneyline"] as? [String: Any] {
+                    print("💰 Moneyline data: \(moneylineData)")
+                    
+                    // Process away team moneyline
+                    if let awayPrice = moneylineData["away"] as? Double {
+                        // Simple Double format
+                        moneylineMap[awayTeamName] = awayPrice
+                        print("✓ Added away moneyline: \(awayTeamName) = \(awayPrice)")
+                    } else if let awayDict = moneylineData["away"] as? [String: Any],
+                              let awayPrice = awayDict["price"] as? Double {
+                        // Nested dictionary format
+                        moneylineMap[awayTeamName] = awayPrice
+                        print("✓ Added away moneyline from dict: \(awayTeamName) = \(awayPrice)")
+                    }
+                    
+                    // Process home team moneyline
+                    if let homePrice = moneylineData["home"] as? Double {
+                        // Simple Double format
+                        moneylineMap[homeTeamName] = homePrice
+                        print("✓ Added home moneyline: \(homeTeamName) = \(homePrice)")
+                    } else if let homeDict = moneylineData["home"] as? [String: Any],
+                              let homePrice = homeDict["price"] as? Double {
+                        // Nested dictionary format
+                        moneylineMap[homeTeamName] = homePrice
+                        print("✓ Added home moneyline from dict: \(homeTeamName) = \(homePrice)")
+                    }
+                }
+                
+                // Verify moneyline data
+                if !moneylineMap.isEmpty {
+                    print("✅ Successfully processed moneyline data: \(moneylineMap)")
+                } else {
+                    print("⚠️ No moneyline data found or processed")
+                }
                 
                 // Process spread data - new format
                 var spreadMap: [String: Double] = [:]
@@ -238,7 +276,7 @@ class FirebaseService: ObservableObject {
                        let line = awaySpread["line"] as? Double,
                        let price = awaySpread["price"] as? Double {
                         // Format key as "TEAM +/-LINE"
-                        let formattedKey = "\(awayTeamName.uppercased()) +\(abs(line))"
+                        let formattedKey = "\(awayTeamName) +\(abs(line))"
                         spreadMap[formattedKey] = price
                     }
                     
@@ -248,7 +286,7 @@ class FirebaseService: ObservableObject {
                        let price = homeSpread["price"] as? Double {
                         // Format key as "TEAM +/-LINE"
                         let linePrefix = line >= 0 ? "+" : ""
-                        let formattedKey = "\(homeTeamName.uppercased()) \(linePrefix)\(line)"
+                        let formattedKey = "\(homeTeamName) \(linePrefix)\(line)"
                         spreadMap[formattedKey] = price
                     }
                 }
@@ -260,22 +298,23 @@ class FirebaseService: ObservableObject {
                     if let overTotal = totalData["over"] as? [String: Any],
                        let line = overTotal["line"] as? Double,
                        let price = overTotal["price"] as? Double {
-                        let formattedKey = "OVER \(line)"
+                        let formattedKey = "Over \(line)"
                         totalMap[formattedKey] = price
                     }
                     
                     if let underTotal = totalData["under"] as? [String: Any],
                        let line = underTotal["line"] as? Double,
                        let price = underTotal["price"] as? Double {
-                        let formattedKey = "UNDER \(line)"
+                        let formattedKey = "Under \(line)"
                         totalMap[formattedKey] = price
                     }
                 }
                 
-                // Create BettingLines object (without moneyline)
+                // Create BettingLines object with moneyline
                 let bettingLines = BettingLines.create(
                     id: "\(gameID)_\(sportsbookName)",
                     gameID: gameID,
+                    moneyline: moneylineMap,
                     spread: spreadMap,
                     total: totalMap
                 )
@@ -468,7 +507,7 @@ class FirebaseService: ObservableObject {
                     allBettingLines.betrivers ??
                     allBettingLines.bovada ??
                     allBettingLines.lowvig ??
-                                            BettingLines.create(id: game.id, gameID: game.id, spread: [:], total: [:])
+                    BettingLines.create(id: game.id, gameID: game.id, moneyline: [:], spread: [:], total: [:])
                     
                     let betSlip = BetSlip(
                         id: game.id,
