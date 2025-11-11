@@ -1,27 +1,15 @@
 """Utility functions for data normalization and key mapping."""
 import re
-import sys
-from pathlib import Path
 
 import pandas as pd
 import numpy as np
 
 # Import TEAM_ALIASES - assumes name_map.py is in the same directory (ncaa_pipeline/)
-from config import TEAM_ALIASES, TEAM_ALIASES_TWO
-
-_AUTOMATION_DIR = Path(__file__).resolve().parents[2] / "automation"
-if str(_AUTOMATION_DIR) not in sys.path:
-    sys.path.append(str(_AUTOMATION_DIR))
-
-def _fallback_canonical(value: str) -> str:
-    return "".join(ch for ch in str(value).lower() if ch.isalnum())
-
-try:
-    from team_keys import canonicalize_team_key, CONFERENCE_MAP, TEAM_MAPPING  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    canonicalize_team_key = _fallback_canonical  # type: ignore
-    CONFERENCE_MAP = {}
-    TEAM_MAPPING = {}
+from config import (
+    TEAM_MAPPING as TEAM_ALIASES,
+    CONFERENCE_MAP,
+    canonicalize_team_key,
+)
 
 # Global cache for alias map
 _ALIAS_MAP_CACHE = None
@@ -91,19 +79,15 @@ def load_alias_map() -> dict[str, str]:
             return
         alias[bk] = canonical
 
+    # Seed with canonical conference keys so slugs like "northcarolina"
+    # always map back to "north-carolina".
     for teams in CONFERENCE_MAP.values():
         for canonical in teams:
             _register(canonical, canonical, overwrite=False)
 
-    for bet_key, canon_key in TEAM_MAPPING.items():
-        _register(bet_key, canon_key, overwrite=False)
-
     # Primary alias table takes precedence
     for bet_key, canon_key in TEAM_ALIASES.items():
         _register(bet_key, canon_key, overwrite=True)
-    # Secondary table only fills gaps where primary lacks a mapping
-    for bet_key, canon_key in TEAM_ALIASES_TWO.items():
-        _register(bet_key, canon_key, overwrite=False)
     
     _ALIAS_MAP_CACHE = alias
     return _ALIAS_MAP_CACHE
