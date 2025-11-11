@@ -46,8 +46,8 @@ struct PredictionRowView: View {
     private var gameHeaderView: some View {
         VStack(spacing: 8) {
             HStack {
-                // Game time
-                Text(prediction.formattedGameTime)
+                // Game date - tipoff time (formatted as MM/DD - h:mm a)
+                Text(formattedDateAndTime)
                     .font(.footnote)
                     .foregroundColor(.secondary)
                 
@@ -179,6 +179,24 @@ struct PredictionRowView: View {
             return .orange
         } else {
             return .red
+        }
+    }
+    // Format game time as "MM/DD - h:mm a" (e.g. "11/10 - 12:00 AM")
+    private var formattedDateAndTime: String {
+        // First check if the betSlip has an original tipoffTime
+        if let tipoffTime = prediction.betSlip.tipoffTimeString {
+            // Format date part
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MM/dd"
+            let dateStr = formatter.string(from: prediction.gameTime)
+            
+            // Combine with original tipoff time
+            return "\(dateStr) - \(tipoffTime)"
+        } else {
+            // Fallback to the formatted date from the Date object
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MM/dd - h:mm a"
+            return formatter.string(from: prediction.gameTime)
         }
     }
 }

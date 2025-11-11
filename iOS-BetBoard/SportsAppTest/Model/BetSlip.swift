@@ -14,6 +14,7 @@ struct BetSlip: Identifiable, Codable {
     let homeTeam: Team
     let awayTeam: Team
     let gameTime: Date
+    let tipoffTimeString: String? 
     let bettingLines: BettingLines // Default/fallback betting lines
     let allBettingLines: AllSportsbookLines? // All sportsbook lines
     let predictionInfo: PredictionInfo?

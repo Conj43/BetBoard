@@ -151,12 +151,7 @@ struct PredictionBadgeView: View {
                 .foregroundColor(.primary)
             
             Spacer()
-            
-            // Confidence
-            Text("\(Int(confidence))%")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundColor(confidenceColor)
+        
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -177,52 +172,3 @@ struct PredictionBadgeView: View {
     }
 }
 
-#Preview {
-    // Create a sample BetSlip for preview
-    let sampleBetSlip = BetSlip(
-        id: "preview-betslip",
-        gameID: "sample-game",
-        sportsbook: .draftkings,
-        homeTeam: Team(
-            id: "home-team",
-            name: "Duke Blue Devils",
-            shortName: "DUKE",
-            logoURL: "",
-            record: TeamRecord(wins: 23, losses: 8),
-            conference: "ACC",
-            ranking: 9,
-            colorHex: "#001A57"
-        ),
-        awayTeam: Team(
-            id: "away-team",
-            name: "North Carolina Tar Heels",
-            shortName: "UNC",
-            logoURL: "",
-            record: TeamRecord(wins: 21, losses: 10),
-            conference: "ACC",
-            ranking: 15,
-            colorHex: "#4B9CD3"
-        ),
-        gameTime: Date(),
-        bettingLines: BettingLines(
-            id: "preview-lines",
-            gameID: "sample-game",
-            moneyline: ["DUKE": -150, "UNC": 130],
-            spread: ["DUKE -3.5": -110, "UNC +3.5": -110],
-            total: ["Over 145.5": -110, "Under 145.5": -110]
-        ),
-        allBettingLines: nil,
-        predictionInfo: PredictionInfo(
-            spreadConfidence: 85.0,
-            spreadBet: "UNC +3.5",
-            totalConfidence: 65.0,
-            totalBet: "OVER 145.5",
-            analysis: "Strong defensive matchup favors the underdog"
-        ),
-        neutralSite: false
-    )
-    
-    GameSearchResultRowView(betSlip: sampleBetSlip)
-        .previewLayout(.sizeThatFits)
-        .padding()
-}

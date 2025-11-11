@@ -93,11 +93,13 @@ class FirebaseService: ObservableObject {
                 status = .notPlayed
             }
             
+            let combinedDateTime = combineDateAndTipoffTime(date: gameDate, tipoffTime: tipoffTime)
+            
             return Game(
                 id: gameID,
                 homeTeam: homeTeam,
                 awayTeam: awayTeam,
-                date: gameDate,
+                date: combinedDateTime,
                 status: status,
                 neutralSite: neutralSite,
                 homeConference: homeConference,
@@ -454,10 +456,11 @@ class FirebaseService: ObservableObject {
                         homeTeam: homeTeam,
                         awayTeam: awayTeam,
                         gameTime: game.date,
+                        tipoffTimeString: game.tipoffTime,
                         bettingLines: defaultBettingLines,
                         allBettingLines: allBettingLines,
                         predictionInfo: predictionInfo,
-                        neutralSite: game.neutralSite
+                        neutralSite: game.neutralSite,
                     )
                     
                     betSlips.append(betSlip)
@@ -489,6 +492,51 @@ class FirebaseService: ObservableObject {
             print("❌ Error in fetchBetSlips: \(error)")
             throw error
         }
+    }
+    
+    // Helper function to combine date and tipoff time into a complete date-time object
+    func combineDateAndTipoffTime(date: Date, tipoffTime: String?) -> Date {
+        // If no tipoff time is provided, return the original date
+        guard let tipoffTimeString = tipoffTime else {
+            return date
+        }
+        
+        // Create a calendar for date manipulation
+        let calendar = Calendar.current
+        
+        // Extract components from the original date
+        let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        
+        // Parse the tipoff time string (e.g., "6:00 PM CT")
+        // First, try to extract just the time part (remove timezone)
+        let timeComponents = tipoffTimeString.components(separatedBy: " ")
+        guard timeComponents.count >= 2 else {
+            // If the format is not as expected, return the original date
+            return date
+        }
+        
+        // Combine the time and AM/PM
+        let timeString = "\(timeComponents[0]) \(timeComponents[1])"
+        
+        // Parse the time
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "h:mm a"
+        
+        guard let parsedTime = timeFormatter.date(from: timeString) else {
+            // If time parsing fails, return the original date
+            return date
+        }
+        
+        // Extract hour and minute from the parsed time
+        let timeComponents2 = calendar.dateComponents([.hour, .minute], from: parsedTime)
+        
+        // Create updated date components with both date and time
+        var updatedComponents = dateComponents
+        updatedComponents.hour = timeComponents2.hour
+        updatedComponents.minute = timeComponents2.minute
+        
+        // Create the final date
+        return calendar.date(from: updatedComponents) ?? date
     }
     
     // MARK: - User Bets
