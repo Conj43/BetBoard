@@ -1,8 +1,8 @@
 //
 //  BetSlipUI.swift
-//  SportsAppOG
+//  SportsAppTest
 //
-//  Created by Trenton Roney on 8/26/25.
+//  Created by Trenton Roney on 11/11/25.
 //
 
 import SwiftUI
@@ -26,6 +26,11 @@ struct BetSlipUI: View {
             if allBettingLines.caesars != nil { sportsbooks.append(.caesars) }
             if allBettingLines.pointsbet != nil { sportsbooks.append(.pointsbet) }
             if allBettingLines.barstool != nil { sportsbooks.append(.barstool) }
+            // Add new sportsbooks
+            if allBettingLines.betonlineag != nil { sportsbooks.append(.betonlineag) }
+            if allBettingLines.betrivers != nil { sportsbooks.append(.betrivers) }
+            if allBettingLines.bovada != nil { sportsbooks.append(.bovada) }
+            if allBettingLines.lowvig != nil { sportsbooks.append(.lowvig) }
             return sportsbooks
         }
         return [.draftkings]
@@ -47,6 +52,15 @@ struct BetSlipUI: View {
                 return allBettingLines.pointsbet ?? betSlip.bettingLines
             case .barstool:
                 return allBettingLines.barstool ?? betSlip.bettingLines
+            // Add new sportsbooks
+            case .betonlineag:
+                return allBettingLines.betonlineag ?? betSlip.bettingLines
+            case .betrivers:
+                return allBettingLines.betrivers ?? betSlip.bettingLines
+            case .bovada:
+                return allBettingLines.bovada ?? betSlip.bettingLines
+            case .lowvig:
+                return allBettingLines.lowvig ?? betSlip.bettingLines
             }
         }
         return betSlip.bettingLines

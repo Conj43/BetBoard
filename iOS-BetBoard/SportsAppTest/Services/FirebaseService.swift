@@ -213,6 +213,10 @@ class FirebaseService: ObservableObject {
             var caesarsLines: BettingLines?
             var pointsbetLines: BettingLines?
             var barstoolLines: BettingLines?
+            var betonlineagLines: BettingLines?
+            var betriversLines: BettingLines?
+            var bovadaLines: BettingLines?
+            var lowvigLines: BettingLines?
             
             // Get game data for team names
             let gameData = gameDoc.data() ?? [:]
@@ -290,7 +294,16 @@ class FirebaseService: ObservableObject {
                     pointsbetLines = bettingLines
                 case "barstool":
                     barstoolLines = bettingLines
+                case "betonlineag":
+                    betonlineagLines = bettingLines
+                case "betrivers":
+                    betriversLines = bettingLines
+                case "bovada":
+                    bovadaLines = bettingLines
+                case "lowvig":
+                    lowvigLines = bettingLines
                 default:
+                    print("⚠️ Unknown sportsbook: \(sportsbookName)")
                     break
                 }
             }
@@ -302,7 +315,11 @@ class FirebaseService: ObservableObject {
                 fanduel: fanduelLines,
                 caesars: caesarsLines,
                 pointsbet: pointsbetLines,
-                barstool: barstoolLines
+                barstool: barstoolLines,
+                betonlineag: betonlineagLines,
+                betrivers: betriversLines,
+                bovada: bovadaLines,
+                lowvig: lowvigLines
             )
             
         } catch {
@@ -447,6 +464,10 @@ class FirebaseService: ObservableObject {
                     let defaultBettingLines = allBettingLines.draftkings ??
                                             allBettingLines.fanduel ??
                                             allBettingLines.betmgm ??
+                    allBettingLines.betonlineag ??
+                    allBettingLines.betrivers ??
+                    allBettingLines.bovada ??
+                    allBettingLines.lowvig ??
                                             BettingLines.create(id: game.id, gameID: game.id, spread: [:], total: [:])
                     
                     let betSlip = BetSlip(
@@ -712,6 +733,10 @@ class FirebaseService: ObservableObject {
         if allLines.caesars != nil { sportsbooks.append("Caesars") }
         if allLines.pointsbet != nil { sportsbooks.append("PointsBet") }
         if allLines.barstool != nil { sportsbooks.append("Barstool") }
+        if allLines.betonlineag != nil { sportsbooks.append("BetOnlineAG") }
+        if allLines.betrivers != nil { sportsbooks.append("BetRivers") }
+        if allLines.bovada != nil { sportsbooks.append("Bovada") }
+        if allLines.lowvig != nil { sportsbooks.append("LowVig") }
         return sportsbooks
     }
 }

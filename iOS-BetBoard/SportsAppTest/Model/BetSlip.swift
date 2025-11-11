@@ -14,7 +14,7 @@ struct BetSlip: Identifiable, Codable {
     let homeTeam: Team
     let awayTeam: Team
     let gameTime: Date
-    let tipoffTimeString: String? 
+    let tipoffTimeString: String?
     let bettingLines: BettingLines // Default/fallback betting lines
     let allBettingLines: AllSportsbookLines? // All sportsbook lines
     let predictionInfo: PredictionInfo?
@@ -35,6 +35,11 @@ struct AllSportsbookLines: Codable {
     let caesars: BettingLines?
     let pointsbet: BettingLines?
     let barstool: BettingLines?
+    // Add new sportsbooks
+    let betonlineag: BettingLines?
+    let betrivers: BettingLines?
+    let bovada: BettingLines?
+    let lowvig: BettingLines?
     
     // Custom initializer for direct creation
     init(draftkings: BettingLines? = nil,
@@ -42,13 +47,21 @@ struct AllSportsbookLines: Codable {
          fanduel: BettingLines? = nil,
          caesars: BettingLines? = nil,
          pointsbet: BettingLines? = nil,
-         barstool: BettingLines? = nil) {
+         barstool: BettingLines? = nil,
+         betonlineag: BettingLines? = nil,
+         betrivers: BettingLines? = nil,
+         bovada: BettingLines? = nil,
+         lowvig: BettingLines? = nil) {
         self.draftkings = draftkings
         self.betmgm = betmgm
         self.fanduel = fanduel
         self.caesars = caesars
         self.pointsbet = pointsbet
         self.barstool = barstool
+        self.betonlineag = betonlineag
+        self.betrivers = betrivers
+        self.bovada = bovada
+        self.lowvig = lowvig
     }
     
     init(from decoder: Decoder) throws {
@@ -59,6 +72,11 @@ struct AllSportsbookLines: Codable {
         caesars = try container.decodeIfPresent(BettingLines.self, forKey: .caesars)
         pointsbet = try container.decodeIfPresent(BettingLines.self, forKey: .pointsbet)
         barstool = try container.decodeIfPresent(BettingLines.self, forKey: .barstool)
+        // Decode new sportsbooks
+        betonlineag = try container.decodeIfPresent(BettingLines.self, forKey: .betonlineag)
+        betrivers = try container.decodeIfPresent(BettingLines.self, forKey: .betrivers)
+        bovada = try container.decodeIfPresent(BettingLines.self, forKey: .bovada)
+        lowvig = try container.decodeIfPresent(BettingLines.self, forKey: .lowvig)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -69,10 +87,17 @@ struct AllSportsbookLines: Codable {
         try container.encodeIfPresent(caesars, forKey: .caesars)
         try container.encodeIfPresent(pointsbet, forKey: .pointsbet)
         try container.encodeIfPresent(barstool, forKey: .barstool)
+        // Encode new sportsbooks
+        try container.encodeIfPresent(betonlineag, forKey: .betonlineag)
+        try container.encodeIfPresent(betrivers, forKey: .betrivers)
+        try container.encodeIfPresent(bovada, forKey: .bovada)
+        try container.encodeIfPresent(lowvig, forKey: .lowvig)
     }
     
     enum CodingKeys: String, CodingKey {
         case draftkings, betmgm, fanduel, caesars, pointsbet, barstool
+        // Add new sportsbook keys
+        case betonlineag, betrivers, bovada, lowvig
     }
 }
 
@@ -198,6 +223,11 @@ enum Sportsbook: String, Codable, CaseIterable {
     case caesars = "Caesars"
     case pointsbet = "PointsBet"
     case barstool = "Barstool"
+    // Add new sportsbooks
+    case betonlineag = "BetOnlineAG"
+    case betrivers = "BetRivers"
+    case bovada = "Bovada"
+    case lowvig = "LowVig"
     
     var displayName: String {
         return self.rawValue
@@ -211,6 +241,11 @@ enum Sportsbook: String, Codable, CaseIterable {
         case .caesars: return "caesars_logo"
         case .pointsbet: return "pointsbet_logo"
         case .barstool: return "barstool_logo"
+        // Add logo names for new sportsbooks
+        case .betonlineag: return "betonlineag_logo"
+        case .betrivers: return "betrivers_logo"
+        case .bovada: return "bovada_logo"
+        case .lowvig: return "lowvig_logo"
         }
     }
 }
