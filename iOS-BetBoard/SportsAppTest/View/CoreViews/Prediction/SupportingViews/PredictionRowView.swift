@@ -20,6 +20,15 @@ struct PredictionRowView: View {
         return 0.0
     }
     
+    // Get edge strength from key factors
+    private var edgeStrength: Double {
+        if let edgeFactor = prediction.keyFactors.first(where: { $0.starts(with: "Edge Strength:") }) {
+            let edgeString = edgeFactor.dropFirst(15).trimmingCharacters(in: .whitespaces)
+            return Double(edgeString) ?? 0.0
+        }
+        return 0.0
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // Game header with team info
@@ -127,17 +136,14 @@ struct PredictionRowView: View {
                 
                 Spacer()
                 
-                // Edge Strength indicator
-                if let edgeFactor = prediction.keyFactors.first(where: { $0.starts(with: "Edge Strength:") }) {
-                    let edgeStrength = edgeFactor.dropFirst(15).trimmingCharacters(in: .whitespaces)
-                    Text("Edge: \(edgeStrength)")
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.purple.opacity(0.1))
-                        .foregroundColor(.purple)
-                        .cornerRadius(8)
-                }
+                // Edge Strength indicator - display as points
+                Text("Edge: \(String(format: "%.1f", edgeStrength))")
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.purple.opacity(0.1))
+                    .foregroundColor(.purple)
+                    .cornerRadius(8)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -165,9 +171,9 @@ struct PredictionRowView: View {
     }
     
     private func confidenceColor(for probability: Double) -> Color {
-        if probability >= 60 {
+        if probability >= 55 {
             return .green
-        } else if probability >= 55 {
+        } else if probability >= 52 {
             return .blue
         } else if probability >= 50 {
             return .orange

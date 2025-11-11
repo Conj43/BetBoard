@@ -3,7 +3,7 @@
 //  SportsAppTest
 //
 //  Created by Trenton Roney on 8/26/25.
-//  Updated to filter by recommended predictions and sort by odds_to_prob
+//  Updated to handle moneyline bet types
 
 import SwiftUI
 import FirebaseAuth
@@ -228,10 +228,12 @@ class PredictionsViewModel: ObservableObject {
             oddsToProbDouble = 0.0
         }
         
-        // Map bet type to enum
+        // Map bet type to enum - ADD SUPPORT FOR MONEYLINE
         let betTypeEnum: BetType
         if betType.lowercased() == "total" {
             betTypeEnum = .total
+        } else if betType.lowercased() == "moneyline" {
+            betTypeEnum = .moneyline
         } else {
             betTypeEnum = .spread
         }
@@ -267,7 +269,7 @@ class PredictionsViewModel: ObservableObject {
         }
         
         // Calculate confidence based on edge strength
-        let confidence = min(max(50 + (edgeStrength * 100) / 2, 50), 95) // Scale to 50-95 range
+        let confidence = min(max(50 + edgeStrength * 5, 50), 95) // Scale to 50-95 range
         
         // Create the prediction game
         let predictionGame = PredictionGame(
