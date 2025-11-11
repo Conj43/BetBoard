@@ -15,6 +15,7 @@ from config import TRAIN_CONFIG
 from data_loader import load_game_data, prepare_game_rows
 from features import build_features
 
+USE_ALL_DATA_FOR_TRAINING = True 
 
 # Model parameters
 XGB_MONEYLINE_PARAMS = {
@@ -952,7 +953,258 @@ def train_on_holdout_year(X, y_pts, y_win, meta, market, run_dir, feature_names,
     return metrics_summary
 
 
+def train_on_all_data(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id):
+    """
+    Train on ALL available data (including 2025) for production deployment.
+    Uses chronological validation split for monitoring only.
+    Final models are retrained on the complete dataset.
+    """
+    if market is None or len(market) == 0:
+        market = pd.DataFrame(index=X.index)
+    
+    # Calculate targets
+    y_margin = y_pts.iloc[:, 0] - y_pts.iloc[:, 1]  # Team A - Team B
+    y_total = y_pts.iloc[:, 0] + y_pts.iloc[:, 1]   # Team A + Team B
+    
+    print(f"\n{'='*70}")
+    print("TRAINING ON ALL DATA")
+    print(f"{'='*70}")
+    print(f"Seasons: {sorted(meta['season'].unique())}")
+    print(f"Total games: {len(X)}")
+    print(f"Date range: {meta['date'].min()} to {meta['date'].max()}")
+    
+    # Create validation split (most recent 20% for monitoring performance)
+    try:
+        val_ratio = TRAIN_CONFIG.get("validation_split", 0.2)
+    except:
+        val_ratio = 0.2
+        
+    train_data, val_data = create_validation_split(
+        X, y_win, y_margin, y_total, meta, market, val_ratio=val_ratio
+    )
+    
+    print(f"\nTrain set: {len(train_data['X'])} games ({train_data['meta']['date'].min()} to {train_data['meta']['date'].max()})")
+    print(f"Val set: {len(val_data['X'])} games ({val_data['meta']['date'].min()} to {val_data['meta']['date'].max()})")
+    
+    # ===== TRAIN MODELS WITH VALIDATION FOR MONITORING =====
+    
+    # 1. Moneyline
+    print(f"\n{'='*70}")
+    print("TRAINING MONEYLINE MODEL")
+    print(f"{'='*70}")
+    ml_results = train_moneyline_model(
+        train_data['X'],
+        train_data['y_win'],
+        val_data['X'],
+        X_val=val_data['X'],
+        y_val=val_data['y_win']
+    )
+    
+    ml_metrics = evaluate_moneyline(
+        val_data['y_win'],
+        ml_results["pred_proba"],
+        ml_results["pred_class"],
+        val_data['market'] if len(val_data['market'].columns) > 0 else None
+    )
+    
+    print(f"\nMoneyline Validation Performance:")
+    print(f"  Accuracy: {ml_metrics['accuracy']:.1%}")
+    print(f"  Log Loss: {ml_metrics['log_loss']:.4f}")
+    print(f"  AUC-ROC: {ml_metrics['auc_roc']:.4f}")
+    if 'ml_roi' in ml_metrics:
+        print(f"  ML ROI: {ml_metrics['ml_roi']:+.2f}%")
+    
+    # 2. Spread
+    print(f"\n{'='*70}")
+    print("TRAINING SPREAD MODEL")
+    print(f"{'='*70}")
+    spread_results = train_spread_model(
+        train_data['X'],
+        train_data['y_margin'],
+        val_data['X'],
+        X_val=val_data['X'],
+        y_val=val_data['y_margin']
+    )
+    
+    spread_metrics = evaluate_spread(
+        val_data['y_margin'],
+        spread_results["pred_margin"],
+        val_data['market'] if len(val_data['market'].columns) > 0 else None
+    )
+    
+    print(f"\nSpread Validation Performance:")
+    print(f"  MAE: {spread_metrics['mae_margin']:.2f}")
+    print(f"  RMSE: {spread_metrics['rmse_margin']:.2f}")
+    if 'ats_accuracy' in spread_metrics:
+        print(f"  ATS Accuracy: {spread_metrics['ats_accuracy']:.1%}")
+    
+    # 3. Total
+    print(f"\n{'='*70}")
+    print("TRAINING TOTAL MODEL")
+    print(f"{'='*70}")
+    total_results = train_total_model(
+        train_data['X'],
+        train_data['y_total'],
+        val_data['X'],
+        X_val=val_data['X'],
+        y_val=val_data['y_total']
+    )
+    
+    total_metrics = evaluate_total(
+        val_data['y_total'],
+        total_results["pred_total"],
+        val_data['market'] if len(val_data['market'].columns) > 0 else None
+    )
+    
+    print(f"\nTotal Validation Performance:")
+    print(f"  MAE: {total_metrics['mae_total']:.2f}")
+    print(f"  RMSE: {total_metrics['rmse_total']:.2f}")
+    if 'ou_accuracy' in total_metrics:
+        print(f"  O/U Accuracy: {total_metrics['ou_accuracy']:.1%}")
+    
+    # ===== NOW RETRAIN ON COMPLETE DATASET FOR PRODUCTION =====
+    print(f"\n{'='*70}")
+    print("RETRAINING ON COMPLETE DATASET FOR PRODUCTION")
+    print(f"{'='*70}")
+    
+    # Moneyline - full retrain
+    print("Training final moneyline model on all data...")
+    ml_model_final = xgb.XGBClassifier(**XGB_MONEYLINE_PARAMS)
+    ml_model_final.fit(X, y_win, verbose=False)
+    
+    # Spread - full retrain
+    print("Training final spread model on all data...")
+    spread_model_final = xgb.XGBRegressor(**XGB_SPREAD_PARAMS)
+    spread_model_final.fit(X, y_margin, verbose=False)
+    
+    # Total - full retrain
+    print("Training final total model on all data...")
+    total_model_final = xgb.XGBRegressor(**XGB_TOTAL_PARAMS)
+    total_model_final.fit(X, y_total, verbose=False)
+    
+    print("Complete dataset training finished!")
+    
+    # ===== SAVE VALIDATION PREDICTIONS =====
+    
+    ml_pred_df = val_data['meta'].copy()
+    ml_pred_df["true_winner"] = val_data['y_win'].values
+    ml_pred_df["pred_winner"] = ml_results["pred_class"]
+    ml_pred_df["p_win_A"] = ml_results["pred_proba"]
+    ml_pred_df["correct"] = (val_data['y_win'].values == ml_results["pred_class"]).astype(int)
+    ml_pred_df.to_csv(os.path.join(run_dir, "moneyline_validation.csv"), index=False)
+    
+    spread_pred_df = val_data['meta'].copy()
+    spread_pred_df["true_margin"] = val_data['y_margin'].values
+    spread_pred_df["pred_margin"] = spread_results["pred_margin"]
+    spread_pred_df.to_csv(os.path.join(run_dir, "spread_validation.csv"), index=False)
+    
+    total_pred_df = val_data['meta'].copy()
+    total_pred_df["true_total"] = val_data['y_total'].values
+    total_pred_df["pred_total"] = total_results["pred_total"]
+    total_pred_df.to_csv(os.path.join(run_dir, "total_validation.csv"), index=False)
+    
+    # Save metrics
+    metrics_summary = {
+        "training_type": "all_data_including_2025",
+        "validation_metrics": {
+            "moneyline": ml_metrics,
+            "spread": spread_metrics,
+            "total": total_metrics,
+        },
+        "training_info": {
+            "seasons": sorted(meta['season'].unique()),
+            "total_games": len(X),
+            "train_games": len(train_data['X']),
+            "val_games": len(val_data['X']),
+            "date_range": f"{meta['date'].min()} to {meta['date'].max()}"
+        }
+    }
+    
+    with open(os.path.join(run_dir, "metrics_summary.json"), "w") as f:
+        json.dump(metrics_summary, f, indent=2, default=str)
+    
+    # ===== SAVE PRODUCTION MODELS =====
+    import joblib
+    
+    models_dir = os.path.join(run_dir, "models_production")
+    os.makedirs(models_dir, exist_ok=True)
+    
+    # Save final models (trained on all data)
+    ml_model_final.save_model(os.path.join(models_dir, "moneyline_model.json"))
+    spread_model_final.save_model(os.path.join(models_dir, "spread_model.json"))
+    total_model_final.save_model(os.path.join(models_dir, "total_model.json"))
+    
+    # Save feature names
+    joblib.dump(feature_names, os.path.join(models_dir, "feature_names.pkl"))
+    
+    # Save model metadata
+    model_metadata = {
+        "training_date": run_id,
+        "training_type": "production_all_data",
+        "seasons_included": sorted(meta['season'].unique()),
+        "total_training_games": len(X),
+        "n_features": len(feature_names),
+        "validation_metrics": metrics_summary["validation_metrics"],
+        "date_range": f"{meta['date'].min()} to {meta['date'].max()}"
+    }
+    
+    with open(os.path.join(models_dir, "model_metadata.json"), "w") as f:
+        json.dump(model_metadata, f, indent=2, default=str)
+    
+    print(f"\n{'='*70}")
+    print(f"SAVED PRODUCTION MODELS TO: {models_dir}")
+    print(f"{'='*70}")
+    print("  ✓ moneyline_model.json (trained on ALL data)")
+    print("  ✓ spread_model.json (trained on ALL data)")
+    print("  ✓ total_model.json (trained on ALL data)")
+    print("  ✓ feature_names.pkl")
+    print("  ✓ model_metadata.json")
+    
+    # Save feature importance for all three models
+    gain_scores_ml = ml_model_final.get_booster().get_score(importance_type='gain')
+    gain_values_ml = [gain_scores_ml.get(f'f{i}', 0) for i in range(len(feature_names))]
 
+    gain_scores_spread = spread_model_final.get_booster().get_score(importance_type='gain')
+    gain_values_spread = [gain_scores_spread.get(f'f{i}', 0) for i in range(len(feature_names))]
+
+    gain_scores_total = total_model_final.get_booster().get_score(importance_type='gain')
+    gain_values_total = [gain_scores_total.get(f'f{i}', 0) for i in range(len(feature_names))]
+
+    # Create and save CSVs
+    ml_importance = pd.DataFrame({
+        'feature': feature_names,
+        'importance': ml_model_final.feature_importances_,
+        'gain': gain_values_ml
+    }).sort_values('importance', ascending=False)
+    ml_importance.to_csv(os.path.join(models_dir, "moneyline_feature_importance.csv"), index=False)
+
+    spread_importance = pd.DataFrame({
+        'feature': feature_names,
+        'importance': spread_model_final.feature_importances_,
+        'gain': gain_values_spread
+    }).sort_values('importance', ascending=False)
+    spread_importance.to_csv(os.path.join(models_dir, "spread_feature_importance.csv"), index=False)
+
+    total_importance = pd.DataFrame({
+        'feature': feature_names,
+        'importance': total_model_final.feature_importances_,
+        'gain': gain_values_total
+    }).sort_values('importance', ascending=False)
+    total_importance.to_csv(os.path.join(models_dir, "total_feature_importance.csv"), index=False)
+
+    print("  ✓ moneyline_feature_importance.csv")
+    print("  ✓ spread_feature_importance.csv")
+    print("  ✓ total_feature_importance.csv")
+
+    imp_df = ml_importance  # For printing below
+    
+    print(f"\n{'='*70}")
+    print("TOP 20 FEATURES - MONEYLINE (PRODUCTION MODEL)")
+    print(f"{'='*70}")
+    for idx, row in imp_df.head(20).iterrows():
+        print(f"{idx+1:2d}. {row['feature']:<45} {row['importance']:>10.3f}")
+    
+    return metrics_summary
 
 def main():
     """Main training pipeline."""
@@ -1004,7 +1256,11 @@ def main():
     
     # Train all models
     # train_on_2025_holdout(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id)
-    train_on_holdout_year(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id)
+    # train_on_holdout_year(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id)
+    if USE_ALL_DATA_FOR_TRAINING:
+        train_on_all_data(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id)
+    else:
+        train_on_holdout_year(X, y_pts, y_win, meta, market, run_dir, feature_names, run_id)
 
     
     print(f"\n{'='*70}")
