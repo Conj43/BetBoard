@@ -214,7 +214,6 @@ class PredictionsViewModel: ObservableObject {
         }
         
         // Optional fields
-        let gameId = recommendationData["game_id"] as? String
         let modelProjection = recommendationData["model_projection"] as? Double
         let odds = recommendationData["odds"] as? Double ?? -110.0
         

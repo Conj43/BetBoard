@@ -53,7 +53,7 @@ struct TrophyWebView: UIViewRepresentable {
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "loadTrophy" {
-                loadTrophyModel(webView: message.webView as? WKWebView)
+                loadTrophyModel(webView: message.webView)
             }
         }
         

@@ -110,7 +110,7 @@ struct BetSlipUI: View {
                 selectedSportsbook = firstSportsbook
             }
         }
-        .onChange(of: selectedSportsbook) { _ in
+        .onChange(of: selectedSportsbook) { oldValue, newValue in
             selectedBet = nil
             betAmount = ""
         }

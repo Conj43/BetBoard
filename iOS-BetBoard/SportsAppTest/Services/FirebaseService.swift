@@ -417,8 +417,8 @@ class FirebaseService: ObservableObject {
             
             if predictionInfo != nil {
                 print("✅ Successfully created prediction info")
-                print("📊 Spread: \(predictionInfo?.spreadBet ?? "none") (\(predictionInfo?.spreadConfidence)%)")
-                print("📈 Total: \(predictionInfo?.totalBet ?? "none") (\(predictionInfo?.totalConfidence)%)")
+                print("📊 Spread: \(predictionInfo?.spreadBet ?? "none") (\(predictionInfo?.spreadConfidence ?? 0)%)")
+                print("📈 Total: \(predictionInfo?.totalBet ?? "none") (\(predictionInfo?.totalConfidence ?? 0)%)")
             } else {
                 print("⚠️ Failed to create prediction info from data")
             }

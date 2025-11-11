@@ -71,11 +71,11 @@ struct BetHistoryView: View {
         .refreshable {
             await viewModel.loadBetHistory()
         }
-        .onChange(of: selectedFilter) { _ in
-            viewModel.applyFilters(filter: selectedFilter, sort: selectedSort)
+        .onChange(of: selectedFilter) { oldValue, newValue in
+            viewModel.applyFilters(filter: newValue, sort: selectedSort)
         }
-        .onChange(of: selectedSort) { _ in
-            viewModel.applyFilters(filter: selectedFilter, sort: selectedSort)
+        .onChange(of: selectedSort) { oldValue, newValue in
+            viewModel.applyFilters(filter: selectedFilter, sort: newValue)
         }
     }
     
