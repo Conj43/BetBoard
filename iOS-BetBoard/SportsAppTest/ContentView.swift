@@ -22,7 +22,7 @@ struct ContentView: View {
                     
                     SearchView()
                         .tabItem {
-                            Image(systemName: "circle")
+                            Image(systemName: "magnifyingglass.circle")
                             Text("Search")
                         }
                     
@@ -30,11 +30,6 @@ struct ContentView: View {
                         .tabItem {
                             Image(systemName: "chart.bar.xaxis")
                             Text("Predictions")
-                        }
-                    FirebaseTestView()
-                        .tabItem {
-                            Image(systemName: "wrench")
-                            Text("Debug")
                         }
                     InfoView()
                         .tabItem {
