@@ -105,7 +105,7 @@ struct BetOptionRow: View {
                 
                 Text(formattedOdds)
                     .fontWeight(.bold)
-                    .foregroundColor(odds > 0 ? .green : .red)
+                    .foregroundColor(odds > 0 ? .green : .orange)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

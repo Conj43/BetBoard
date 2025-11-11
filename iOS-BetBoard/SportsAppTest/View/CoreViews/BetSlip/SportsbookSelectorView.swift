@@ -31,16 +31,12 @@ struct SportsbookSelectorView: View {
                 }
             }) {
                 HStack {
-                    // Selected sportsbook display
+                    // Selected sportsbook display with logo
+                    // IMPORTANT: Add id modifier to force the view to recreate when sportsbook changes
                     HStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(SportsbookHelper.color(for: selectedSportsbook))
-                            .frame(width: 30, height: 20)
-                            .overlay(
-                                Text(SportsbookHelper.initials(for: selectedSportsbook))
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(.white)
-                            )
+                        SportsbookLogo(for: selectedSportsbook)
+                            .id(selectedSportsbook) // This is the key change!
+                            .frame(width: 36, height: 24)
                         
                         Text(selectedSportsbook.displayName)
                             .font(.system(size: 14, weight: .medium))
@@ -64,43 +60,57 @@ struct SportsbookSelectorView: View {
             
             // Dropdown content
             if isDropdownOpen && availableSportsbooks.count > 1 {
-                VStack(spacing: 0) {
-                    ForEach(availableSportsbooks.filter { $0 != selectedSportsbook }, id: \.self) { sportsbook in
-                        Button(action: {
-                            selectedSportsbook = sportsbook
-                            withAnimation {
-                                isDropdownOpen = false
-                            }
-                        }) {
-                            HStack(spacing: 8) {
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(SportsbookHelper.color(for: sportsbook))
-                                    .frame(width: 30, height: 20)
-                                    .overlay(
-                                        Text(SportsbookHelper.initials(for: sportsbook))
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.white)
-                                    )
-                                
-                                Text(sportsbook.displayName)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.primary)
-                                
-                                Spacer()
-                            }
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 12)
-                            .background(Color(.systemGray6).opacity(0.5))
+                ZStack(alignment: .top) {
+                    // Background overlay to capture taps outside dropdown
+                    if isDropdownOpen {
+                        Color.clear
                             .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation {
+                                    isDropdownOpen = false
+                                }
+                            }
+                    }
+                    
+                    VStack(spacing: 0) {
+                        ForEach(availableSportsbooks.filter { $0 != selectedSportsbook }, id: \.self) { sportsbook in
+                            Button(action: {
+                                selectedSportsbook = sportsbook
+                                withAnimation {
+                                    isDropdownOpen = false
+                                }
+                            }) {
+                                HStack(spacing: 8) {
+                                    SportsbookLogo(for: sportsbook)
+                                        .id(sportsbook) // Also add id here for consistency
+                                        .frame(width: 36, height: 24)
+                                    
+                                    Text(sportsbook.displayName)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                }
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 12)
+                                .background(Color(.systemGray6).opacity(0.5))
+                                .contentShape(Rectangle())
+                            }
+                            
+                            // Add dividers between options
+                            if sportsbook != availableSportsbooks.filter({ $0 != selectedSportsbook }).last {
+                                Divider()
+                                    .padding(.horizontal)
+                            }
                         }
                     }
+                    .padding(.horizontal)
+                    .padding(.bottom, 12)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(8)
+                    .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 12)
-                .background(Color(.systemBackground))
-                .cornerRadius(8)
-                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-                .padding(.horizontal)
                 .transition(.opacity)
                 .zIndex(1) // Ensure dropdown appears on top
             }
@@ -122,6 +132,67 @@ struct SportsbookSelectorView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Sportsbook Logo View
+struct SportsbookLogo: View {
+    private let sportsbook: Sportsbook
+    @State private var logoImage: UIImage?
+    
+    init(for sportsbook: Sportsbook) {
+        self.sportsbook = sportsbook
+    }
+    
+    var body: some View {
+        Group {
+            if let image = logoImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color(.systemGray5), lineWidth: 0.5)
+                    )
+            } else {
+                // Fallback with colored rectangle and initials
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(SportsbookHelper.color(for: sportsbook))
+                    .overlay(
+                        Text(SportsbookHelper.initials(for: sportsbook))
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                    )
+            }
+        }
+        .onAppear {
+            // Try multiple possible naming patterns for the logo
+            loadLogoImage()
+        }
+    }
+    
+    private func loadLogoImage() {
+        // Try all these potential paths to find the logo
+        let possiblePaths = [
+            "sb_\(sportsbook.rawValue.lowercased())",
+            "SB-Logos/sb_\(sportsbook.rawValue.lowercased())",
+            "SB-Logos/\(sportsbook.rawValue.lowercased())",
+            "\(sportsbook.rawValue.lowercased())"
+        ]
+        
+        // Try each path until we find a valid image
+        for path in possiblePaths {
+            if let image = UIImage(named: path) {
+                self.logoImage = image
+                print("✅ Found logo for \(sportsbook.rawValue) at path: \(path)")
+                return
+            }
+        }
+        
+        // If no image is found, log the issue
+        print("⚠️ No logo found for \(sportsbook.rawValue), using fallback")
     }
 }
 
