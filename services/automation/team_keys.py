@@ -346,6 +346,22 @@ TEAM_MAPPING = {
     "UNC Asheville Bulldogs": "north-carolina-asheville",
     "UTEP Miners": "texas-el-paso",
     "Northern Arizona Lumberjacks": "northern-arizona",
+    "American Eagles": "american",
+    "Dartmouth Big Green": "dartmouth",
+    "Evansville Purple Aces": "evansville",
+    "Fairleigh Dickinson Knights": "fairleigh-dickinson",
+    "Idaho Vandals": "idaho",
+    "James Madison Dukes": "james-madison",
+    "Middle Tennessee Blue Raiders": "middle-tennessee",
+    "Montana St Bobcats": "montana-state",
+    "Oklahoma St Cowboys": "oklahoma-state",
+    "Nicholls St Colonels": "nicholls-state",
+    "Oral Roberts Golden Eagles": "oral-roberts",
+    "Portland St Vikings": "portland-state",
+    "Saint Peter's Peacocks": "saint-peters",
+    "South Dakota St Jackrabbits": "south-dakota-state",
+    "Tenn-Martin Skyhawks": "tennessee-martin",
+    "Western Michigan Broncos": "western-michigan",
 }
 
 
