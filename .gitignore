@@ -1,12 +1,45 @@
 # macOS / Xcode
 .DS_Store
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
 DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+timeline.xctimeline
+playground.xcworkspace
+.build/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
 # Python
 .venv/
 __pycache__/
+*.py[cod]
+*$py.class
+
 # Node
 node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.npm/
+
+# Firebase
+betboardtest-firebase-adminsdk*.json
+google-services.json
+GoogleService-Info.plist
+
 # General
 .env*
-betboardtest-firebase-adminsdk*.json
 .vscode
+*.log
+*.swp
+*.backup
+*~

@@ -54,6 +54,12 @@ struct TrackedBetSlipView: View {
             } message: {
                 Text("Are you sure you want to delete this tracked bet? This action cannot be undone.")
             }
+            // In TrackedBetSlipView.swift
+            .onAppear {
+                print("Debug: Rendering TrackedBetSlipView for bet ID: \(bet.id)")
+                print("Debug: Game ID: \(bet.gameID)")
+                print("Debug: Selection: \(bet.selection)")
+            }
         }
     }
     
@@ -145,10 +151,13 @@ struct TrackedBetSlipView: View {
                 
                 Spacer()
                 
-                Text(String(bet.gameID.prefix(8)).uppercased())
-                    .font(.caption)
-                    .fontWeight(.medium)
+                Text(bet.gameID)
+                            .font(.subheadline)
+                            .lineLimit(1) // Allow only one line
+                            .truncationMode(.middle) // Truncate in the middle if needed
+                            .minimumScaleFactor(0.8) // Allow text to scale down slightly if needed
             }
+            Spacer()
         }
         .padding()
         .background(Color(.systemBackground))

@@ -18,9 +18,7 @@ class FirebaseService: ObservableObject {
     private func getCurrentDateString() -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
-        // For development, use a fixed date that has data
-        // In production, you'd use Date()
-        return "2025-11-10" // Using the example date from your description
+        return dateFormatter.string(from: Date())
     }
     
     // MARK: - Games
@@ -459,24 +457,33 @@ class FirebaseService: ObservableObject {
                 // Try to find teams by exact match first, then try partial match
                 var homeTeamObj = teamLookup[game.homeTeam]
                 var awayTeamObj = teamLookup[game.awayTeam]
-                
-                // If exact match failed, try to find by partial matching
+
+                // If direct lookup failed, try normalized formats (uppercase/lowercase)
                 if homeTeamObj == nil {
-                    for (teamName, team) in teamLookup {
-                        if game.homeTeam.contains(teamName) || teamName.contains(game.homeTeam) {
-                            homeTeamObj = team
-                            break
-                        }
+                    // Try uppercase
+                    homeTeamObj = teamLookup[game.homeTeam.uppercased()]
+                    
+                    // Try lowercase if still nil
+                    if homeTeamObj == nil {
+                        homeTeamObj = teamLookup[game.homeTeam.lowercased()]
                     }
                 }
-                
+
                 if awayTeamObj == nil {
-                    for (teamName, team) in teamLookup {
-                        if game.awayTeam.contains(teamName) || teamName.contains(game.awayTeam) {
-                            awayTeamObj = team
-                            break
-                        }
+                    // Try uppercase
+                    awayTeamObj = teamLookup[game.awayTeam.uppercased()]
+                    
+                    // Try lowercase if still nil
+                    if awayTeamObj == nil {
+                        awayTeamObj = teamLookup[game.awayTeam.lowercased()]
                     }
+                }
+
+                // No partial matching at all - if we can't find it, skip or use a placeholder
+                if homeTeamObj == nil || awayTeamObj == nil {
+                    print("⚠️ Could not find exact match for teams in game: \(game.homeTeam) vs \(game.awayTeam)")
+                    // Skip this game or handle the missing team case as needed
+                    continue
                 }
                 
                 guard let homeTeam = homeTeamObj, let awayTeam = awayTeamObj else {

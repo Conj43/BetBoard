@@ -252,7 +252,6 @@ struct TeamNameFormatter {
         "NIAGARA": "Niagara",
         "NORTH-CAROLINA-AT": "NC A&T",
         "NORTH-CAROLINA-CENTRAL": "NC Central",
-        "NORTHDAKOTASTATE": "North Dakota State",
         "NORTH-TEXAS": "North Texas",
         "NORTHEASTERN": "Northeastern",
         "NORTHERN-ARIZONA": "Northern Arizona",
