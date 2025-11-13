@@ -18,8 +18,8 @@ FIREBASE_CREDENTIALS_PATH = "services/firebase/betboardtest-firebase-adminsdk-fb
 FIREBASE_STORAGE_BUCKET = "betboardtest.firebasestorage.app"
 
 # Change this to inspect different files
-# FILE_PATH = "raw_data/gamelogs/alabama/2026.csv"
-FILE_PATH = "processed_features/latest.csv"
+FILE_PATH = "raw_data/gamelogs/alabama/2026.csv"
+# FILE_PATH = "processed_features/latest.csv"
 # Examples:
 # FILE_PATH = "raw_data/gamelogs/kansas-state/2026.csv"
 # FILE_PATH = "raw_data/odds/latest.json"
@@ -82,7 +82,7 @@ def inspect_file(file_path: str):
     elif file_path.endswith('.csv'):
 
         df = pd.read_csv(StringIO(content))
-        df.to_csv('services/automation/torvik.csv', index=False) 
+        df.to_csv('services/automation/alabama.csv', index=False) 
         
 
 

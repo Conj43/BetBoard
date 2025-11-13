@@ -38,9 +38,10 @@ def prepare_rolling(df: pd.DataFrame) -> pd.DataFrame:
     # Sort games chronologically by team
     df["RowID"] = np.arange(len(df))
     df = df.sort_values(["team_key", "Date", "RowID"]).reset_index(drop=True)
-    df["prior_games"] = df.groupby("team_key").cumcount()
+    # Store number of games played so far (1-indexed to match box score counts)
+    df["prior_games"] = df.groupby("team_key").cumcount() + 1
     
-    # Compute rolling stats (NO SHIFT - we want to include current game for production)
+
     df = _compute_basic_rolling_stats(df)
     df = _compute_win_pct(df)
     df = _compute_pace_and_efficiency(df)
@@ -59,7 +60,6 @@ def _compute_basic_rolling_stats(df: pd.DataFrame) -> pd.DataFrame:
         and c not in ["RowID", "prior_games", "Gtm", "win_flag"]
     ]
     
-    # Compute rolling averages (shifted by 1 to avoid leakage)
     roll = (
         df.groupby("team_key")[stat_cols]
           .expanding()
@@ -271,7 +271,6 @@ def _compute_matchup_features(df: pd.DataFrame) -> pd.DataFrame:
             df["pregame_total_projection"] = df["team_expected_points"] + df["opp_expected_points"]
     
     return df
-
 
 
 
