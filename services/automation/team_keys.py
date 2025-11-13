@@ -362,6 +362,23 @@ TEAM_MAPPING = {
     "South Dakota St Jackrabbits": "south-dakota-state",
     "Tenn-Martin Skyhawks": "tennessee-martin",
     "Western Michigan Broncos": "western-michigan",
+
+    "Albany (NY) Great Danes": "albany-ny",
+    "Arizona St Sun Devils": "arizona-state",
+    "Bowling Green Falcons": "bowling-green-state",
+    "Incarnate Word Cardinals": "incarnate-word",
+    "IU Indy Jaguars": "iupui",
+    "Jacksonville St Gamecocks": "jacksonville-state",
+    "Lehigh Mountain Hawks": "lehigh",
+    "Louisiana Tech Bulldogs": "louisiana-tech",
+    "Marist Red Foxes": "marist",
+    "Massachusetts Minutemen": "massachusetts",
+    "Mercer Bears": "mercer",
+    "Miami (OH) RedHawks": "miami-oh",
+    "New Hampshire Wildcats": "new-hampshire",
+    "New Mexico St Aggies": "new-mexico-state",
+    "Northern Colorado Bears": "northern-colorado",
+    "Vermont Catamounts": "vermont",
 }
 
 
