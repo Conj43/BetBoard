@@ -199,7 +199,7 @@ def format_for_model(features_df: pd.DataFrame) -> pd.DataFrame:
         'opp_ORB_roll', 'opp_DRB_roll', 'opp_TRB_roll',
         'opp_AST_roll', 'opp_STL_roll', 'opp_BLK_roll', 'opp_TOV_roll', 'opp_PF_roll',
         'team_winpct_roll', 'opp_winpct_roll',
-        'team_SOS_roll', 'opp_SOS_roll', 'delta_SOS_roll',
+        # 'team_SOS_roll', 'opp_SOS_roll', 'delta_SOS_roll',
         'team_pace_roll', 'opp_pace_roll', 'delta_pace_roll',
         'team_off_eff_roll', 'team_def_eff_roll', 'opp_off_eff_roll', 'opp_def_eff_roll',
         # Torvik rankings (keep only these 4 per team)
@@ -508,7 +508,7 @@ def build_features_for_date(date_str: str) -> pd.DataFrame:
     features_df = format_for_model(features_df)
     missing_features = [
     'team_winpct_roll', 'opp_winpct_roll',
-    'team_SOS_roll', 'opp_SOS_roll', 'delta_SOS_roll',
+    # 'team_SOS_roll', 'opp_SOS_roll', 'delta_SOS_roll',
     'team_pace_roll', 'opp_pace_roll', 'delta_pace_roll',
     'team_off_eff_roll', 'team_def_eff_roll',
     'opp_off_eff_roll', 'opp_def_eff_roll',

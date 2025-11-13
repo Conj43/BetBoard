@@ -3,13 +3,13 @@ Rolling statistics and feature engineering for team performance metrics.
 """
 import pandas as pd
 import numpy as np
-from utils import parse_dates, normalize_key, standardize_opponent_columns
+from automation.config.utils import parse_dates, normalize_key, standardize_opponent_columns
 
 
 def prepare_rolling(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Compute rolling averages and advanced metrics for teams.
-    Returns DataFrame with team_*_roll and opp_*_roll columns.
+    Compute rolling averages for teams based on all games played so far.
+    For production use - includes current game in averages.
     """
     df = df.copy()
     df = standardize_opponent_columns(df)
@@ -38,38 +38,14 @@ def prepare_rolling(df: pd.DataFrame) -> pd.DataFrame:
     # Sort games chronologically by team
     df["RowID"] = np.arange(len(df))
     df = df.sort_values(["team_key", "Date", "RowID"]).reset_index(drop=True)
-    df["prior_games"] = df.groupby("team_key").cumcount()
+    # Store number of games played so far (1-indexed to match box score counts)
+    df["prior_games"] = df.groupby("team_key").cumcount() + 1
     
-    # Compute basic rolling stats
+
     df = _compute_basic_rolling_stats(df)
-    
-    # Compute rolling win% and SOS
     df = _compute_win_pct(df)
-    
-    # Compute rolling pace and efficiency metrics
     df = _compute_pace_and_efficiency(df)
-
-
-    
-    # Filter out games with insufficient data
-    df = df[df["prior_games"] > 0].copy()
-
-    # Only require core opponent/team roll stats to be present; keep other
-    # advanced metrics even if they still have gaps early in the season.
-    required_cols = [
-        "team_points_roll",
-        "opp_points_roll",
-        "team_winpct_roll",
-        "opp_winpct_roll",
-        # "team_SOS_roll",
-        # "opp_SOS_roll",
-    ]
-    required_cols = [c for c in required_cols if c in df.columns]
-    if required_cols:
-        df = df.dropna(subset=required_cols)
-
-    df = df.reset_index(drop=True)
-
+    df = _compute_matchup_features(df)
     return df
 
 
@@ -84,13 +60,11 @@ def _compute_basic_rolling_stats(df: pd.DataFrame) -> pd.DataFrame:
         and c not in ["RowID", "prior_games", "Gtm", "win_flag"]
     ]
     
-    # Compute rolling averages (shifted by 1 to avoid leakage)
     roll = (
         df.groupby("team_key")[stat_cols]
           .expanding()
           .mean()
           .reset_index(level=0, drop=True)
-          .shift(1)
     )
     roll.columns = [f"team_{c}_roll" for c in roll.columns]
     roll = roll.rename(columns={"team_Tm_roll": "team_points_roll"})
@@ -110,42 +84,76 @@ def _compute_basic_rolling_stats(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+
 def _compute_win_pct(df: pd.DataFrame) -> pd.DataFrame:
     """Compute rolling win percentage and strength of schedule."""
-    # Compute win flag
+    print(f"\n[DEBUG] _compute_win_pct_and_sos: {len(df)} rows")
+    print(f"[DEBUG] Available columns: {list(df.columns)}")
+    
+    # Compute win flag - ONLY for games with valid scores
     opp_score_col = None
     if "opp_score" in df.columns:
         opp_score_col = "opp_score"
+        print(f"[DEBUG] Using 'opp_score' column")
+    elif "Opp_1" in df.columns:  # FIXED: underscore not period
+        opp_score_col = "Opp_1"
+        print(f"[DEBUG] Using 'Opp_1' column")
     elif "Opp.1" in df.columns:
         opp_score_col = "Opp.1"
+        print(f"[DEBUG] Using 'Opp.1' column")
+    else:
+        print(f"[DEBUG] WARNING: No opponent score column found!")
 
     if "Tm" in df.columns and opp_score_col:
+        print(f"[DEBUG] Tm before conversion - sample: {df['Tm'].head().tolist()}")
+        print(f"[DEBUG] {opp_score_col} before conversion - sample: {df[opp_score_col].head().tolist()}")
+        
         df["Tm"] = pd.to_numeric(df["Tm"], errors="coerce")
         df[opp_score_col] = pd.to_numeric(df[opp_score_col], errors="coerce")
+        
+        print(f"[DEBUG] Tm non-null: {df['Tm'].notna().sum()}/{len(df)}")
+        print(f"[DEBUG] {opp_score_col} non-null: {df[opp_score_col].notna().sum()}/{len(df)}")
+        
         if opp_score_col != "opp_score":
             df["opp_score"] = df[opp_score_col]
             opp_score_col = "opp_score"
-        win_flag = (df["Tm"] > df[opp_score_col]).astype(float)
+        
+        # Create win_flag only for games with both scores (filter out NaN)
+        win_flag = pd.Series(np.nan, index=df.index, dtype=float)
+        valid_mask = df["Tm"].notna() & df[opp_score_col].notna()
+        print(f"[DEBUG] Valid games: {valid_mask.sum()}/{len(df)}")
+        
+        if valid_mask.sum() > 0:
+            win_flag[valid_mask] = (df.loc[valid_mask, "Tm"] > df.loc[valid_mask, opp_score_col]).astype(float)
+            wins = win_flag[valid_mask].sum()
+            losses = (valid_mask & (win_flag == 0)).sum()
+            print(f"[DEBUG] Wins: {wins}, Losses: {losses}, Win%: {wins/(wins+losses):.3f}")
+            print(f"[DEBUG] win_flag sample (first 10): {win_flag.head(10).tolist()}")
     else:
         win_flag = pd.Series(np.nan, index=df.index)
-    win_flag.name = "win_flag"
+        print(f"[DEBUG] No Tm or opp_score - all NaN")
+    
     df["win_flag"] = win_flag
     
-    # Team rolling win% (shifted to avoid leakage)
+    # Team rolling win%
     team_winpct_roll = (
         df.groupby("team_key")["win_flag"]
           .expanding()
           .mean()
           .reset_index(level=0, drop=True)
-          .shift(1)
     )
     df["team_winpct_roll"] = team_winpct_roll
     
-    # Opponent rolling win% - use a dict lookup instead of map
-    # Build dict: (team_key, Date) -> team_winpct_roll
+    print(f"[DEBUG] team_winpct_roll non-null: {team_winpct_roll.notna().sum()}/{len(team_winpct_roll)}")
+    print(f"[DEBUG] team_winpct_roll sample (first 20): {team_winpct_roll.head(20).tolist()}")
+    if team_winpct_roll.notna().any():
+        print(f"[DEBUG] team_winpct_roll mean: {team_winpct_roll.mean():.3f}")
+    else:
+        print(f"[DEBUG] team_winpct_roll: all NaN!")
+    
+    # Opponent rolling win% - dict lookup
     winpct_dict = df.set_index(["team_key", "Date"])["team_winpct_roll"].to_dict()
     
-    # Look up opponent's win% using their key and date
     df["opp_winpct_roll"] = df.apply(
         lambda row: winpct_dict.get((row["opp_key"], row["Date"]), np.nan),
         axis=1
@@ -157,11 +165,11 @@ def _compute_win_pct(df: pd.DataFrame) -> pd.DataFrame:
     #       .expanding()
     #       .mean()
     #       .reset_index(level=0, drop=True)
-    #       .shift(1)
     # )
     
-    # Opponent SOS - dict lookup
+    # # Opponent SOS - dict lookup
     # sos_dict = df.set_index(["team_key", "Date"])["team_SOS_roll"].to_dict()
+    
     # df["opp_SOS_roll"] = df.apply(
     #     lambda row: sos_dict.get((row["opp_key"], row["Date"]), np.nan),
     #     axis=1
@@ -169,7 +177,6 @@ def _compute_win_pct(df: pd.DataFrame) -> pd.DataFrame:
     # df["delta_SOS_roll"] = df["team_SOS_roll"] - df["opp_SOS_roll"]
     
     return df
-
 
 def _compute_pace_and_efficiency(df: pd.DataFrame) -> pd.DataFrame:
     """Compute rolling pace and offensive/defensive efficiency metrics."""
@@ -264,7 +271,6 @@ def _compute_matchup_features(df: pd.DataFrame) -> pd.DataFrame:
             df["pregame_total_projection"] = df["team_expected_points"] + df["opp_expected_points"]
     
     return df
-
 
 
 

@@ -13,8 +13,8 @@ FIREBASE_CREDS_PATH = "services/firebase/betboardtest-firebase-adminsdk-fbsvc-19
 STORAGE_BASE_PATH = "models"
 
 # Set paths to BOTH model directories
-NO_BET_MODELS_DIR = "data/xgb_model/No_Bet_xgb_all_models_20251104_160154/models_production"
-WITH_BET_MODELS_DIR = "data/xgb_model/Bet_xgb_all_models_20251104_160047/models_production"
+NO_BET_MODELS_DIR = "data/xgb_model/No_Bet_xgb_all_models_20251113_103750/models_production"
+WITH_BET_MODELS_DIR = "data/xgb_model/Bet_xgb_all_models_20251113_104003/models_production"
 # =======================================
 
 

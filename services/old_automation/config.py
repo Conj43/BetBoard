@@ -343,4 +343,9 @@ TORVIK_MAP = {
     "littlerock": "arkansas-little-rock",
     "lsu": "louisiana-state",
     "st.thomas": "st-thomas-mn",
+    "liu": "long-island-university",
+    "uncasheville": "north-carolina-asheville",
+    "mount-statemary's": "mount-st-marys",
+    "penn": "pennsylvania",
+    "utep": "texas-el-paso",
 }
