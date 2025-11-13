@@ -44,7 +44,7 @@ def prepare_rolling(df: pd.DataFrame) -> pd.DataFrame:
     df = _compute_basic_rolling_stats(df)
     
     # Compute rolling win% and SOS
-    df = _compute_win_pct_and_sos(df)
+    df = _compute_win_pct(df)
     
     # Compute rolling pace and efficiency metrics
     df = _compute_pace_and_efficiency(df)
@@ -61,8 +61,8 @@ def prepare_rolling(df: pd.DataFrame) -> pd.DataFrame:
         "opp_points_roll",
         "team_winpct_roll",
         "opp_winpct_roll",
-        "team_SOS_roll",
-        "opp_SOS_roll",
+        # "team_SOS_roll",
+        # "opp_SOS_roll",
     ]
     required_cols = [c for c in required_cols if c in df.columns]
     if required_cols:
@@ -110,7 +110,7 @@ def _compute_basic_rolling_stats(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _compute_win_pct_and_sos(df: pd.DataFrame) -> pd.DataFrame:
+def _compute_win_pct(df: pd.DataFrame) -> pd.DataFrame:
     """Compute rolling win percentage and strength of schedule."""
     # Compute win flag
     opp_score_col = None
@@ -152,21 +152,21 @@ def _compute_win_pct_and_sos(df: pd.DataFrame) -> pd.DataFrame:
     )
     
     # Team SOS: rolling average of opponent win%
-    df["team_SOS_roll"] = (
-        df.groupby("team_key")["opp_winpct_roll"]
-          .expanding()
-          .mean()
-          .reset_index(level=0, drop=True)
-          .shift(1)
-    )
+    # df["team_SOS_roll"] = (
+    #     df.groupby("team_key")["opp_winpct_roll"]
+    #       .expanding()
+    #       .mean()
+    #       .reset_index(level=0, drop=True)
+    #       .shift(1)
+    # )
     
     # Opponent SOS - dict lookup
-    sos_dict = df.set_index(["team_key", "Date"])["team_SOS_roll"].to_dict()
-    df["opp_SOS_roll"] = df.apply(
-        lambda row: sos_dict.get((row["opp_key"], row["Date"]), np.nan),
-        axis=1
-    )
-    df["delta_SOS_roll"] = df["team_SOS_roll"] - df["opp_SOS_roll"]
+    # sos_dict = df.set_index(["team_key", "Date"])["team_SOS_roll"].to_dict()
+    # df["opp_SOS_roll"] = df.apply(
+    #     lambda row: sos_dict.get((row["opp_key"], row["Date"]), np.nan),
+    #     axis=1
+    # )
+    # df["delta_SOS_roll"] = df["team_SOS_roll"] - df["opp_SOS_roll"]
     
     return df
 

@@ -1,0 +1,41 @@
+{
+  "training_type": "all_data_including_2025",
+  "validation_metrics": {
+    "moneyline": {
+      "accuracy": 0.7029569892473119,
+      "log_loss": 0.5481495705384596,
+      "brier_score": 0.18691098946051637,
+      "auc_roc": 0.7800948824441298,
+      "ml_roi": -3.787476632154188,
+      "ml_profit": -5635.765228645432,
+      "ml_bets": 1488
+    },
+    "spread": {
+      "mae_margin": 8.891870864428222,
+      "rmse_margin": 11.327212847090856,
+      "ats_accuracy": 0.5134408602150538,
+      "ats_games": 1488
+    },
+    "total": {
+      "mae_total": 12.796091987240699,
+      "rmse_total": 16.349549774034717,
+      "ou_accuracy": 0.4959677419354839,
+      "ou_games": 1488
+    }
+  },
+  "training_info": {
+    "seasons": [
+      "2019",
+      "2020",
+      "2021",
+      "2022",
+      "2023",
+      "2024",
+      "2025"
+    ],
+    "total_games": 7436,
+    "train_games": 5948,
+    "val_games": 1488,
+    "date_range": "2018-11-08 00:00:00 to 2025-04-07 00:00:00"
+  }
+}
