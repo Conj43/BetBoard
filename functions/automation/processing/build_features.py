@@ -10,9 +10,9 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
+# PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# if str(PROJECT_ROOT) not in sys.path:
+#     sys.path.append(str(PROJECT_ROOT))
 
 try:
     import firebase_admin
@@ -456,14 +456,6 @@ def _recompute_derived_metrics(features_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_features_for_date(date_str: str) -> pd.DataFrame:
-    """
-    Core driver for a single date:
-    - loads raw dfs
-    - builds two rows per game
-    - returns one big features_df
-    - also writes the result to data/processed/<DATE>_features.csv
-    """
-
     games_df, teams_df, odds_df = load_raw_day(date_str)
 
     # map team_key -> snapshot dict
@@ -543,9 +535,6 @@ def build_features_for_date(date_str: str) -> pd.DataFrame:
             denom = features_df[opp_col].replace({0: np.nan})
             features_df[ratio_name] = features_df[team_col] / denom
 
-    # IMPORTANT:
-    # The model will later expect columns in a specific order and with specific names.
-    # So we enforce that here if FEATURE_COLS_ORDER is defined.
     if FEATURE_COLS_ORDER:
         # keep only columns the model knows about, in order
         missing_cols = [c for c in FEATURE_COLS_ORDER if c not in features_df.columns]
@@ -558,14 +547,6 @@ def build_features_for_date(date_str: str) -> pd.DataFrame:
             features_df[c] = None
 
         features_df = features_df[FEATURE_COLS_ORDER]
-
-    # write to disk
-    # Local CSV persistence disabled for cloud deployment.
-    # out_dir = PROCESSED_DATA_DIR
-    # os.makedirs(out_dir, exist_ok=True)
-    # out_path = os.path.join(out_dir, f"{date_str}_features.csv")
-    # features_df.to_csv(out_path, index=False)
-    # print(f"[build_features] wrote {out_path}")
 
     csv_content = features_df.to_csv(index=False)
 

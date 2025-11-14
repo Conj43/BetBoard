@@ -39,7 +39,8 @@ def _ensure_firestore(credentials_path: Optional[str] = None) -> firestore.Clien
         if FIREBASE_STORAGE_BUCKET:
             options["storageBucket"] = FIREBASE_STORAGE_BUCKET
         
-        firebase_admin.initialize_app(options=options or None)
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app(options=options or None)
 
     return firestore.client()
 

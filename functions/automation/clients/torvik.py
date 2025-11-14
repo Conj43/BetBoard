@@ -3,6 +3,7 @@
 
 import requests
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import firebase_admin
 from firebase_admin import credentials, storage
 import os
@@ -35,7 +36,8 @@ def scrape_torvik(request=None):
             return {"success": False, "error": error_msg}, 500
         
         # Create filename with date (consistent naming for easy retrieval)
-        today = datetime.now().strftime("%Y-%m-%d")
+        central_now = datetime.now(ZoneInfo("America/Chicago"))
+        today = central_now.strftime("%Y-%m-%d")
         filename = f"raw_data/torvik_rankings/{today}/rankings.csv"
         
         # Upload to Firebase Storage

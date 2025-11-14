@@ -28,15 +28,16 @@ FIREBASE_STORAGE_BUCKET = "betboardtest.firebasestorage.app"
 FIRESTORE_PREDICTIONS_COLLECTION = "games"
 
 # cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
-firebase_admin.initialize_app()
-db = firestore.client()
-doc_ref = db.collection('models').document('current_production')
-doc = doc_ref.get()
+if not firebase_admin._apps:
+    firebase_admin.initialize_app()
+    db = firestore.client()
+    doc_ref = db.collection('models').document('current_production')
+    doc = doc_ref.get()
 
-if doc.exists:
-    _storage_model_version =  doc.to_dict().get('version')
-else:
-    _storage_model_version = "20251104_160626" # default model
+# if doc.exists:
+#     _storage_model_version =  doc.to_dict().get('version')
+# else:
+_storage_model_version = "20251113_104120"
 
 
 MODEL_DIR = f"models/{_storage_model_version}/no_bet"
