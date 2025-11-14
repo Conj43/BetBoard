@@ -316,14 +316,14 @@ def _load_torvik_lookup() -> Dict[str, Dict[str, float]]:
                 torvik_team_name = str(row[team_col])
                 torvik_team_name = torvik_team_name.replace(" St.", "-state")
                 torvik_team_name_clean = torvik_team_name.lower().replace(" ", "")
-                print(f"[DEBUG] Processing Torvik team name: '{torvik_team_name}' -> '{torvik_team_name_clean}'")  # ADD THIS
+                # print(f"[DEBUG] Processing Torvik team name: '{torvik_team_name}' -> '{torvik_team_name_clean}'")  # ADD THIS
                 # Apply both mappings: torvik_name -> normalized_key
                 # First check torvik_map, then torvik_map_two (which overrides)
                 team_key = TORVIK_MAP.get(torvik_team_name_clean, torvik_team_name_clean)
                 team_key = canonicalize_team_key(team_key)
                 if not team_key:
                     team_key = _slugify_team(torvik_team_name)
-                print(f"[DEBUG] Mapped to team key: '{team_key}'")  # ADD THIS
+                # print(f"[DEBUG] Mapped to team key: '{team_key}'")  # ADD THIS
                 numeric_values: Dict[str, float] = {}
                 for col, val in row.items():
                     if col == team_col:
