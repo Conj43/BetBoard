@@ -477,8 +477,8 @@ def build_features_for_date(date_str: str) -> pd.DataFrame:
 
         home_key = game_row["home_team_key"]
         away_key = game_row["away_team_key"]
-        print("home team key: ", home_key)
-        print("away team key: ", away_key)
+        # print("home team key: ", home_key)
+        # print("away team key: ", away_key)
 
         # lookup raw stats
         home_stats = team_lookup.get(home_key, {})

@@ -363,11 +363,11 @@ TEAM_MAPPING = {
     "Tenn-Martin Skyhawks": "tennessee-martin",
     "Western Michigan Broncos": "western-michigan",
 
-    "Albany (NY) Great Danes": "albany-ny",
+    "Albany Great Danes": "albany-ny",
     "Arizona St Sun Devils": "arizona-state",
     "Bowling Green Falcons": "bowling-green-state",
     "Incarnate Word Cardinals": "incarnate-word",
-    "IU Indy Jaguars": "iupui",
+    "IUPUI Jaguars": "iupui",
     "Jacksonville St Gamecocks": "jacksonville-state",
     "Lehigh Mountain Hawks": "lehigh",
     "Louisiana Tech Bulldogs": "louisiana-tech",

@@ -1,3 +1,5 @@
+# Save this file as:
+# functions/automation/pipeline/evaluation_pipeline.py
 from __future__ import annotations
 
 import sys
@@ -6,11 +8,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-SERVICES_ROOT = PROJECT_ROOT / "services"
-for path in (PROJECT_ROOT, SERVICES_ROOT):
-    if str(path) not in sys.path:
-        sys.path.append(str(path))
+# The sys.path manipulation from the original file has been REMOVED
+# as it's not needed when imported by functions/main.py
 
 from automation.evaluation import evaluate_predictions as evaluator
 from automation.evaluation import scrape_results
@@ -116,7 +115,3 @@ def run_evaluation_pipeline(config: EvaluationPipelineConfig | None = None) -> N
 
     _run_evaluator(dates, is_range, cfg)
     print("[evaluation] Pipeline complete.")
-
-
-if __name__ == "__main__":
-    run_evaluation_pipeline()

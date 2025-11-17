@@ -464,7 +464,10 @@ def _get_firebase_bucket(bucket_name: Optional[str] = None):
             options["storageBucket"] = FIREBASE_STORAGE_BUCKET
         
         firebase_admin.initialize_app(options=options or None)
-    return storage.bucket
+    
+    # Fix: Call storage.bucket() with the target bucket name
+    _FIREBASE_BUCKET = storage.bucket(target_bucket)
+    return _FIREBASE_BUCKET
 
 
 def _get_firestore_client():

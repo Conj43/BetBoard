@@ -36,7 +36,7 @@ doc = doc_ref.get()
 if doc.exists:
     _storage_model_version =  doc.to_dict().get('version')
 else:
-    _storage_model_version = "20251104_160626" # default model
+    _storage_model_version = "20251113_104120" # default model
 
 
 MODEL_DIR = f"models/{_storage_model_version}/no_bet"
@@ -106,7 +106,7 @@ def model_path_moneyline(run_id: str) -> str:
 
 
 # Which run is "active" for live predictions?
-ACTIVE_MODEL_RUN_ID = "run_2025_10_28"  # TODO update as you retrain
+ACTIVE_MODEL_RUN_ID = "run_2025_11_13"  
 
 
 ################################################################################

@@ -41,7 +41,7 @@ class EvaluationPipelineConfig:
 DEFAULT_EVAL_CONFIG = EvaluationPipelineConfig(
     # Example overrides:
     # start_date="2025-11-01",
-    # end_date="2025-11-05",
+    # end_date="2025-11-16",
     # single_date="2025-11-04",
     # dry_run=True,
 )

@@ -33,18 +33,18 @@ bucket = storage.bucket(name=FIREBASE_STORAGE_BUCKET)
 
 def download_latest_odds():
     """Download the latest odds data from Firebase."""
-    print("📥 Downloading latest odds from Firebase...")
+    print("📥 Downloading latest odds from Firebase...", flush=True)
     
     blob = bucket.blob("raw_data/odds/latest.json")
     
     if not blob.exists():
-        print("❌ No odds data found in Firebase at raw_data/odds/latest.json")
+        print("❌ No odds data found in Firebase at raw_data/odds/latest.json", flush=True)
         return None
     
     json_str = blob.download_as_string()
     data = json.loads(json_str)
     
-    print(f"✅ Downloaded {data['num_games']} games from {data['scraped_at_formatted']}")
+    print(f"✅ Downloaded {data['num_games']} games from {data['scraped_at_formatted']}", flush=True)
     return data
 
 
@@ -78,7 +78,7 @@ def get_teams_playing_today():
     odds_data = download_latest_odds()
     
     if not odds_data or not odds_data.get('games'):
-        print("❌ No games data available")
+        print("❌ No games data available", flush=True)
         return set()
     
     teams_playing = set()
@@ -107,14 +107,14 @@ def get_teams_playing_today():
         home_slug = map_odds_api_name_to_sr_slug(home_team)
         away_slug = map_odds_api_name_to_sr_slug(away_team)
         
-        print(f"  {away_team:<45} → {away_slug}")
-        print(f"  {home_team:<45} → {home_slug}")
-        print()
+        # print(f"  {away_team:<45} → {away_slug}")
+        # print(f"  {home_team:<45} → {home_slug}")
+        # print()
         
         teams_playing.add(home_slug)
         teams_playing.add(away_slug)
     
-    print(f"✅ Found {len(teams_playing)} unique teams playing today\n")
+    print(f"✅ Found {len(teams_playing)} unique teams playing today\n", flush=True)
     
     return teams_playing
 
@@ -187,19 +187,19 @@ def fetch_with_retry(url, max_retries=5):
         
         if resp.status_code == 429:
             wait = 300
-            print(f"  ⏳ Rate limited. Waiting {wait}s... (attempt {attempt + 1}/{max_retries})")
+            print(f"  ⏳ Rate limited. Waiting {wait}s... (attempt {attempt + 1}/{max_retries})", flush=True)
             time.sleep(wait)
             continue
         
         if resp.status_code >= 500:
             wait = 10 * (attempt + 1)
-            print(f"  ⏳ Server error {resp.status_code}. Waiting {wait}s... (attempt {attempt + 1}/{max_retries})")
+            print(f"  ⏳ Server error {resp.status_code}. Waiting {wait}s... (attempt {attempt + 1}/{max_retries})", flush=True)
             time.sleep(wait)
             continue
         
         return resp
     
-    print(f"  ❌ Giving up after {max_retries} retries")
+    print(f"  ❌ Giving up after {max_retries} retries", flush=True)
     return resp
 
 
@@ -222,7 +222,7 @@ def main():
     teams_playing_today = get_teams_playing_today()
     
     if not teams_playing_today:
-        print("❌ No teams to scrape. Exiting.")
+        print("❌ No teams to scrape. Exiting.", flush=True)
         return
     
     print(f"\n{'='*80}")
@@ -236,7 +236,7 @@ def main():
     for team_slug in sorted(teams_playing_today):
         conference = get_conference_for_team(team_slug)
         
-        print(f"🏀 {team_slug} ({conference})")
+        print(f"🏀 {team_slug} ({conference})", flush=True)
         
         url = (
             "https://www.sports-reference.com/"
@@ -245,7 +245,7 @@ def main():
         resp = fetch_with_retry(url)
         
         if resp.status_code != 200:
-            print(f"  ❌ Failed (HTTP {resp.status_code})")
+            print(f"  ❌ Failed (HTTP {resp.status_code})", flush=True)
             skipped_count += 1
             continue
         
@@ -260,7 +260,7 @@ def main():
             df.insert(1, "Conference", conference)
 
             if df.empty:
-                print("  ⚠️ No completed games with stats yet; skipping upload")
+                print("  ⚠️ No completed games with stats yet; skipping upload", flush=True)
                 skipped_count += 1
                 continue
 
@@ -270,22 +270,22 @@ def main():
             blob.upload_from_string(csv_string, content_type="text/csv")
             uploaded_count += 1
             scraped_count += 1
-            print(f"  📤 Uploaded {len(df)} games → {firebase_path}")
+            print(f"  📤 Uploaded {len(df)} games → {firebase_path}", flush=True)
         else:
-            print(f"  ⚠️  No game log table found")
+            print(f"  ⚠️  No game log table found", flush=True)
             skipped_count += 1
         
         # Polite delay
         time.sleep(5)
     
-    print(f"\n{'='*80}")
-    print(f"📊 SCRAPING COMPLETE")
-    print(f"{'='*80}")
-    print(f"  ✅ Successfully scraped: {scraped_count}")
-    print(f"  ❌ Skipped/Failed: {skipped_count}")
-    print(f"  📤 Uploaded team files: {uploaded_count}")
-    print(f"  📋 Total teams considered: {len(teams_playing_today)}")
-    print(f"\n✅ All done!")
+    print(f"\n{'='*80}", flush=True)
+    print(f"📊 SCRAPING COMPLETE", flush=True)
+    print(f"{'='*80}", flush=True)
+    print(f"  ✅ Successfully scraped: {scraped_count}", flush=True)
+    print(f"  ❌ Skipped/Failed: {skipped_count}", flush=True)
+    print(f"  📤 Uploaded team files: {uploaded_count}", flush=True)
+    print(f"  📋 Total teams considered: {len(teams_playing_today)}", flush=True)
+    print(f"\n✅ All done!", flush=True)
 
 
 

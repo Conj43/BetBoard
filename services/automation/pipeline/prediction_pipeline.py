@@ -346,7 +346,7 @@ def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
 
 def run_prediction_pipeline(config: PredictionPipelineConfig | None = None) -> None:
     cfg = config or PredictionPipelineConfig()
-
+    CENTRAL_TZ = ZoneInfo("America/Chicago")
     start_label = cfg.start_date or datetime.now(CENTRAL_TZ).strftime("%Y-%m-%d")
     end_label = cfg.end_date or start_label
 

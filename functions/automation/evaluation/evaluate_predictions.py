@@ -46,6 +46,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+# In automation/evaluation/evaluate_predictions.py, replace _resolve_dates:
 def _resolve_dates(args: argparse.Namespace) -> List[str]:
     if args.start_date and args.end_date:
         start = datetime.strptime(args.start_date, "%Y-%m-%d").date()
@@ -63,11 +64,16 @@ def _resolve_dates(args: argparse.Namespace) -> List[str]:
         raise ValueError("Provide both --start-date and --end-date, or neither.")
 
     if args.date:
-        datetime.strptime(args.date, "%Y-%m-%d")  # validate
+        datetime.strptime(args.date, "%Y-%m-%d")
         return [args.date]
 
-    # Default: evaluate yesterday (UTC)
-    default = (datetime.utcnow().date() - timedelta(days=1)).strftime("%Y-%m-%d")
+    # Default: evaluate yesterday in America/Chicago timezone
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("America/Chicago")
+        default = (datetime.now(tz).date() - timedelta(days=1)).strftime("%Y-%m-%d")
+    except:
+        default = (datetime.utcnow().date() - timedelta(days=1)).strftime("%Y-%m-%d")
     return [default]
 
 
@@ -1006,8 +1012,8 @@ def _merge_recommended_stats(dest: Dict[str, MarketStats], src: Dict[str, Market
         dest_market.winner_correct += src_market.winner_correct
 
 
+
 def main(argv: Optional[List[str]] = None) -> None:
-    """Main entry point."""
     args = parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -1016,12 +1022,11 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     dates = _resolve_dates(args)
     db = _ensure_firestore()
+    eval_collection = db.collection(args.collection)
     
-    # Aggregate stats across all dates
-    overall_model_stats = _init_stats()
-    overall_recommended_stats = _init_recommended_stats()
+    # Step 1: Evaluate the requested dates
     day_results: List[tuple[Dict[str, Any], List[Dict[str, Any]]]] = []
-
+    
     for date_str in dates:
         logging.info("Evaluating %s...", date_str)
         payload = evaluate_date(date_str, db, args.result_source)
@@ -1029,35 +1034,66 @@ def main(argv: Optional[List[str]] = None) -> None:
         if not payload:
             continue
             
-        # Extract and merge raw stats
-        model_stats = payload.pop("_raw_model_stats")
-        recommended_stats = payload.pop("_recommended_stats")
         graded_picks = payload.pop("_graded_picks")
-        
-        _merge_stats(overall_model_stats, model_stats)
-        _merge_recommended_stats(overall_recommended_stats, recommended_stats)
         day_results.append((payload, graded_picks))
 
     if not day_results:
         logging.warning("No evaluation data generated for requested range.")
         return
 
-    # Create summary payload
+    if args.dry_run:
+        logging.info("[DRY RUN] Computed %d day payloads", len(day_results))
+        return
+
+    # Write individual day documents
+    batch = db.batch()
+    for payload, _ in day_results:
+        doc_ref = eval_collection.document(payload["date"])
+        batch.set(doc_ref, payload)
+    batch.commit()
+    
+    logging.info("Wrote %d day documents to collection '%s'.", len(day_results), args.collection)
+
+    # Step 2: Recalculate summary from ALL date documents
+    logging.info("Recalculating summary from all date documents...")
+    overall_model_stats = _init_stats()
+    overall_recommended_stats = _init_recommended_stats()
+    all_dates = []
+    
+    for doc in eval_collection.stream():
+        if doc.id == "summary":
+            continue
+            
+        data = doc.to_dict() or {}
+        date_str = data.get("date")
+        
+        if not date_str or "_raw_model_stats" not in data:
+            continue
+            
+        all_dates.append(date_str)
+        
+        # Merge this date's stats
+        model_stats = data["_raw_model_stats"]
+        recommended_stats = data["_recommended_stats"]
+        
+        _merge_stats(overall_model_stats, model_stats)
+        _merge_recommended_stats(overall_recommended_stats, recommended_stats)
+
+    # Build summary payload
     summary_payload = {
         "date_range": {
-            "start": dates[0],
-            "end": dates[-1],
+            "start": min(all_dates) if all_dates else None,
+            "end": max(all_dates) if all_dates else None,
         },
+        "total_days_evaluated": len(all_dates),
         "games_evaluated": overall_model_stats["games"],
         
-        # All predictions with betting simulation
         "all_predictions": {
             "moneyline": _finalize_market_payload(overall_model_stats["moneyline"], include_logloss=True, include_kelly=True, is_moneyline=True),
             "spread": _finalize_market_payload(overall_model_stats["spread"]),
             "total": _finalize_market_payload(overall_model_stats["total"]),
         },
         
-        # Betting performance (recommended picks only)
         "recommended": {
             "count": sum(overall_recommended_stats[m].count for m in overall_recommended_stats),
             "moneyline": _finalize_market_payload(overall_recommended_stats["moneyline"], include_logloss=True, include_kelly=True, is_moneyline=True),
@@ -1067,33 +1103,9 @@ def main(argv: Optional[List[str]] = None) -> None:
         
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
-
-    if args.dry_run:
-        logging.info("[DRY RUN] Computed %d day payloads + summary:", len(day_results))
-        for payload, picks in day_results:
-            logging.info("  %s -> All predictions: %s, Recommended: %d picks", 
-                        payload["date"], 
-                        payload["all_predictions"]["moneyline"],
-                        len(picks))
-        logging.info("Summary: %s", summary_payload)
-        return
-
-    # Write to Firestore
-    eval_collection = db.collection(args.collection)
-    batch = db.batch()
     
-    for payload, _ in day_results:
-        doc_ref = eval_collection.document(payload["date"])
-        batch.set(doc_ref, payload)
-        
-    batch.set(eval_collection.document("summary"), summary_payload)
-    batch.commit()
-    
-    logging.info(
-        "Wrote %d day documents + summary to collection '%s'.",
-        len(day_results),
-        args.collection,
-    )
+    eval_collection.document("summary").set(summary_payload)
+    logging.info("Updated summary with %d days of data.", len(all_dates))
 
     # Write recommended picks to subcollection
     for payload, picks in day_results:
@@ -1110,7 +1122,6 @@ def main(argv: Optional[List[str]] = None) -> None:
             game_id = pick.get("game_id", "game")
             bet_type = pick.get("bet_type", "bet")
             doc_id = f"{game_id}_{bet_type}_{idx}"
-            # Sanitize doc_id
             doc_id = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in str(doc_id))
             
             sub_doc = dict(pick)
