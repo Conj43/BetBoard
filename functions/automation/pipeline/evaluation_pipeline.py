@@ -46,7 +46,6 @@ DEFAULT_EVAL_CONFIG = EvaluationPipelineConfig(
 )
 # --------------------------------------------------------------------------- #
 
-
 def _resolve_dates(cfg: EvaluationPipelineConfig) -> Tuple[List[str], bool]:
     """
     Return (list_of_dates, is_range). Dates are YYYY-MM-DD strings.
@@ -70,7 +69,15 @@ def _resolve_dates(cfg: EvaluationPipelineConfig) -> Tuple[List[str], bool]:
         datetime.strptime(cfg.single_date, "%Y-%m-%d")  # validate format
         return [cfg.single_date], False
 
-    default_date = (datetime.utcnow().date() - timedelta(days=cfg.days_back_default)).strftime("%Y-%m-%d")
+    # Use Chicago timezone to match scraper and odds API
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("America/Chicago")
+        default_date = (datetime.now(tz).date() - timedelta(days=cfg.days_back_default)).strftime("%Y-%m-%d")
+    except:
+        # Fallback to UTC if zoneinfo unavailable
+        default_date = (datetime.utcnow().date() - timedelta(days=cfg.days_back_default)).strftime("%Y-%m-%d")
+    
     return [default_date], False
 
 
