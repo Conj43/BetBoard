@@ -87,7 +87,7 @@ def _run_client_task(label: str, func: Callable[[], Any]) -> bool:
 def _refresh_source_data() -> None:
     tasks: List[Tuple[str, Callable[[], Any]]] = [
         ("odds", lambda: odds_client.get_college_basketball_games("basketball_ncaab")),
-        ("gamelog", gamelog_client.main),
+        ("gamelog", gamelog_client.main_entry_point),
         ("torvik", torvik_client.scrape_torvik),
     ]
 

@@ -2,13 +2,16 @@
 
 import firebase_admin
 from firebase_functions import https_fn
-from firebase_functions.options import set_global_options
+from firebase_functions.options import SupportedRegion, MemoryOption, set_global_options
 import sys
 import os
 from pathlib import Path
 
 # Initialize Firebase
-firebase_admin.initialize_app()
+firebase_admin.initialize_app(options={
+            "storageBucket": "betboardtest.firebasestorage.app",
+            "projectId": "betboardtest"
+        })
 
 set_global_options(memory=2048)
 
@@ -85,7 +88,10 @@ def _get_evaluation_pipeline():
 
 # --- HTTP-Triggered Functions ---
 
-@https_fn.on_request()
+@https_fn.on_request(
+    timeout_sec=1200,  
+    memory=MemoryOption.GB_2
+)
 def run_daily_pipeline(req: https_fn.Request) -> https_fn.Response:
     """
     HTTP endpoint triggered by Cloud Scheduler.

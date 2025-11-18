@@ -13,7 +13,8 @@ from automation.config.team_keys import canonicalize_team_key
 from automation.config.utils import load_alias_map
 
 
-DEFAULT_RESULT_DOC = "sports_reference"
+# DEFAULT_RESULT_DOC = "sports_reference"
+DEFAULT_RESULT_DOC = "odds_api"
 DEFAULT_EVAL_COLLECTION = "prediction_evaluation"
 RECOMMENDED_SUBCOLLECTION = "recommended_picks"
 INITIAL_BANKROLL = 1_000.0
@@ -957,14 +958,12 @@ def evaluate_date(
         "date": date_str,
         "games_evaluated": model_stats["games"],
         
-        # All predictions with betting simulation
         "all_predictions": {
             "moneyline": _finalize_market_payload(model_stats["moneyline"], include_logloss=True, include_kelly=True, is_moneyline=True),
             "spread": _finalize_market_payload(model_stats["spread"]),
             "total": _finalize_market_payload(model_stats["total"]),
         },
         
-        # Betting performance (recommended picks only)
         "recommended": {
             "count": len(graded_picks),
             "moneyline": _finalize_market_payload(recommended_stats["moneyline"], include_logloss=True, include_kelly=True, is_moneyline=True),
@@ -975,13 +974,25 @@ def evaluate_date(
         "generated_at": generated_at,
     }
     
-    # Store raw stats for aggregation
-    payload["_raw_model_stats"] = model_stats
-    payload["_recommended_stats"] = recommended_stats
+    # Convert MarketStats to dicts before storing
+    import dataclasses
+    
+    payload["_raw_model_stats"] = {
+        "games": model_stats["games"],
+        "moneyline": dataclasses.asdict(model_stats["moneyline"]),
+        "spread": dataclasses.asdict(model_stats["spread"]),
+        "total": dataclasses.asdict(model_stats["total"]),
+    }
+    
+    payload["_recommended_stats"] = {
+        "moneyline": dataclasses.asdict(recommended_stats["moneyline"]),
+        "spread": dataclasses.asdict(recommended_stats["spread"]),
+        "total": dataclasses.asdict(recommended_stats["total"]),
+    }
+    
     payload["_graded_picks"] = graded_picks
     
     return payload
-
 
 def _merge_stats(dest: Dict[str, Any], src: Dict[str, Any]) -> None:
     """Merge source stats into destination stats."""

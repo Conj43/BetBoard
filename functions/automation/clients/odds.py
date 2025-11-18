@@ -163,11 +163,11 @@ def get_college_basketball_games(sport_key='basketball_ncaab'):
         for idx, game in enumerate(games, 1):
             num_books = len(game['bookmakers'])
             
-            print(f"[{idx:2d}] {game['away_team']}")
-            print(f"     @ {game['home_team']}")
-            print(f"     🕐 {game['commence_time_formatted']}")
-            print(f"     📖 {num_books} bookmakers")
-            print()
+            # print(f"[{idx:2d}] {game['away_team']}")
+            # print(f"     @ {game['home_team']}")
+            # print(f"     🕐 {game['commence_time_formatted']}")
+            # print(f"     📖 {num_books} bookmakers")
+            # print()
         
         # Save to Firebase
         print(f"\n{'='*80}")

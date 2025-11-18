@@ -5,8 +5,13 @@ from io import StringIO
 import time
 import json
 import os
+import random
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import logging
+
+# Configure basic logging output
+logging.basicConfig(level=logging.INFO)
 
 import firebase_admin
 from firebase_admin import credentials, storage
@@ -17,7 +22,6 @@ from automation.config.config import (
     GAMELOG_STORAGE_PREFIX,
 )
 
-# FIREBASE_CREDENTIALS_PATH = "services/firebase/betboardtest-firebase-adminsdk-fbsvc-196904ba56.json"
 FIREBASE_STORAGE_BUCKET = "betboardtest.firebasestorage.app"
 
 # Initialize Firebase
@@ -30,105 +34,61 @@ if not firebase_admin._apps:
 
 bucket = storage.bucket(name=FIREBASE_STORAGE_BUCKET)
 
+# User agent rotation to avoid detection
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+]
+
+# --- HELPER FUNCTIONS ---
 
 def download_latest_odds():
     """Download the latest odds data from Firebase."""
-    print("📥 Downloading latest odds from Firebase...", flush=True)
-    
+    logging.info("📥 Downloading latest odds from Firebase...")
     blob = bucket.blob("raw_data/odds/latest.json")
-    
     if not blob.exists():
-        print("❌ No odds data found in Firebase at raw_data/odds/latest.json", flush=True)
+        logging.warning("❌ No odds data found.")
         return None
-    
     json_str = blob.download_as_string()
     data = json.loads(json_str)
-    
-    print(f"✅ Downloaded {data['num_games']} games from {data['scraped_at_formatted']}", flush=True)
+    logging.info(f"✅ Downloaded {data['num_games']} games")
     return data
 
-
 def map_odds_api_name_to_sr_slug(team_name):
-    """
-    Map Odds API team names to Sports Reference slugs.
-    This is a comprehensive mapping for NCAA basketball teams.
-    """
-    
-
-    
-    # Check direct mapping first
-    if team_name in direct_mapping:
-        return direct_mapping[team_name]
-    
-    # Convert to lowercase and replace spaces/special chars with hyphens
-    slug = team_name.lower()
-    slug = slug.replace("'", "")
-    slug = slug.replace(".", "")
-    slug = slug.replace("&", "")
-    slug = slug.replace("  ", " ")
-    slug = slug.strip()
-    slug = slug.replace(" ", "-")
-    
+    if team_name in direct_mapping: return direct_mapping[team_name]
+    slug = team_name.lower().replace("'", "").replace(".", "").replace("&", "").replace("  ", " ").strip().replace(" ", "-")
     return slug
 
-
 def get_teams_playing_today():
-    """Get set of Sports Reference slugs for teams playing today from Odds API data."""
-    
     odds_data = download_latest_odds()
-    
-    if not odds_data or not odds_data.get('games'):
-        print("❌ No games data available", flush=True)
-        return set()
+    if not odds_data or not odds_data.get('games'): return set()
     
     teams_playing = set()
     today_cst = datetime.now(ZoneInfo("America/Chicago")).date()
     
-    print(f"\n{'='*80}")
-    print(f"🔍 EXTRACTING TEAMS PLAYING TODAY")
-    print(f"{'='*80}\n")
+    logging.info(f"🔍 EXTRACTING TEAMS PLAYING TODAY...")
     
     for game in odds_data['games']:
         start_str = game.get("commence_time")
         if start_str:
             try:
                 start_dt = datetime.strptime(start_str, "%Y-%m-%dT%H:%M:%S")
-            except ValueError:
-                start_dt = None
-        else:
-            start_dt = None
-
-        if start_dt and start_dt.date() != today_cst:
-            continue
+                if start_dt.date() != today_cst: continue
+            except ValueError: continue
         
-        home_team = game['home_team']
-        away_team = game['away_team']
-        
-        home_slug = map_odds_api_name_to_sr_slug(home_team)
-        away_slug = map_odds_api_name_to_sr_slug(away_team)
-        
-        # print(f"  {away_team:<45} → {away_slug}")
-        # print(f"  {home_team:<45} → {home_slug}")
-        # print()
-        
-        teams_playing.add(home_slug)
-        teams_playing.add(away_slug)
+        teams_playing.add(map_odds_api_name_to_sr_slug(game['home_team']))
+        teams_playing.add(map_odds_api_name_to_sr_slug(game['away_team']))
     
-    print(f"✅ Found {len(teams_playing)} unique teams playing today\n", flush=True)
-    
+    logging.info(f"✅ Found {len(teams_playing)} unique teams playing today\n")
     return teams_playing
 
-
 def clean_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean scraped table data."""
     df = df.dropna(how="all")
-    
-    if "Rk" in df.columns:
-        df = df[df["Rk"] != "Rk"]
-    
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = [col[1] if col[1] != "" else col[0] for col in df.columns]
-    
+    if "Rk" in df.columns: df = df[df["Rk"] != "Rk"]
+    if isinstance(df.columns, pd.MultiIndex): df.columns = [col[1] if col[1] != "" else col[0] for col in df.columns]
     new_cols = []
     seen = {}
     for c in df.columns:
@@ -140,119 +100,95 @@ def clean_table(df: pd.DataFrame) -> pd.DataFrame:
             seen[c_str] = 0
             new_cols.append(c_str)
     df.columns = new_cols
-    
     obj_cols = df.select_dtypes(include="object").columns
     df[obj_cols] = df[obj_cols].apply(lambda col: col.str.strip())
-    
-    if "Rk" in df.columns:
-        df = df.drop(columns=["Rk"])
-    
+    if "Rk" in df.columns: df = df.drop(columns=["Rk"])
     return df
 
-
 def filter_completed_games(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Keep only rows that contain box score data.
-    Sports Reference includes upcoming games as empty rows—those should be dropped.
-    """
     stat_cols = [col for col in ["Tm", "Opp", "FG", "FGA"] if col in df.columns]
-    if not stat_cols:
-        return df
-
-    # Coerce numeric columns so empty strings/whitespace become NaN before filtering
+    if not stat_cols: return df
     stat_values = df[stat_cols].apply(pd.to_numeric, errors="coerce")
     has_stats = stat_values.notna().any(axis=1)
-
     date_mask = pd.Series(True, index=df.index)
-    if "Date" in df.columns:
-        date_mask = pd.to_datetime(df["Date"], errors="coerce").notna()
-
+    if "Date" in df.columns: date_mask = pd.to_datetime(df["Date"], errors="coerce").notna()
     return df[has_stats & date_mask]
 
-
-session = requests.Session()
-session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/125.0.0.0 Safari/537.36",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Referer": "https://www.google.com/"
-})
-
-
-def fetch_with_retry(url, max_retries=5):
-    """Fetch a URL with retry logic."""
-    for attempt in range(max_retries):
-        resp = session.get(url)
-        
-        if resp.status_code == 429:
-            wait = 300
-            print(f"  ⏳ Rate limited. Waiting {wait}s... (attempt {attempt + 1}/{max_retries})", flush=True)
-            time.sleep(wait)
-            continue
-        
-        if resp.status_code >= 500:
-            wait = 10 * (attempt + 1)
-            print(f"  ⏳ Server error {resp.status_code}. Waiting {wait}s... (attempt {attempt + 1}/{max_retries})", flush=True)
-            time.sleep(wait)
-            continue
-        
-        return resp
-    
-    print(f"  ❌ Giving up after {max_retries} retries", flush=True)
-    return resp
-
-
-
-
 def get_conference_for_team(team_slug):
-    """Find which conference a team belongs to."""
     for conf, teams in d1_teams.items():
-        if team_slug in teams:
-            return conf
+        if team_slug in teams: return conf
     return "Unknown"
 
+# --- SYNCHRONOUS LOGIC ---
 
-def main():
-    print(f"\n{'='*80}")
-    print(f"🏀 SPORTS REFERENCE SCRAPER - TODAY'S GAMES ONLY")
-    print(f"{'='*80}\n")
-    
-    # Get teams playing today from Odds API data
-    teams_playing_today = get_teams_playing_today()
-    
-    if not teams_playing_today:
-        print("❌ No teams to scrape. Exiting.", flush=True)
-        return
-    
-    print(f"\n{'='*80}")
-    print(f"🌐 SCRAPING SPORTS REFERENCE")
-    print(f"{'='*80}\n")
-    
-    scraped_count = 0
-    skipped_count = 0
-    uploaded_count = 0
-    
-    for team_slug in sorted(teams_playing_today):
-        conference = get_conference_for_team(team_slug)
+def fetch_with_retry(url, max_retries=3):
+    """Fetch with exponential backoff and rotating user agents."""
+    for attempt in range(max_retries):
+        # Rotate user agent on each attempt
+        headers = {
+            "User-Agent": random.choice(USER_AGENTS),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "DNT": "1",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Cache-Control": "max-age=0",
+        }
         
-        print(f"🏀 {team_slug} ({conference})", flush=True)
-        
-        url = (
-            "https://www.sports-reference.com/"
-            f"cbb/schools/{team_slug}/men/{SPORTS_REFERENCE_SEASON}-gamelogs.html"
-        )
-        resp = fetch_with_retry(url)
-        
-        if resp.status_code != 200:
-            print(f"  ❌ Failed (HTTP {resp.status_code})", flush=True)
-            skipped_count += 1
-            continue
-        
-        soup = BeautifulSoup(resp.text, "html.parser")
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            
+            if response.status_code == 429:
+                wait = 60
+                logging.warning(f"  ⏳ Rate limited (429). Waiting {wait}s... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait)
+                continue
+            
+            if response.status_code == 403:
+                wait = 30 * (attempt + 1)
+                logging.warning(f"  ⏳ Blocked (403). Waiting {wait}s... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait)
+                continue
+            
+            if response.status_code >= 500:
+                wait = 2 * (attempt + 1)
+                logging.warning(f"  ⏳ Server error {response.status_code}. Waiting {wait}s... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait)
+                continue
+            
+            if response.status_code == 200:
+                return response.text
+            
+            logging.error(f"  ❌ Failed with status {response.status_code}. URL: {url}")
+            return None
+            
+        except Exception as e:
+            logging.error(f"  ❌ Network Error: {e}. Waiting 2s.")
+            time.sleep(2)
+    
+    logging.error(f"  ❌ Giving up after {max_retries} retries for URL: {url}")
+    return None
+
+def process_team(team_slug):
+    """Process a single team."""
+    conference = get_conference_for_team(team_slug)
+    url = f"https://www.sports-reference.com/cbb/schools/{team_slug}/men/{SPORTS_REFERENCE_SEASON}-gamelogs.html"
+    
+    html = fetch_with_retry(url)
+    
+    if not html:
+        logging.error(f"  ❌ {team_slug}: Failed to fetch HTML content.")
+        return False 
+
+    try:
+        soup = BeautifulSoup(html, "html.parser")
         table = soup.find("table", {"id": "team_game_log"})
         
-        if table:
+        if table is not None:
             df = pd.read_html(StringIO(str(table)), flavor="lxml")[0]
             df = clean_table(df)
             df = filter_completed_games(df)
@@ -260,34 +196,55 @@ def main():
             df.insert(1, "Conference", conference)
 
             if df.empty:
-                print("  ⚠️ No completed games with stats yet; skipping upload", flush=True)
-                skipped_count += 1
-                continue
+                logging.warning(f"  ⚠️ {team_slug}: No completed games/stats found; skipping upload.")
+                return False
 
             csv_string = df.to_csv(index=False)
             firebase_path = f"{GAMELOG_STORAGE_PREFIX}/{team_slug}/{SPORTS_REFERENCE_SEASON}.csv"
+            
             blob = bucket.blob(firebase_path)
             blob.upload_from_string(csv_string, content_type="text/csv")
-            uploaded_count += 1
-            scraped_count += 1
-            print(f"  📤 Uploaded {len(df)} games → {firebase_path}", flush=True)
+            
+            logging.info(f"  📤 {team_slug}: Uploaded {len(df)} games successfully.")
+            return True
         else:
-            print(f"  ⚠️  No game log table found", flush=True)
-            skipped_count += 1
-        
-        # Polite delay
-        time.sleep(5)
+            logging.warning(f"  ⚠️ {team_slug}: No game log table found on page.")
+            return False
     
-    print(f"\n{'='*80}", flush=True)
-    print(f"📊 SCRAPING COMPLETE", flush=True)
-    print(f"{'='*80}", flush=True)
-    print(f"  ✅ Successfully scraped: {scraped_count}", flush=True)
-    print(f"  ❌ Skipped/Failed: {skipped_count}", flush=True)
-    print(f"  📤 Uploaded team files: {uploaded_count}", flush=True)
-    print(f"  📋 Total teams considered: {len(teams_playing_today)}", flush=True)
-    print(f"\n✅ All done!", flush=True)
+    except Exception as e:
+        logging.error(f"  ❌ {team_slug}: CRITICAL PARSING ERROR.", exc_info=True)
+        return False
 
+def main():
+    logging.info(f"\n{'='*80}")
+    logging.info(f"🏀 SPORTS REFERENCE SCRAPER")
+    logging.info(f"{'='*80}\n")
+    
+    teams_playing_today = list(get_teams_playing_today())
+    if not teams_playing_today:
+        logging.error("❌ No teams to scrape. Exiting.")
+        return
 
+    results = []
+    for i, team in enumerate(teams_playing_today):
+        # Add delay between requests (except before first one)
+        if i > 0:
+            delay = random.uniform(3.0, 6.0)
+            logging.info(f"  ⏳ Waiting {delay:.1f}s before next request...")
+            time.sleep(delay)
+        
+        result = process_team(team)
+        results.append(result)
+
+    success_count = sum(results)
+    logging.info(f"\n{'='*80}")
+    logging.info(f"✅ Finished. Successfully scraped {success_count}/{len(teams_playing_today)} teams.")
+    logging.info(f"{'='*80}")
+
+def main_entry_point():
+    """Cloud Function Entry Point"""
+    main()
+    return "Done"
 
 if __name__ == "__main__":
     main()

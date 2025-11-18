@@ -261,7 +261,7 @@ def index_team_stats(teams_df: pd.DataFrame):
     team_map = {}
     for _, row in teams_df.iterrows():
         key = row["team_key"]
-        print("key: "   , key)
+        # print("key: "   , key)
         team_map[key] = row.to_dict()
     return team_map
 

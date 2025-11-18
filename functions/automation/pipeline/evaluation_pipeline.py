@@ -111,6 +111,22 @@ def _run_evaluator(dates: Sequence[str], is_range: bool, cfg: EvaluationPipeline
 
 
 def run_evaluation_pipeline(config: EvaluationPipelineConfig | None = None) -> None:
+    import firebase_admin
+    from google.cloud import firestore
+    
+    print(f"[DEBUG] Firebase apps initialized: {len(firebase_admin._apps)}")
+    if firebase_admin._apps:
+        print(f"[DEBUG] Default app exists: {firebase_admin._apps.get('[DEFAULT]')}")
+    
+    db = firestore.Client()
+    print(f"[DEBUG] Firestore connected to project: {db.project}")
+    
+    # Check if predictions exist
+    test_ref = db.collection('games').document('2025-11-15').collection('games')
+    count = len(list(test_ref.limit(1).stream()))
+    print(f"[DEBUG] Predictions in this project: {count} games")
+    print(f"[DEBUG] Expected project: betboardtest")
+    print()
     cfg = config or DEFAULT_EVAL_CONFIG
     dates, is_range = _resolve_dates(cfg)
 

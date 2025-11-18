@@ -107,7 +107,7 @@ def model_path_moneyline(run_id: str) -> str:
 
 
 # Which run is "active" for live predictions?
-ACTIVE_MODEL_RUN_ID = "run_2025_10_28"  # TODO update as you retrain
+ACTIVE_MODEL_RUN_ID = "run_2025_11_13" 
 
 
 ################################################################################
@@ -349,4 +349,5 @@ TORVIK_MAP = {
     "mount-statemary's": "mount-st-marys",
     "penn": "pennsylvania",
     "utep": "texas-el-paso",
+    "iuindy": "iupui",
 }
