@@ -82,7 +82,7 @@ def inspect_file(file_path: str):
     elif file_path.endswith('.csv'):
 
         df = pd.read_csv(StringIO(content))
-        df.to_csv('services/automation/alabama.csv', index=False) 
+        df.to_csv('alabama.csv', index=False) 
         
 
 
