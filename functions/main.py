@@ -115,8 +115,10 @@ def run_daily_pipeline(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(f"Prediction pipeline failed: {str(e)}", status=500)
 
 
-# --- NEW: HTTP-Triggered Function for Evaluation ---
-@https_fn.on_request()
+@https_fn.on_request(
+    timeout_sec=900,  # 15 minutes - plenty of time for scraping + evaluation
+    memory=MemoryOption.GB_2
+)
 def run_daily_evaluation(req: https_fn.Request) -> https_fn.Response:
     """
     HTTP endpoint triggered by Cloud Scheduler.

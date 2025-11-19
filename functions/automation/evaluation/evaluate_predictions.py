@@ -974,25 +974,36 @@ def evaluate_date(
         "generated_at": generated_at,
     }
     
-    # Convert MarketStats to dicts before storing
-    import dataclasses
+    # Store minimal stats for summary calculation - NO sums, NO bets
+    def _minimal_market_stats(stats: MarketStats) -> Dict[str, Any]:
+        """Extract only essential fields for merging - NO BETS ARRAY."""
+        return {
+            "count": stats.count,
+            "correct": stats.correct,
+            "pushes": stats.pushes,
+            "winner_correct": stats.winner_correct,
+            "mae_sum": stats.mae_sum,  # Keep for aggregation
+            "logloss_sum": stats.logloss_sum,  # Keep for aggregation
+            "bets": [],  # Empty - don't store individual bets
+        }
     
-    payload["_raw_model_stats"] = {
-        "games": model_stats["games"],
-        "moneyline": dataclasses.asdict(model_stats["moneyline"]),
-        "spread": dataclasses.asdict(model_stats["spread"]),
-        "total": dataclasses.asdict(model_stats["total"]),
-    }
+    # payload["_raw_model_stats"] = {
+    #     "games": model_stats["games"],
+    #     "moneyline": _minimal_market_stats(model_stats["moneyline"]),
+    #     "spread": _minimal_market_stats(model_stats["spread"]),
+    #     "total": _minimal_market_stats(model_stats["total"]),
+    # }
     
-    payload["_recommended_stats"] = {
-        "moneyline": dataclasses.asdict(recommended_stats["moneyline"]),
-        "spread": dataclasses.asdict(recommended_stats["spread"]),
-        "total": dataclasses.asdict(recommended_stats["total"]),
-    }
+    # payload["_recommended_stats"] = {
+    #     "moneyline": _minimal_market_stats(recommended_stats["moneyline"]),
+    #     "spread": _minimal_market_stats(recommended_stats["spread"]),
+    #     "total": _minimal_market_stats(recommended_stats["total"]),
+    # }
     
     payload["_graded_picks"] = graded_picks
     
     return payload
+
 
 def _merge_stats(dest: Dict[str, Any], src: Dict[str, Any]) -> None:
     """Merge source stats into destination stats."""
@@ -1003,10 +1014,10 @@ def _merge_stats(dest: Dict[str, Any], src: Dict[str, Any]) -> None:
         dest_market.count += src_market.count
         dest_market.correct += src_market.correct
         dest_market.pushes += src_market.pushes
-        dest_market.mae_sum += src_market.mae_sum
-        dest_market.logloss_sum += src_market.logloss_sum
-        dest_market.bets.extend(src_market.bets)
         dest_market.winner_correct += src_market.winner_correct
+        dest_market.mae_sum += src_market.mae_sum  # Add back
+        dest_market.logloss_sum += src_market.logloss_sum  # Add back
+        # bets stay empty - we never merge them
 
 
 def _merge_recommended_stats(dest: Dict[str, MarketStats], src: Dict[str, MarketStats]) -> None:
@@ -1017,11 +1028,10 @@ def _merge_recommended_stats(dest: Dict[str, MarketStats], src: Dict[str, Market
         dest_market.count += src_market.count
         dest_market.correct += src_market.correct
         dest_market.pushes += src_market.pushes
-        dest_market.mae_sum += src_market.mae_sum
-        dest_market.logloss_sum += src_market.logloss_sum
-        dest_market.bets.extend(src_market.bets)
         dest_market.winner_correct += src_market.winner_correct
-
+        dest_market.mae_sum += src_market.mae_sum  # Add back
+        dest_market.logloss_sum += src_market.logloss_sum  # Add back
+        # bets stay empty
 
 
 def main(argv: Optional[List[str]] = None) -> None:
@@ -1078,19 +1088,74 @@ def main(argv: Optional[List[str]] = None) -> None:
         data = doc.to_dict() or {}
         date_str = data.get("date")
         
-        if not date_str or "_raw_model_stats" not in data:
+        if not date_str:
             continue
             
         all_dates.append(date_str)
         
-        # Merge this date's stats
-        model_stats = data["_raw_model_stats"]
-        recommended_stats = data["_recommended_stats"]
+        # Reconstruct stats from the clean metrics
+        all_preds = data.get("all_predictions", {})
+        recommended = data.get("recommended", {})
+        games = data.get("games_evaluated", 0)
         
-        _merge_stats(overall_model_stats, model_stats)
-        _merge_recommended_stats(overall_recommended_stats, recommended_stats)
+        overall_model_stats["games"] += games
+        
+        # Reconstruct model stats for each market
+        for market in ["moneyline", "spread", "total"]:
+            market_data = all_preds.get(market, {})
+            count = market_data.get("count", 0)
+            
+            if count > 0:
+                stats = overall_model_stats[market]
+                stats.count += count
+                stats.pushes += market_data.get("pushes", 0)
+                
+                # Reconstruct sums from averages
+                mae = market_data.get("mae", 0)
+                stats.mae_sum += mae * count
+                
+                if market == "moneyline":
+                    logloss = market_data.get("logloss", 0)
+                    stats.logloss_sum += logloss * count
+                    winner_acc = market_data.get("winner_accuracy", 0)
+                    stats.winner_correct += int(winner_acc * count)
+                
+                # For betting accuracy
+                non_push = count - market_data.get("pushes", 0)
+                if non_push > 0:
+                    if market == "moneyline":
+                        betting_acc = market_data.get("betting_accuracy", 0)
+                    else:
+                        betting_acc = market_data.get("accuracy", 0)
+                    stats.correct += int(betting_acc * non_push)
+        
+        # Same for recommended stats
+        for market in ["moneyline", "spread", "total"]:
+            market_data = recommended.get(market, {})
+            count = market_data.get("count", 0)
+            
+            if count > 0:
+                stats = overall_recommended_stats[market]
+                stats.count += count
+                stats.pushes += market_data.get("pushes", 0)
+                
+                mae = market_data.get("mae", 0)
+                stats.mae_sum += mae * count
+                
+                if market == "moneyline":
+                    logloss = market_data.get("logloss", 0)
+                    stats.logloss_sum += logloss * count
+                    winner_acc = market_data.get("winner_accuracy", 0)
+                    stats.winner_correct += int(winner_acc * count)
+                
+                non_push = count - market_data.get("pushes", 0)
+                if non_push > 0:
+                    if market == "moneyline":
+                        betting_acc = market_data.get("betting_accuracy", 0)
+                    else:
+                        betting_acc = market_data.get("accuracy", 0)
+                    stats.correct += int(betting_acc * non_push)
 
-    # Build summary payload
     summary_payload = {
         "date_range": {
             "start": min(all_dates) if all_dates else None,
@@ -1117,7 +1182,6 @@ def main(argv: Optional[List[str]] = None) -> None:
     
     eval_collection.document("summary").set(summary_payload)
     logging.info("Updated summary with %d days of data.", len(all_dates))
-
     # Write recommended picks to subcollection
     for payload, picks in day_results:
         doc_ref = eval_collection.document(payload["date"])

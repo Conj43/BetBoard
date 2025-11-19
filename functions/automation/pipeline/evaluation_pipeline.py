@@ -10,6 +10,10 @@ from typing import List, Optional, Sequence, Tuple
 
 # The sys.path manipulation from the original file has been REMOVED
 # as it's not needed when imported by functions/main.py
+_current_file = Path(__file__).resolve()
+_functions_dir = _current_file.parent.parent.parent
+if str(_functions_dir) not in sys.path:
+    sys.path.insert(0, str(_functions_dir))
 
 from automation.evaluation import evaluate_predictions as evaluator
 from automation.evaluation import scrape_results
@@ -138,3 +142,14 @@ def run_evaluation_pipeline(config: EvaluationPipelineConfig | None = None) -> N
 
     _run_evaluator(dates, is_range, cfg)
     print("[evaluation] Pipeline complete.")
+
+
+if __name__ == "__main__":
+    # For local testing
+    test_config = EvaluationPipelineConfig(
+        start_date="2025-11-06",
+        end_date="2025-11-17",
+        dry_run=False,
+        verbose=True
+    )
+    run_evaluation_pipeline(test_config)

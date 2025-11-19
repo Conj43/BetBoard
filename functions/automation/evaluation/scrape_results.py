@@ -9,15 +9,21 @@ import argparse
 import logging
 import sys
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 import requests
 from firebase_admin import firestore
 
-from automation.config.config import FIRESTORE_PREDICTIONS_COLLECTION
+# Add functions directory to path for local testing
+_current_file = Path(__file__).resolve()
+_functions_dir = _current_file.parent.parent.parent
+if str(_functions_dir) not in sys.path:
+    sys.path.insert(0, str(_functions_dir))
+
+from automation.config.config import FIRESTORE_PREDICTIONS_COLLECTION, TEAM_MAPPING
 from automation.clients.firestore import _ensure_firestore
 from automation.config.team_keys import canonicalize_team_key
-from automation.config.utils import load_alias_map
 
 try:
     from zoneinfo import ZoneInfo
@@ -30,33 +36,21 @@ ODDS_API_SCORES_URL = 'https://api.the-odds-api.com/v4/sports/basketball_ncaab/s
 DEFAULT_TIMEZONE = "America/Chicago"
 RESULT_DOC_ID = "odds_api"
 
-_ALIAS_MAP: Optional[Dict[str, str]] = None
 
-
-def _normalize_team_key(value: Any) -> str:
-    """Normalize team name to canonical key."""
-    if isinstance(value, dict):
-        value = value.get("canonical_key") or value.get("name")
-
-    if not isinstance(value, str):
+def _normalize_team_from_odds_api(team_name: str) -> str:
+    """
+    Normalize team name from Odds API to match your TEAM_MAPPING.
+    First tries direct TEAM_MAPPING lookup, then falls back to canonicalize.
+    """
+    if not team_name:
         return ""
-
-    global _ALIAS_MAP
-    if _ALIAS_MAP is None:
-        try:
-            _ALIAS_MAP = load_alias_map()
-        except Exception:
-            _ALIAS_MAP = {}
-
-    slug = "".join(ch for ch in value.lower() if ch.isalnum())
-    if not slug:
-        return ""
-
-    mapped = _ALIAS_MAP.get(slug)
-    if mapped:
-        return mapped
-
-    return canonicalize_team_key(value)
+    
+    # Try direct mapping first (e.g., "Georgia Bulldogs" -> "georgia")
+    if team_name in TEAM_MAPPING:
+        return TEAM_MAPPING[team_name]
+    
+    # Fall back to canonicalize
+    return canonicalize_team_key(team_name)
 
 
 class OddsAPIScoresFetcher:
@@ -148,10 +142,24 @@ class OddsAPIScoresFetcher:
                     logging.warning(f"Could not parse scores for game: {game.get('id')}")
                     continue
                 
+                # Normalize team names using TEAM_MAPPING
+                home_team_raw = game.get('home_team', '')
+                away_team_raw = game.get('away_team', '')
+                home_team_normalized = _normalize_team_from_odds_api(home_team_raw)
+                away_team_normalized = _normalize_team_from_odds_api(away_team_raw)
+                
+                if not home_team_normalized or not away_team_normalized:
+                    logging.warning(
+                        f"Could not normalize teams: {home_team_raw} / {away_team_raw}"
+                    )
+                    continue
+                
                 completed_games.append({
                     'game_id': game.get('id'),
-                    'home_team': game.get('home_team'),
-                    'away_team': game.get('away_team'),
+                    'home_team': home_team_normalized,  # Now normalized
+                    'away_team': away_team_normalized,  # Now normalized
+                    'home_team_raw': home_team_raw,     # Keep original for logging
+                    'away_team_raw': away_team_raw,     # Keep original for logging
                     'home_score': home_score,
                     'away_score': away_score,
                     'commence_time': commence_time_str,
@@ -208,8 +216,14 @@ def _build_game_doc_lookup(games_collection) -> tuple[
 
     for snapshot in games_collection.stream():
         data = snapshot.to_dict() or {}
-        home = _normalize_team_key(data.get("home_team"))
-        away = _normalize_team_key(data.get("away_team"))
+        # Normalize these too!
+        home_raw = data.get("home_team", "")
+        away_raw = data.get("away_team", "")
+        
+        # Use the same normalization as the API results
+        home = _normalize_team_from_odds_api(home_raw) if home_raw else ""
+        away = _normalize_team_from_odds_api(away_raw) if away_raw else ""
+        
         team_set = frozenset(filter(None, (home, away)))
 
         entry = GameDocLookup(
@@ -226,6 +240,7 @@ def _build_game_doc_lookup(games_collection) -> tuple[
     return by_id, by_team_set
 
 
+
 def _match_game_doc(
     game: Dict[str, Any],
     lookup_by_id: Dict[str, GameDocLookup],
@@ -239,9 +254,9 @@ def _match_game_doc(
         if direct:
             return direct
 
-    # Fall back to matching by team names
-    home_key = _normalize_team_key(game.get("home_team"))
-    away_key = _normalize_team_key(game.get("away_team"))
+    # Fall back to matching by normalized team names
+    home_key = game.get("home_team", "")  # Already normalized
+    away_key = game.get("away_team", "")  # Already normalized
     team_set = frozenset(filter(None, (home_key, away_key)))
     
     if not team_set:
@@ -274,8 +289,9 @@ def publish_results(
     if dry_run:
         for game in games:
             logging.info(
-                f"DRY RUN: {game['away_team']} @ {game['home_team']} -> "
-                f"{game['away_score']}-{game['home_score']}"
+                f"DRY RUN: {game['away_team_raw']} @ {game['home_team_raw']} -> "
+                f"{game['away_score']}-{game['home_score']} "
+                f"(normalized: {game['away_team']} @ {game['home_team']})"
             )
         return
 
@@ -289,18 +305,20 @@ def publish_results(
             f"No game documents found under {FIRESTORE_PREDICTIONS_COLLECTION}/{date_str}. "
             "Ensure predictions are published before results."
         )
+        return
 
     matched_count = 0
     for game in games:
         match = _match_game_doc(game, lookup_by_id, lookup_by_team_set)
         if not match:
             logging.warning(
-                f"Unable to match result {game['away_team']} @ {game['home_team']} "
+                f"Unable to match result {game['away_team_raw']} @ {game['home_team_raw']} "
+                f"(normalized: {game['away_team']} @ {game['home_team']}) "
                 f"to Firestore games/{date_str}"
             )
             continue
 
-        # Determine home/away scores based on match
+        # Scores are already correct from API
         home_score = game['home_score']
         away_score = game['away_score']
 
