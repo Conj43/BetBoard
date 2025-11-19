@@ -350,4 +350,7 @@ TORVIK_MAP = {
     "penn": "pennsylvania",
     "utep": "texas-el-paso",
     "iuindy": "iupui",
-}
+    "albany": "albany-ny",
+    "bowlinggreen": "bowling-green-state",
+    "uscupstate": "south-carolina-upstate",
+} 

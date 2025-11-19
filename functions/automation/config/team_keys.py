@@ -370,7 +370,7 @@ TEAM_MAPPING = {
     "IUPUI Jaguars": "iupui",
     "Jacksonville St Gamecocks": "jacksonville-state",
     "Lehigh Mountain Hawks": "lehigh",
-    "Louisiana Tech Bulldogs": "louisiana-tech",
+    "Louisiana Tech Bulldogs": "louisiana-tech", 
     "Marist Red Foxes": "marist",
     "Massachusetts Minutemen": "massachusetts",
     "Mercer Bears": "mercer",

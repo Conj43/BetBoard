@@ -230,7 +230,8 @@ def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
     line_spread = _as_float(game_pred.get("bet_spread_home"))
 
     if model_spread is not None and line_spread is not None:
-        edge = model_spread - line_spread
+        # Spread edge is the predicted ATS margin: predicted_margin + bookmaker_line
+        edge = model_spread + line_spread
         selection = home_team if edge >= 0 else away_team
         picks.append({
             "game_id": game_id,
