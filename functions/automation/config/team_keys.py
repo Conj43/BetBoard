@@ -363,7 +363,7 @@ TEAM_MAPPING = {
     "Tenn-Martin Skyhawks": "tennessee-martin",
     "Western Michigan Broncos": "western-michigan",
 
-    "Albany (NY) Great Danes": "albany-ny",
+    "Albany Great Danes": "albany-ny",
     "Arizona St Sun Devils": "arizona-state",
     "Bowling Green Falcons": "bowling-green-state",
     "Incarnate Word Cardinals": "incarnate-word",
@@ -377,7 +377,7 @@ TEAM_MAPPING = {
     "Miami (OH) RedHawks": "miami-oh",
     "New Hampshire Wildcats": "new-hampshire",
     "New Mexico St Aggies": "new-mexico-state",
-    "Northern Colorado Bears": "northern-colorado",
+    "N Colorado Bears": "northern-colorado",
     "Vermont Catamounts": "vermont",
 }
 
