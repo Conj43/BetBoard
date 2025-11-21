@@ -17,6 +17,7 @@ if str(_functions_dir) not in sys.path:
 
 from automation.evaluation import evaluate_predictions as evaluator
 from automation.evaluation import scrape_results
+from automation.evaluation.settle_user_bets import settle_pending_bets
 
 
 @dataclass
@@ -35,6 +36,7 @@ class EvaluationPipelineConfig:
 
     result_source: str = evaluator.DEFAULT_RESULT_DOC
     eval_collection: str = evaluator.DEFAULT_EVAL_COLLECTION
+    settle_user_bets: bool = True
 
     dry_run: bool = False
     verbose: bool = False
@@ -141,6 +143,15 @@ def run_evaluation_pipeline(config: EvaluationPipelineConfig | None = None) -> N
         print("[evaluation][step] Skipping result scraping (scrape_results_first=False).")
 
     _run_evaluator(dates, is_range, cfg)
+    if cfg.settle_user_bets:
+        settle_pending_bets(
+            db,
+            result_source=cfg.result_source,
+            dry_run=cfg.dry_run,
+            verbose=cfg.verbose,
+        )
+    else:
+        print("[evaluation][bets] Skipping bet settlement (settle_user_bets=False).")
     print("[evaluation] Pipeline complete.")
 
 

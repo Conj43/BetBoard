@@ -133,18 +133,43 @@ class OddsAPIScoresFetcher:
                     logging.warning(f"Could not parse commence_time '{commence_time_str}': {e}")
                     continue
                 
-                # Parse scores - they come as strings
-                try:
-                    # scores[0] is home, scores[1] is away based on the API docs
-                    home_score = int(game['scores'][0]['score'])
-                    away_score = int(game['scores'][1]['score'])
-                except (KeyError, ValueError, IndexError):
+                # Parse scores
+                scores_list = game.get("scores") or []
+                score_map: Dict[str, int] = {}
+                if isinstance(scores_list, list):
+                    for score_entry in scores_list:
+                        if not isinstance(score_entry, dict):
+                            continue
+                        name = score_entry.get("name")
+                        raw_score = score_entry.get("score")
+                        try:
+                            score_val = int(raw_score)
+                        except (TypeError, ValueError):
+                            continue
+                        if name:
+                            score_map[name] = score_val
+
+                home_team_raw = game.get('home_team', '')
+                away_team_raw = game.get('away_team', '')
+
+                home_score = score_map.get(home_team_raw)
+                away_score = score_map.get(away_team_raw)
+
+                # Fallback to positional order if mapping fails (neutral sites sometimes shuffle)
+                if home_score is None or away_score is None:
+                    try:
+                        if home_score is None and isinstance(scores_list, list) and len(scores_list) > 0:
+                            home_score = int(scores_list[0].get("score"))
+                        if away_score is None and isinstance(scores_list, list) and len(scores_list) > 1:
+                            away_score = int(scores_list[1].get("score"))
+                    except (TypeError, ValueError, AttributeError, IndexError):
+                        pass
+
+                if home_score is None or away_score is None:
                     logging.warning(f"Could not parse scores for game: {game.get('id')}")
                     continue
                 
                 # Normalize team names using TEAM_MAPPING
-                home_team_raw = game.get('home_team', '')
-                away_team_raw = game.get('away_team', '')
                 home_team_normalized = _normalize_team_from_odds_api(home_team_raw)
                 away_team_normalized = _normalize_team_from_odds_api(away_team_raw)
                 
