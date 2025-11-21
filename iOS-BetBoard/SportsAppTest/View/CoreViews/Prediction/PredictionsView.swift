@@ -52,7 +52,9 @@ struct PredictionsView: View {
             .environmentObject(viewModel)
             .navigationTitle("Best Bets")
         }
+        .preferredColorScheme(viewModel.colorScheme)
         .task {
+            await viewModel.loadUserSettings()
             await viewModel.loadPredictions()
         }
     }
@@ -78,6 +80,12 @@ struct PredictionsView: View {
             .padding(.horizontal)
             .frame(maxWidth: .infinity)
             .background(Color(.systemBackground))
+            .overlay(
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(Color.gray.opacity(0.2)),
+                alignment: .bottom
+            )
         }
         .sheet(isPresented: $showDatePicker) {
             DatePickerSheet(selectedDate: $viewModel.selectedDate, onDateSelected: {
@@ -152,6 +160,12 @@ struct PredictionsView: View {
             .padding(.vertical, 4)
         }
         .background(Color(.systemBackground))
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color.gray.opacity(0.2)),
+            alignment: .bottom
+        )
     }
     
     private var formattedSelectedDate: String {

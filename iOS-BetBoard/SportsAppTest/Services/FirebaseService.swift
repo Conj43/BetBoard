@@ -514,17 +514,20 @@ class FirebaseService: ObservableObject {
         return calendar.date(from: updatedComponents) ?? date
     }
     
-    // MARK: - User Bets
     func fetchUserBets(for userID: String) async throws -> [Bet] {
         print("🔍 FirebaseService: Fetching user bets for: \(userID)")
-        
+
         do {
-            let snapshot = try await db.collection("users").document(userID).collection("bets").getDocuments()
+            let snapshot = try await db.collection("users")
+                .document(userID)
+                .collection("bets")
+                .getDocuments()
+
             print("📊 Found \(snapshot.documents.count) user bet documents")
-            
+
             let bets = snapshot.documents.compactMap { document -> Bet? in
                 let data = document.data()
-                
+
                 guard let gameID = data["gameID"] as? String,
                       let typeString = data["type"] as? String,
                       let type = BetType(rawValue: typeString),
@@ -533,10 +536,18 @@ class FirebaseService: ObservableObject {
                       let amount = data["amount"] as? Double,
                       let resultString = data["result"] as? String,
                       let result = BetResult(rawValue: resultString),
-                      let placedAtTimestamp = data["placedAt"] as? Timestamp else {
+                      let placedAtTimestamp = data["placedAt"] as? Timestamp
+                else {
                     return nil
                 }
-                
+
+                // ✅ Extra metadata (optional)
+                let homeName = data["home_team_name"] as? String
+                let awayName = data["away_team_name"] as? String
+                let gameDate = (data["game_date"] as? Timestamp)?.dateValue()
+                let sportsbookString = data["sportsbook"] as? String
+                let sportsbook = sportsbookString.flatMap { Sportsbook(rawValue: $0) }
+
                 return Bet(
                     id: document.documentID,
                     userID: userID,
@@ -546,13 +557,17 @@ class FirebaseService: ObservableObject {
                     odds: odds,
                     amount: amount,
                     result: result,
-                    placedAt: placedAtTimestamp.dateValue()
+                    placedAt: placedAtTimestamp.dateValue(),
+                    homeTeamName: homeName,
+                    awayTeamName: awayName,
+                    gameDate: gameDate,
+                    sportsbook: sportsbook
                 )
             }
-            
+
             print("✅ Successfully fetched \(bets.count) user bets")
             return bets
-            
+
         } catch {
             print("❌ Error fetching user bets: \(error)")
             return []
@@ -562,8 +577,8 @@ class FirebaseService: ObservableObject {
     // MARK: - Add User Bet
     func addUserBet(_ bet: Bet) async throws {
         print("🔍 FirebaseService: Adding user bet: \(bet.selection) for $\(bet.amount)")
-        
-        let betData: [String: Any] = [
+
+        var betData: [String: Any] = [
             "gameID": bet.gameID,
             "type": bet.type.rawValue,
             "selection": bet.selection,
@@ -572,9 +587,27 @@ class FirebaseService: ObservableObject {
             "result": bet.result.rawValue,
             "placedAt": Timestamp(date: bet.placedAt)
         ]
-        
+
+        // ✅ Extra metadata
+        if let home = bet.homeTeamName {
+            betData["home_team_name"] = home
+        }
+        if let away = bet.awayTeamName {
+            betData["away_team_name"] = away
+        }
+        if let gameDate = bet.gameDate {
+            betData["game_date"] = Timestamp(date: gameDate)
+        }
+        if let sportsbook = bet.sportsbook {
+            betData["sportsbook"] = sportsbook.rawValue
+        }
+
         do {
-            try await db.collection("users").document(bet.userID).collection("bets").addDocument(data: betData)
+            try await db.collection("users")
+                .document(bet.userID)
+                .collection("bets")
+                .addDocument(data: betData)
+
             print("✅ Successfully added user bet")
         } catch {
             print("❌ Error adding user bet: \(error)")

@@ -208,4 +208,55 @@ class BetHistoryViewModel: ObservableObject {
             return 0 // Don't count pending bets
         }
     }
+    
+    func trackBet(from betSlip: BetSlip,
+                  betType: BetType,
+                  selection: String,
+                  odds: Double,
+                  amount: Double) async {
+        guard let currentUser = Auth.auth().currentUser else {
+            errorMessage = "Please log in to track bets"
+            return
+        }
+        
+        let bet = Bet(
+            id: UUID().uuidString,
+            userID: currentUser.uid,
+            gameID: betSlip.gameID,
+            type: betType,
+            selection: selection,
+            odds: odds,
+            amount: amount,
+            result: .pending,
+            placedAt: Date()
+        )
+
+        do {
+            try await firebaseService.addUserBet(bet)
+            
+            await MainActor.run {
+                // Build BetWithGameInfo so it appears properly in UI immediately
+                if let game = self.gameCache[betSlip.gameID] {
+                    let info = BetWithGameInfo(
+                        bet: bet,
+                        homeTeam: game.homeTeam,
+                        awayTeam: game.awayTeam,
+                        gameDate: game.date
+                    )
+                    allBets.insert(info, at: 0)
+                    filteredBets.insert(info, at: 0)
+                }
+                
+                totalBets = allBets.count
+            }
+            
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to track bet: \(error.localizedDescription)"
+            }
+        }
+    }
+    
+    
+    
 }

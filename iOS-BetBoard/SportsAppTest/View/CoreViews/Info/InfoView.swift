@@ -49,6 +49,7 @@ struct InfoView: View {
                 Text("Are you sure you want to sign out?")
             }
         }
+        .preferredColorScheme(viewModel.colorScheme)
         .task {
             await viewModel.loadSettings()
         }

@@ -78,6 +78,7 @@ class PredictionsViewModel: ObservableObject {
     @Published var selectedDate: Date = Date()
     @Published var gameResults: [String: GameResult] = [:]
     
+    @Published var appSettings: AppSettings?
     // Cache management
     private var lastLoadedDate: String?
     private var cacheKey: String {
@@ -555,12 +556,18 @@ class PredictionsViewModel: ObservableObject {
     }
     
     // MARK: - Bet Tracking
-    func trackSpecificBet(from prediction: PredictionGame, betType: BetType, selection: String, odds: Double, amount: Double) async {
+    func trackSpecificBet(
+        from prediction: PredictionGame,
+        betType: BetType,
+        selection: String,
+        odds: Double,
+        amount: Double
+    ) async {
         guard let currentUser = Auth.auth().currentUser else {
             errorMessage = "Please log in to track bets"
             return
         }
-        
+
         let bet = Bet(
             id: UUID().uuidString,
             userID: currentUser.uid,
@@ -570,9 +577,13 @@ class PredictionsViewModel: ObservableObject {
             odds: odds,
             amount: amount,
             result: .pending,
-            placedAt: Date()
+            placedAt: Date(),
+            homeTeamName: prediction.homeTeam.name,
+            awayTeamName: prediction.awayTeam.name,
+            gameDate: prediction.gameTime,
+            sportsbook: prediction.betSlip.sportsbook
         )
-        
+
         do {
             try await firebaseService.addUserBet(bet)
             errorMessage = nil
@@ -590,4 +601,29 @@ class PredictionsViewModel: ObservableObject {
             amount: 0.0
         )
     }
+    var colorScheme: ColorScheme? {
+            // Default to light mode if no setting is found
+            if let darkModeEnabled = appSettings?.darkModeEnabled {
+                return darkModeEnabled ? .dark : .light
+            }
+            return .light // Default to light mode
+        }
+        
+        /// Load user settings from Firestore
+        func loadUserSettings() async {
+            guard let currentUser = Auth.auth().currentUser else { return }
+            
+            do {
+                let settings = try await firebaseService.fetchUserSettings(for: currentUser.uid)
+                await MainActor.run {
+                    self.appSettings = settings
+                }
+            } catch {
+                print("Error loading user settings: \(error)")
+                // Use defaults on error - will default to light mode
+                self.appSettings = nil
+            }
+        }
+    
+
 }

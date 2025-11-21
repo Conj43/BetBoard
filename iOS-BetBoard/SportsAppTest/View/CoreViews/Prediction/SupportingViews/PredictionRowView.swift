@@ -85,7 +85,11 @@ struct PredictionRowView: View {
         }
         .background(Color(.systemBackground))
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
         .padding(.bottom, 4)
     }
     
@@ -126,38 +130,6 @@ struct PredictionRowView: View {
                         }
                     }
                 } else if isRecommended {
-                    // Show confidence for upcoming recommended games
-                    // Only show win probability for moneyline bets
-//                    if prediction.bestBet.type == .moneyline && winProbability > 0 {
-//                        HStack(spacing: 4) {
-//                            Image(systemName: "chart.bar.fill")
-//                                .font(.caption2)
-//                            
-//                            Text("\(Int(winProbability))% Win Probability")
-//                                .font(.caption)
-//                                .fontWeight(.medium)
-//                        }
-//                        .padding(.horizontal, 8)
-//                        .padding(.vertical, 4)
-//                        .background(confidenceColor(for: winProbability).opacity(0.1))
-//                        .foregroundColor(confidenceColor(for: winProbability))
-//                        .cornerRadius(8)
-//                    } else if prediction.bestBet.type != .moneyline {
-//                        // For spread/total, show model projection vs book line
-//                        HStack(spacing: 4) {
-//                            Image(systemName: "arrow.left.arrow.right")
-//                                .font(.caption2)
-//                            
-//                            Text("Model Edge: \(String(format: "%.1f", edgeStrength)) pts")
-//                                .font(.caption)
-//                                .fontWeight(.medium)
-//                        }
-//                        .padding(.horizontal, 8)
-//                        .padding(.vertical, 4)
-//                        .background(Color.purple.opacity(0.1))
-//                        .foregroundColor(.purple)
-//                        .cornerRadius(8)
-//                    }
                     EmptyView()
                 }
             }
@@ -240,9 +212,9 @@ struct PredictionRowView: View {
     
     private var predictionDetailsView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Divider
+            // Divider with better contrast
             Rectangle()
-                .fill(Color.secondary.opacity(0.2))
+                .fill(Color.gray.opacity(0.3))
                 .frame(height: 1)
             
             HStack(alignment: .center) {
@@ -251,9 +223,9 @@ struct PredictionRowView: View {
                     // Sportsbook and odds - MORE PROMINENT
                     HStack(spacing: 4) {
                         Image("sb_\(prediction.bestBet.sportsbook.rawValue.lowercased())")
-                                                .resizable()
-                                                .frame(width: 20, height: 20)
-                                                .cornerRadius(3)
+                            .resizable()
+                            .frame(width: 20, height: 20)
+                            .cornerRadius(3)
                         
                         Text(prediction.bestBet.sportsbook.displayName)
                             .font(.subheadline)
@@ -269,6 +241,10 @@ struct PredictionRowView: View {
                     .padding(.vertical, 4)
                     .background(Color.blue.opacity(0.1))
                     .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                    )
                     
                     Spacer().frame(height: 4)
                     
@@ -301,6 +277,10 @@ struct PredictionRowView: View {
                     .padding(.vertical, 6)
                     .background(Color.purple.opacity(0.1))
                     .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.purple.opacity(0.3), lineWidth: 1)
+                    )
                 }
             }
             .padding(.horizontal, 12)

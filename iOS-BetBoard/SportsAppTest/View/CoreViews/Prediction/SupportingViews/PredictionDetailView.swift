@@ -8,13 +8,29 @@
 import SwiftUI
 
 
+struct PendingBet: Identifiable {
+    let id = UUID()
+    let betType: BetType
+    let selection: String
+    let odds: Double
+}
+
 struct PredictionDetailView: View {
     let prediction: PredictionGame
-    @ObservedObject var viewModel: PredictionsViewModel
-    
-    @State private var selectedSportsbook: Sportsbook
-    @State private var selectedBetType: BetType = .spread
-    @State private var showingSportsbookPicker = false
+        @ObservedObject var viewModel: PredictionsViewModel
+        
+        @State private var selectedSportsbook: Sportsbook
+        @State private var selectedBetType: BetType = .spread
+        @State private var showingSportsbookPicker = false
+        @State private var betAmount: String = ""
+        @State private var isTrackingBet = false
+        @State private var showTrackConfirmation = false
+        @State private var trackedBetDetails: String = ""
+
+        // single source of truth for tracking
+        @State private var pendingBet: PendingBet?
+
+
     
     init(prediction: PredictionGame, viewModel: PredictionsViewModel) {
         self.prediction = prediction
@@ -50,41 +66,58 @@ struct PredictionDetailView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                // Team Matchup Card
+            VStack(spacing: 8) {
                 teamMatchupCard
                 
-                // Our Predictions
+                
+                
+                sportsbookSelector
+                betTypeTabs
+                linesDisplay
                 if prediction.betSlip.predictionInfo != nil {
                     ourPredictionsCard
                 }
-                
-                // Sportsbook Selector
-                sportsbookSelector
-                
-                // Bet Type Tabs
-                betTypeTabs
-                
-                // Lines Display
-                linesDisplay
             }
             .padding()
         }
         .navigationTitle("Prediction Details")
         .navigationBarTitleDisplayMode(.inline)
         .background(Color(.systemGroupedBackground))
+        .preferredColorScheme(viewModel.colorScheme)
+        .sheet(item: $pendingBet) { pending in
+            QuickTrackBetSheet(
+                betType: pending.betType,
+                selection: pending.selection,
+                odds: pending.odds,
+                sportsbook: selectedSportsbook,
+                betAmount: $betAmount
+            ) { type, selection, odds, amount in
+                trackBetFromDetail(
+                    betType: type,
+                    selection: selection,
+                    odds: odds,
+                    amount: amount
+                )
+            }
+            .presentationDetents([.fraction(0.35), .medium])
+                .presentationDragIndicator(.visible)
+        }
+        .alert("Bet Tracked!", isPresented: $showTrackConfirmation) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(trackedBetDetails)
+        }
+        .disabled(isTrackingBet)
     }
     
     // MARK: - Team Matchup Card
     private var teamMatchupCard: some View {
         VStack(spacing: 16) {
-            // Game time
             Text(formattedGameTime)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             
             HStack(spacing: 20) {
-                // Away Team
                 VStack(spacing: 8) {
                     TeamLogoView(team: prediction.awayTeam, size: 60)
                     
@@ -105,8 +138,7 @@ struct PredictionDetailView: View {
                         }
                     }
                     
-                    // Win Probability from Firebase prediction
-                    if let predInfo = prediction.betSlip.predictionInfo {
+                    if prediction.betSlip.predictionInfo != nil {
                         VStack(spacing: 2) {
                             Text("Win Probability")
                                 .font(.caption2)
@@ -123,13 +155,11 @@ struct PredictionDetailView: View {
                     }
                 }
                 
-                // VS
                 Text("VS")
                     .font(.title3)
                     .fontWeight(.bold)
                     .foregroundColor(.secondary)
                 
-                // Home Team
                 VStack(spacing: 8) {
                     TeamLogoView(team: prediction.homeTeam, size: 60)
                     
@@ -150,8 +180,7 @@ struct PredictionDetailView: View {
                         }
                     }
                     
-                    // Win Probability from Firebase prediction
-                    if let predInfo = prediction.betSlip.predictionInfo {
+                    if prediction.betSlip.predictionInfo != nil {
                         VStack(spacing: 2) {
                             Text("Win Probability")
                                 .font(.caption2)
@@ -170,9 +199,13 @@ struct PredictionDetailView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(cardBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 2)
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
     }
     
     // MARK: - Sportsbook Selector
@@ -180,7 +213,8 @@ struct PredictionDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Sportsbook")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
                 .padding(.horizontal, 4)
             
             Button(action: {
@@ -203,8 +237,12 @@ struct PredictionDetailView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding()
-                .background(Color(.systemBackground))
+                .background(cardBackground)
                 .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
             }
             
             if showingSportsbookPicker {
@@ -232,7 +270,7 @@ struct PredictionDetailView: View {
                             }
                             .padding(.horizontal)
                             .padding(.vertical, 12)
-                            .background(Color(.systemBackground))
+                            .background(cardBackground)
                         }
                         
                         if sportsbook != availableSportsbooks().last {
@@ -240,32 +278,43 @@ struct PredictionDetailView: View {
                         }
                     }
                 }
-                .background(Color(.systemBackground))
+                .background(cardBackground)
                 .cornerRadius(10)
-                .shadow(color: .black.opacity(0.05), radius: 2)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
             }
         }
     }
     
-    // MARK: - Bet Type Tabs
     private var betTypeTabs: some View {
         HStack(spacing: 0) {
             ForEach([BetType.moneyline, .spread, .total], id: \.self) { betType in
-                Button(action: {
-                    selectedBetType = betType
-                }) {
-                    Text(betType.displayName)
-                        .font(.subheadline)
-                        .fontWeight(selectedBetType == betType ? .semibold : .regular)
-                        .foregroundColor(selectedBetType == betType ? .white : .primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(selectedBetType == betType ? Color.blue : Color(.systemBackground))
-                }
+                betTypeButton(for: betType)
             }
         }
         .cornerRadius(10)
-        .shadow(color: .black.opacity(0.05), radius: 2)
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private func betTypeButton(for betType: BetType) -> some View {
+        Button(action: {
+            selectedBetType = betType
+        }) {
+            Text(betType.displayName)
+                .font(.subheadline)
+                .fontWeight(selectedBetType == betType ? .semibold : .regular)
+                .foregroundColor(selectedBetType == betType ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(selectedBetType == betType ? Color.blue : cardBackground)
+        }
     }
     
     // MARK: - Lines Display
@@ -287,119 +336,126 @@ struct PredictionDetailView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(cardBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 2)
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
     }
     
     private func moneylineView(lines: BettingLines) -> some View {
-        HStack(spacing: 12) {
-            ForEach(Array(lines.moneyline.keys.sorted()), id: \.self) { team in
-                if let odds = lines.moneyline[team] {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(team)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .lineLimit(1)
-                        
-                        Text(formatOdds(odds))
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.orange)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
-                }
-            }
-        }
-    }
-    
-    private func spreadView(lines: BettingLines) -> some View {
-        HStack(spacing: 12) {
-            let spreadEntries = Array(lines.spread.keys.sorted())
-            
-            if spreadEntries.count >= 2 {
-                let firstKey = spreadEntries[0]
-                if let firstOdds = lines.spread[firstKey] {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(extractTeamName(from: firstKey))
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .lineLimit(2)
-                        
-                        HStack(spacing: 4) {
-                            Text(extractSpreadValue(from: firstKey))
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.blue)
-                            
-                            Text(formatOdds(firstOdds))
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.orange)
+            HStack(spacing: 12) {
+                ForEach(Array(lines.moneyline.keys.sorted()), id: \.self) { team in
+                    if let odds = lines.moneyline[team] {
+                        Button {
+                            pendingBet = PendingBet(
+                                betType: .moneyline,
+                                selection: team,
+                                odds: odds
+                            )
+                            betAmount = ""
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(team)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+
+                                Text(formatOdds(odds))
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.orange)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
                         }
+                        .buttonStyle(.plain)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
                 }
-                
-                let secondKey = spreadEntries[1]
-                if let secondOdds = lines.spread[secondKey] {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(extractTeamName(from: secondKey))
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .lineLimit(2)
-                        
-                        HStack(spacing: 4) {
-                            Text(extractSpreadValue(from: secondKey))
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.blue)
-                            
-                            Text(formatOdds(secondOdds))
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.orange)
+            }
+        }
+        
+        private func spreadView(lines: BettingLines) -> some View {
+            HStack(spacing: 12) {
+                let spreadEntries = Array(lines.spread.keys.sorted())
+
+                ForEach(spreadEntries, id: \.self) { key in
+                    if let odds = lines.spread[key] {
+                        Button {
+                            pendingBet = PendingBet(
+                                betType: .spread,
+                                selection: key,
+                                odds: odds
+                            )
+                            betAmount = ""
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(extractTeamName(from: key))
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .lineLimit(2)
+
+                                HStack(spacing: 4) {
+                                    Text(extractSpreadValue(from: key))
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.blue)
+
+                                    Text(formatOdds(odds))
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
                         }
+                        .buttonStyle(.plain)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
                 }
             }
         }
-    }
-    
-    private func totalView(lines: BettingLines) -> some View {
-        HStack(spacing: 12) {
-            let totalEntries = Array(lines.total.keys.sorted())
-            
-            ForEach(totalEntries, id: \.self) { selection in
-                if let odds = lines.total[selection] {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(selection)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        
-                        Text(formatOdds(odds))
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.orange)
+        
+        private func totalView(lines: BettingLines) -> some View {
+            HStack(spacing: 12) {
+                let totalEntries = Array(lines.total.keys.sorted())
+
+                ForEach(totalEntries, id: \.self) { selection in
+                    if let odds = lines.total[selection] {
+                        Button {
+                            pendingBet = PendingBet(
+                                betType: .total,
+                                selection: selection,
+                                odds: odds
+                            )
+                            betAmount = ""
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(selection)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                Text(formatOdds(odds))
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.orange)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
                 }
             }
         }
-    }
     
     // MARK: - Our Predictions Card
     private var ourPredictionsCard: some View {
@@ -414,7 +470,6 @@ struct PredictionDetailView: View {
             
             if let predInfo = prediction.betSlip.predictionInfo, let lines = currentLines {
                 
-                // Moneyline Overview
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "dollarsign.circle.fill")
@@ -427,59 +482,26 @@ struct PredictionDetailView: View {
                     }
 
                     if !hasMoneylineOdds {
-                        // ⭐ NEW: Clean "no odds" message
                         Text("No moneyline odds available for this game.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding(.vertical, 8)
                             .padding(.horizontal, 10)
-                            .background(Color(.systemGray6))
+                            .background(Color(.systemGray6).opacity(0.5))
                             .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            )
                     } else {
-
-                        // ⭐ Moneyline rows (only when odds exist)
                         VStack(spacing: 6) {
                             ForEach(Array(lines.moneyline.keys.sorted()), id: \.self) { team in
                                 if let odds = lines.moneyline[team] {
-                                    let isOurPick = isMoneylinePick(team: team)
-
-                                    HStack(spacing: 6) {
-                                        Text(team)
-                                            .font(.subheadline)
-                                            .fontWeight(isOurPick ? .bold : .medium)
-                                            .lineLimit(2)
-
-                                        Spacer()
-
-                                        HStack(spacing: 6) {
-                                            Text(formatOdds(odds))
-                                                .font(.subheadline)
-                                                .fontWeight(.semibold)
-
-                                            Text("\(Int(impliedProbability(from: odds)))%")
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-
-                                            if isOurPick {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundColor(.green)
-                                                    .font(.caption)
-                                            }
-                                        }
-                                    }
-                                    .frame(minHeight: 52)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(isOurPick ? Color.green.opacity(0.15) : Color(.systemGray6))
-                                    .cornerRadius(8)
+                                    moneylineRowView(team: team, odds: odds, isOurPick: isMoneylinePick(team: team))
                                 }
                             }
                         }
 
-                        // ⭐ Win probability comparison only when odds exist
-//                        winProbabilityComparisonSection
-
-                        // ⭐ Our pick only when one exists
                         if let pickTeam = getMoneylinePickTeam() {
                             Text("Our Pick: \(pickTeam)")
                                 .font(.caption)
@@ -493,12 +515,15 @@ struct PredictionDetailView: View {
                     }
                 }
                 .padding()
-                .background(Color(.systemBackground))
+                .background(cardBackground)
                 .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
                 
                 Divider()
                 
-                // Spread Overview
                 if let spreadBet = predInfo.spreadBet {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
@@ -515,40 +540,14 @@ struct PredictionDetailView: View {
                             .font(.caption2)
                             .foregroundColor(.secondary)
                         
-                        VStack(spacing: 6) { // Reduced from 8
+                        VStack(spacing: 6) {
                             ForEach(Array(lines.spread.keys.sorted()), id: \.self) { selection in
                                 if let odds = lines.spread[selection] {
-                                    let isOurPick = isSpreadPick(selection: selection, ourPick: spreadBet)
-                                    HStack(spacing: 6) { // Tighter spacing
-                                        Text(selection)
-                                            .font(.subheadline)
-                                            .fontWeight(isOurPick ? .bold : .medium)
-                                            .lineLimit(2)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                        
-                                        Spacer()
-                                        
-                                        HStack(spacing: 6) { // Tighter spacing
-                                            Text(formatOdds(odds))
-                                                .font(.subheadline)
-                                                .fontWeight(.semibold)
-                                            
-                                            Text("\(Int(impliedProbability(from: odds)))%")
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                            
-                                            if isOurPick {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundColor(.blue)
-                                                    .font(.caption)
-                                            }
-                                        }
-                                    }
-                                    .frame(minHeight: 52) // Increased from 44
-                                    .padding(.horizontal, 10) // Reduced from 12
-                                    .padding(.vertical, 6) // Added vertical padding
-                                    .background(isOurPick ? Color.blue.opacity(0.15) : Color(.systemGray6))
-                                    .cornerRadius(8)
+                                    spreadRowView(
+                                        selection: selection,
+                                        odds: odds,
+                                        isOurPick: isSpreadPick(selection: selection, ourPick: spreadBet)
+                                    )
                                 }
                             }
                         }
@@ -562,13 +561,16 @@ struct PredictionDetailView: View {
                         .padding(.top, 4)
                     }
                     .padding()
-                    .background(Color(.systemBackground))
+                    .background(cardBackground)
                     .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
                 }
                 
                 Divider()
                 
-                // Total Overview
                 if let totalBet = predInfo.totalBet {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
@@ -585,40 +587,14 @@ struct PredictionDetailView: View {
                             .font(.caption2)
                             .foregroundColor(.secondary)
                         
-                        VStack(spacing: 6) { // Reduced from 8
+                        VStack(spacing: 6) {
                             ForEach(Array(lines.total.keys.sorted()), id: \.self) { selection in
                                 if let odds = lines.total[selection] {
-                                    let isOurPick = isTotalPick(selection: selection, ourPick: totalBet)
-                                    HStack(spacing: 6) { // Tighter spacing
-                                        Text(selection)
-                                            .font(.subheadline)
-                                            .fontWeight(isOurPick ? .bold : .medium)
-                                            .lineLimit(2)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                        
-                                        Spacer()
-                                        
-                                        HStack(spacing: 6) { // Tighter spacing
-                                            Text(formatOdds(odds))
-                                                .font(.subheadline)
-                                                .fontWeight(.semibold)
-                                            
-                                            Text("\(Int(impliedProbability(from: odds)))%")
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                            
-                                            if isOurPick {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundColor(.orange)
-                                                    .font(.caption)
-                                            }
-                                        }
-                                    }
-                                    .frame(minHeight: 52) // Increased from 44
-                                    .padding(.horizontal, 10) // Reduced from 12
-                                    .padding(.vertical, 6) // Added vertical padding
-                                    .background(isOurPick ? Color.orange.opacity(0.15) : Color(.systemGray6))
-                                    .cornerRadius(8)
+                                    totalRowView(
+                                        selection: selection,
+                                        odds: odds,
+                                        isOurPick: isTotalPick(selection: selection, ourPick: totalBet)
+                                    )
                                 }
                             }
                         }
@@ -636,15 +612,139 @@ struct PredictionDetailView: View {
                         .padding(.top, 4)
                     }
                     .padding()
-                    .background(Color(.systemBackground))
+                    .background(cardBackground)
                     .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
                 }
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(cardBackground)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 2)
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
+    }
+    
+    // MARK: - Card Background Helper
+    private var cardBackground: Color {
+        Color(.systemBackground)
+    }
+    
+    // MARK: - Row View Helpers
+    private func moneylineRowView(team: String, odds: Double, isOurPick: Bool) -> some View {
+        HStack(spacing: 6) {
+            Text(team)
+                .font(.subheadline)
+                .fontWeight(isOurPick ? .bold : .medium)
+                .lineLimit(2)
+            
+            Spacer()
+            
+            HStack(spacing: 6) {
+                Text(formatOdds(odds))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                
+                Text("\(Int(impliedProbability(from: odds)))%")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                if isOurPick {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.caption)
+                }
+            }
+        }
+        .frame(minHeight: 52)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(isOurPick ? Color.green.opacity(0.15) : Color(.systemGray6).opacity(0.5))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
+    }
+    
+    private func spreadRowView(selection: String, odds: Double, isOurPick: Bool) -> some View {
+        HStack(spacing: 6) {
+            Text(selection)
+                .font(.subheadline)
+                .fontWeight(isOurPick ? .bold : .medium)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            Spacer()
+            
+            HStack(spacing: 6) {
+                Text(formatOdds(odds))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                
+                Text("\(Int(impliedProbability(from: odds)))%")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                if isOurPick {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.blue)
+                        .font(.caption)
+                }
+            }
+        }
+        .frame(minHeight: 52)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(isOurPick ? Color.blue.opacity(0.15) : Color(.systemGray6).opacity(0.5))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
+    }
+
+    private func totalRowView(selection: String, odds: Double, isOurPick: Bool) -> some View {
+        HStack(spacing: 6) {
+            Text(selection)
+                .font(.subheadline)
+                .fontWeight(isOurPick ? .bold : .medium)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            Spacer()
+            
+            HStack(spacing: 6) {
+                Text(formatOdds(odds))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                
+                Text("\(Int(impliedProbability(from: odds)))%")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                if isOurPick {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.orange)
+                        .font(.caption)
+                }
+            }
+        }
+        .frame(minHeight: 52)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(isOurPick ? Color.orange.opacity(0.15) : Color(.systemGray6).opacity(0.5))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
     }
     
     // MARK: - Helper Functions
@@ -713,43 +813,32 @@ struct PredictionDetailView: View {
     }
 
     private func getAwayWinProbability() -> Double {
-        // Always calculate as 100 - home to ensure they sum to 100
         return 100.0 - getHomeWinProbability()
     }
         
     // MARK: - Moneyline helpers
-
-    // MARK: - Moneyline helpers
-
     private func getMoneylinePickTeam() -> String? {
-        // Need prediction info (for model win prob) and lines (for odds)
         guard prediction.betSlip.predictionInfo != nil,
               let _ = currentLines else {
             return nil
         }
         
-        // Model win probabilities (already in percent in your UI helpers)
-        let homeModelProb = getHomeWinProbability()   // e.g. 42
-        let awayModelProb = getAwayWinProbability()   // e.g. 58
+        let homeModelProb = getHomeWinProbability()
+        let awayModelProb = getAwayWinProbability()
         
-        // Moneyline odds for each team (from Firebase lines)
         guard let homeOdds = getMoneylineOdds(for: prediction.homeTeam.name),
               let awayOdds = getMoneylineOdds(for: prediction.awayTeam.name) else {
             return nil
         }
         
-        // Implied probabilities from odds (also in percent, 0–100)
         let homeImpliedProb = impliedProbability(from: homeOdds)
         let awayImpliedProb = impliedProbability(from: awayOdds)
         
-        // Edge = model % - implied %
         let homeEdge = homeModelProb - homeImpliedProb
         let awayEdge = awayModelProb - awayImpliedProb
         
-        // Choose the side with the largest positive edge
         let bestEdge = max(homeEdge, awayEdge)
         guard bestEdge > 0 else {
-            // No +EV side → no moneyline pick
             return nil
         }
         
@@ -766,7 +855,6 @@ struct PredictionDetailView: View {
         let teamUpper = team.uppercased()
         let pickUpper = pick.uppercased()
         
-        // Fuzzy match to handle naming differences
         return teamUpper == pickUpper ||
                teamUpper.contains(pickUpper) ||
                pickUpper.contains(teamUpper)
@@ -791,7 +879,6 @@ struct PredictionDetailView: View {
         return bothOver || bothUnder
     }
     
-    // Get moneyline odds for a specific team
     private func getMoneylineOdds(for teamName: String) -> Double? {
         guard let lines = currentLines else { return nil }
         
@@ -803,18 +890,16 @@ struct PredictionDetailView: View {
         }
         return nil
     }
+    
     private var hasMoneylineOdds: Bool {
         guard let lines = currentLines else { return false }
         return lines.moneyline.count >= 2
     }
     
-    // MARK: - Spread sentence formatting
     private func formattedSpreadSentence(from spreadBet: String) -> String {
-        // Example spreadBet: "Lindenwood Lions +24.2" or "Indiana Hoosiers -11.4"
         let parts = spreadBet.split(separator: " ")
         guard let last = parts.last,
               let value = Double(last) else {
-            // Fallback if we can't parse the number
             return "Our projected spread: \(spreadBet)"
         }
         
@@ -822,13 +907,74 @@ struct PredictionDetailView: View {
         let absValue = abs(value)
         
         if value > 0 {
-            // Underdog style spread
             return "Our model projects \(teamName) +\(String(format: "%.1f",absValue)) against the spread."
         } else if value < 0 {
-            // Favorite style spread
             return "Our model projects \(teamName) -\(String(format: "%.1f", absValue)) against the spread."
         } else {
             return "Our model projects a pick'em spread for \(teamName)."
+        }
+    }
+    
+    private func trackBetFromDetail(
+        betType: BetType,
+        selection: String,
+        odds: Double,
+        amount: Double
+    ) {
+        trackedBetDetails = "\(selection) at \(formatOdds(odds))"
+        isTrackingBet = true
+
+        Task {
+            await viewModel.trackSpecificBet(
+                from: prediction,
+                betType: betType,
+                selection: selection,
+                odds: odds,
+                amount: amount
+            )
+
+            await MainActor.run {
+                isTrackingBet = false
+                showTrackConfirmation = true
+            }
+        }
+    }
+}
+
+struct QuickTrackBetSheet: View {
+    let betType: BetType
+    let selection: String
+    let odds: Double
+    let sportsbook: Sportsbook
+    @Binding var betAmount: String
+
+    let onTrack: (BetType, String, Double, Double) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 16) {
+                TrackBetSectionView(
+                    selection: selection,
+                    odds: odds,
+                    selectedBetType: betType,
+                    selectedSportsbook: sportsbook,
+                    betAmount: $betAmount,
+                    onTrackBet: { type, sel, odds, amount in
+                        onTrack(type, sel, odds, amount)
+                        dismiss()
+                    }
+                )
+            }
+            .padding()
+            .navigationTitle("Track Bet")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
         }
     }
 }
