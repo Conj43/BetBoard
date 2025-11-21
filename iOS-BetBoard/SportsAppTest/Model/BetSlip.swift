@@ -19,6 +19,10 @@ struct BetSlip: Identifiable, Codable {
     let allBettingLines: AllSportsbookLines? // All sportsbook lines
     let predictionInfo: PredictionInfo?
     let neutralSite: Bool
+    let homeConference: String?
+    let awayConference: String?
+    let homeRanking: Int?
+    let awayRanking: Int?
     
     var formattedGameTime: String {
         let formatter = DateFormatter()
@@ -118,17 +122,23 @@ struct PredictionInfo: Codable {
     // Optional analysis
     let analysis: String?
     
+    // Win probabilities
+    let pWinHome: Double?
+    let pWinAway: Double?
+    
     // Custom initializer for creating without moneyline
-    init(spreadConfidence: Double, spreadBet: String?, totalConfidence: Double, totalBet: String?, analysis: String?) {
+    init(spreadConfidence: Double, spreadBet: String?, totalConfidence: Double, totalBet: String?, analysis: String?, pWinHome: Double? = nil, pWinAway: Double? = nil) {
         self.spreadConfidence = spreadConfidence
         self.spreadBet = spreadBet
         self.totalConfidence = totalConfidence
         self.totalBet = totalBet
         self.analysis = analysis
+        self.pWinHome = pWinHome
+        self.pWinAway = pWinAway
     }
     
     // For backward compatibility: create from new Firebase structure
-    static func fromFirebaseData(spreadData: [String: Any]?, totalData: [String: Any]?, analysis: String?) -> PredictionInfo? {
+    static func fromFirebaseData(spreadData: [String: Any]?, totalData: [String: Any]?, analysis: String?, pWinHome: Double? = nil, pWinAway: Double? = nil) -> PredictionInfo? {
         // Extract spread data
         let spreadConfidence: Double
         let spreadBet: String?
@@ -174,7 +184,9 @@ struct PredictionInfo: Codable {
                 spreadBet: spreadBet,
                 totalConfidence: totalConfidence,
                 totalBet: totalBet,
-                analysis: analysis
+                analysis: analysis,
+                pWinHome: pWinHome,
+                pWinAway: pWinAway
             )
         }
         
@@ -210,9 +222,10 @@ struct PredictionInfo: Codable {
         return max(spreadConfidence, totalConfidence)
     }
     
-    // CodingKeys to handle the absence of moneyline fields in serialization
+    // CodingKeys to handle serialization
     enum CodingKeys: String, CodingKey {
         case spreadConfidence, spreadBet, totalConfidence, totalBet, analysis
+        case pWinHome, pWinAway
     }
 }
 

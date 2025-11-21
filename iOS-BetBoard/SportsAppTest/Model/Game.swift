@@ -7,24 +7,21 @@
 
 import Foundation
 
-struct Game: Identifiable, Codable {
+struct Game: Identifiable {
     let id: String
-    let homeTeam: String // Will store home_team value from Firebase
-    let awayTeam: String // Will store away_team value from Firebase
+    let homeTeam: String
+    let awayTeam: String
     let date: Date
     let status: GameStatus
     let neutralSite: Bool
-    let homeConference: String? // New field for home conference
-    let awayConference: String? // New field for away conference
-    let torvikHomeRank: Int? // New field for Torvik ranking
-    let torvikAwayRank: Int? // New field for Torvik ranking
-    let tipoffTime: String? // New field for tipoff time
-    let season: String? // New field for season
-    
-    // Model fields that might not be needed:
-    // - p_win_home, p_win_away: Not needed as probabilities are removed
-    // - predicted_winner: Keeping for reference
+    let homeConference: String?
+    let awayConference: String?
+    let torvikHomeRank: Int?
+    let torvikAwayRank: Int?
+    let tipoffTime: String?
+    let season: String?
     let predictedWinner: String?
+    let predictionInfo: PredictionInfo?
     
     // Computed property for game ID with date format
     var gameIDWithDate: String {
@@ -47,21 +44,57 @@ struct Game: Identifiable, Codable {
         case .final(let home, let away): return "\(home) - \(away)"
         }
     }
+}
+
+struct GameResult {
+    let homeScore: Int
+    let awayScore: Int
+    let homeTeam: String
+    let awayTeam: String
     
-    // CodingKeys for decoding Firebase data
-    enum CodingKeys: String, CodingKey {
-        case id = "game_id"
-        case homeTeam = "home_team"
-        case awayTeam = "away_team"
-        case date
-        case status
-        case neutralSite = "neutral_site"
-        case homeConference = "home_conf"
-        case awayConference = "away_conf"
-        case torvikHomeRank = "torvik_home_rank"
-        case torvikAwayRank = "torvik_away_rank"
-        case tipoffTime = "tipoff_time"
-        case season
-        case predictedWinner = "predicted_winner"
+    var winner: String {
+        homeScore > awayScore ? "home" : "away"
+    }
+    
+    var finalScore: String {
+        "\(awayScore) - \(homeScore)"
+    }
+    
+    var totalPoints: Int {
+        homeScore + awayScore
+    }
+    
+    func didBetWin(betType: BetType, selection: String, line: Double? = nil) -> Bool? {
+        switch betType {
+        case .moneyline:
+            // Check if selected team won
+            if selection.contains(homeTeam) || selection.uppercased().contains(homeTeam.uppercased()) {
+                return homeScore > awayScore
+            } else {
+                return awayScore > homeScore
+            }
+            
+        case .spread:
+            // Parse the spread from selection (e.g., "Alabama St -7.5")
+            guard let line = line else { return nil }
+            
+            if selection.contains(homeTeam) || selection.uppercased().contains(homeTeam.uppercased()) {
+                // Home team + spread vs away score
+                return Double(homeScore) + line > Double(awayScore)
+            } else {
+                // Away team + spread vs home score
+                return Double(awayScore) + line > Double(homeScore)
+            }
+            
+        case .total:
+            guard let line = line else { return nil }
+            let total = Double(totalPoints)
+            
+            if selection.uppercased().contains("OVER") {
+                return total > line
+            } else {
+                return total < line
+            }
+        }
     }
 }

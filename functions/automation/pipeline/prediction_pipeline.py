@@ -229,7 +229,64 @@ def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
     model_spread = _as_float(game_pred.get("model_spread_home"))
     line_spread = _as_float(game_pred.get("bet_spread_home"))
 
-    if model_spread is not None and line_spread is not None:
+    def _best_spread():
+        if model_spread is None or not bookmakers:
+            return None
+        best = None
+        for book_key, payload in bookmakers.items():
+            if not isinstance(book_key, str):
+                continue
+            if not any(pref in book_key.lower() for pref in preferred_books):
+                continue
+            if not isinstance(payload, Mapping):
+                continue
+            spread_market = payload.get("spread")
+            if not isinstance(spread_market, Mapping):
+                continue
+            home_market = spread_market.get("home") or {}
+            away_market = spread_market.get("away") or {}
+            home_line_val = _as_float(home_market.get("line"))
+            if home_line_val is None:
+                away_line_val = _as_float(away_market.get("line"))
+                if away_line_val is not None:
+                    home_line_val = -away_line_val
+            if home_line_val is None:
+                continue
+            # Spread edge is the predicted ATS margin: predicted_margin + bookmaker_line
+            edge_val = model_spread + home_line_val
+            selection = home_team if edge_val >= 0 else away_team
+            odds = None
+            if selection == home_team:
+                odds = home_market.get("price")
+            else:
+                odds = away_market.get("price")
+            odds_prob = make_preds.implied_prob_from_moneyline(odds) if odds is not None else None
+            candidate = {
+                "edge": edge_val,
+                "line": home_line_val,
+                "selection": selection,
+                "book": book_key,
+                "odds": odds,
+                "odds_prob": odds_prob,
+            }
+            if best is None or abs(edge_val) > abs(best["edge"]):
+                best = candidate
+        return best
+
+    best_spread = _best_spread()
+    if best_spread:
+        picks.append({
+            "game_id": game_id,
+            "bet_type": "spread",
+            "selection": best_spread["selection"],
+            "model_projection": model_spread,
+            "book_line": best_spread["line"],
+            "bookmaker": best_spread["book"],
+            "edge_strength": abs(best_spread["edge"]),
+            "odds": best_spread["odds"],
+            "odds_to_prob": best_spread["odds_prob"],
+        })
+    elif model_spread is not None and line_spread is not None:
         # Spread edge is the predicted ATS margin: predicted_margin + bookmaker_line
         edge = model_spread + line_spread
         selection = home_team if edge >= 0 else away_team

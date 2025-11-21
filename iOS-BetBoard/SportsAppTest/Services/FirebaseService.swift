@@ -14,6 +14,11 @@ import Combine
 class FirebaseService: ObservableObject {
     private let db = Firestore.firestore()
     
+    // Add caching
+    private var cachedTeams: [Team]?
+    private var teamsCacheDate: Date?
+    private let teamsCacheExpiry: TimeInterval = 86400 // 24 hours
+    
     // Helper function to get the current date as string
     private func getCurrentDateString() -> String {
         let dateFormatter = DateFormatter()
@@ -22,20 +27,21 @@ class FirebaseService: ObservableObject {
     }
     
     // MARK: - Games
-    func fetchGames() async throws -> [Game] {
-        print("🔍 FirebaseService: Attempting to fetch games from new path...")
+    func fetchGames(for date: Date = Date()) async throws -> [Game] {
+        print("🔍 FirebaseService: Attempting to fetch games for date...")
         
-        let currentDateStr = getCurrentDateString()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let currentDateStr = dateFormatter.string(from: date)
         
-        // Use the new path structure as provided
+        print("🔍 Querying path: games/\(currentDateStr)/games")
+        
         let gamesRef = db.collection("games").document(currentDateStr).collection("games")
         let snapshot = try await gamesRef.getDocuments()
-        print("✅ FirebaseService: Successfully fetched \(snapshot.documents.count) game documents")
+        print("✅ FirebaseService: Successfully fetched \(snapshot.documents.count) game documents for \(currentDateStr)")
         
         let games = snapshot.documents.compactMap { document -> Game? in
-            print("📄 Processing game document: \(document.documentID)")
             let data = document.data()
-            print("📊 Game data keys: \(data.keys.sorted())")
             
             guard let homeTeam = data["home_team"] as? String,
                   let awayTeam = data["away_team"] as? String,
@@ -43,23 +49,16 @@ class FirebaseService: ObservableObject {
                   let neutralSite = data["neutral_site"] as? Bool,
                   let gameID = data["game_id"] as? String else {
                 print("❌ Missing required fields in game \(document.documentID)")
-                print("   home_team: \(data["home_team"] ?? "nil")")
-                print("   away_team: \(data["away_team"] ?? "nil")")
-                print("   date: \(data["date"] ?? "nil")")
-                print("   neutral_site: \(data["neutral_site"] ?? "nil")")
-                print("   game_id: \(data["game_id"] ?? "nil")")
                 return nil
             }
             
-            // Parse date string to Date object
             let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd" // Format matches "2025-11-09"
+            dateFormatter.dateFormat = "yyyy-MM-dd"
             guard let gameDate = dateFormatter.date(from: dateString) else {
                 print("❌ Failed to parse date: \(dateString)")
                 return nil
             }
             
-            // Get additional fields that might be present
             let homeConference = data["home_conf"] as? String
             let awayConference = data["away_conf"] as? String
             let torvikHomeRank = data["torvik_home_rank"] as? Int
@@ -93,6 +92,25 @@ class FirebaseService: ObservableObject {
             
             let combinedDateTime = combineDateAndTipoffTime(date: gameDate, tipoffTime: tipoffTime)
             
+            // Extract prediction info from game data
+            let spreadData = data["spread"] as? [String: Any]
+            let totalData = data["total"] as? [String: Any]
+
+            // Get p_win values from moneyline object
+            let moneylineData = data["moneyline"] as? [String: Any]
+            let pWinHome = moneylineData?["p_win_home"] as? Double
+            let pWinAway = moneylineData?["p_win_away"] as? Double
+
+
+
+            let predictionInfo = PredictionInfo.fromFirebaseData(
+                spreadData: spreadData,
+                totalData: totalData,
+                analysis: nil,
+                pWinHome: pWinHome,
+                pWinAway: pWinAway
+            )
+            
             return Game(
                 id: gameID,
                 homeTeam: homeTeam,
@@ -106,7 +124,8 @@ class FirebaseService: ObservableObject {
                 torvikAwayRank: torvikAwayRank,
                 tipoffTime: tipoffTime,
                 season: season,
-                predictedWinner: predictedWinner
+                predictedWinner: predictedWinner,
+                predictionInfo: predictionInfo
             )
         }
         
@@ -114,27 +133,29 @@ class FirebaseService: ObservableObject {
         return games
     }
     
-    // MARK: - Teams
+    // MARK: - Teams (with caching)
     func fetchTeams() async throws -> [Team] {
-        print("🔍 FirebaseService: Attempting to fetch teams...")
+        // Check cache
+        if let cached = cachedTeams,
+           let cacheDate = teamsCacheDate,
+           Date().timeIntervalSince(cacheDate) < teamsCacheExpiry {
+            print("✅ Using cached teams (\(cached.count))")
+            return cached
+        }
+        
+        print("🔍 FirebaseService: Fetching teams from Firebase...")
         
         let snapshot = try await db.collection("teams").getDocuments()
         print("✅ FirebaseService: Successfully fetched \(snapshot.documents.count) team documents")
         
         let teams = snapshot.documents.compactMap { document -> Team? in
-            print("📄 Processing team document: \(document.documentID)")
             let data = document.data()
-            print("📊 Team data keys: \(data.keys.sorted())")
             
             guard let name = data["name"] as? String,
                   let shortName = data["shortName"] as? String,
                   let logoURL = data["logoURL"] as? String,
                   let conference = data["conference"] as? String else {
                 print("❌ Missing required fields in team \(document.documentID)")
-                print("   name: \(data["name"] ?? "nil")")
-                print("   shortName: \(data["shortName"] ?? "nil")")
-                print("   logoURL: \(data["logoURL"] ?? "nil")")
-                print("   conference: \(data["conference"] ?? "nil")")
                 return nil
             }
             
@@ -142,7 +163,7 @@ class FirebaseService: ObservableObject {
             let wins = recordData?["wins"] as? Int ?? 0
             let losses = recordData?["losses"] as? Int ?? 0
             
-            let team = Team(
+            return Team(
                 id: document.documentID,
                 name: name,
                 shortName: shortName,
@@ -152,12 +173,13 @@ class FirebaseService: ObservableObject {
                 ranking: data["ranking"] as? Int,
                 colorHex: data["colorHex"] as? String
             )
-            
-            print("✅ Successfully created team: \(team.name) (\(team.shortName))")
-            return team
         }
         
-        print("🎯 FirebaseService: Final teams count: \(teams.count)")
+        // Cache the results
+        self.cachedTeams = teams
+        self.teamsCacheDate = Date()
+        
+        print("🎯 FirebaseService: Final teams count: \(teams.count) (cached)")
         return teams
     }
     
@@ -165,7 +187,6 @@ class FirebaseService: ObservableObject {
     func fetchAllBettingLines(for gameID: String) async throws -> AllSportsbookLines? {
         print("🔍 FirebaseService: Fetching all betting lines for game: \(gameID)")
         
-        // Extract date from gameID (format: "2025-11-09_missouri_virginia-military-institute")
         let gameIDComponents = gameID.components(separatedBy: "_")
         guard gameIDComponents.count >= 2 else {
             print("❌ Invalid game ID format: \(gameID)")
@@ -175,7 +196,6 @@ class FirebaseService: ObservableObject {
         let dateStr = gameIDComponents[0]
         
         do {
-            // First, check if the game document exists
             let gameDoc = try await db.collection("games")
                                      .document(dateStr)
                                      .collection("games")
@@ -187,14 +207,12 @@ class FirebaseService: ObservableObject {
                 return nil
             }
             
-            // Access the sportsbookOdds subcollection for the game
             let sportsbookCollection = db.collection("games")
                                         .document(dateStr)
                                         .collection("games")
                                         .document(gameID)
                                         .collection("sportsbookOdds")
             
-            // Get all sportsbooks
             let sportsbookSnapshot = try await sportsbookCollection.getDocuments()
             
             if sportsbookSnapshot.documents.isEmpty {
@@ -204,7 +222,6 @@ class FirebaseService: ObservableObject {
             
             print("📊 Found \(sportsbookSnapshot.documents.count) sportsbooks for game: \(gameID)")
             
-            // Initialize variables for each sportsbook
             var draftkingsLines: BettingLines?
             var betmgmLines: BettingLines?
             var fanduelLines: BettingLines?
@@ -216,83 +233,60 @@ class FirebaseService: ObservableObject {
             var bovadaLines: BettingLines?
             var lowvigLines: BettingLines?
             
-            // Get game data for team names
             let gameData = gameDoc.data() ?? [:]
             let homeTeamName = gameData["home_team"] as? String ?? "Home"
             let awayTeamName = gameData["away_team"] as? String ?? "Away"
             
-            // Process each sportsbook document
             for sportsbookDoc in sportsbookSnapshot.documents {
                 let sportsbookName = sportsbookDoc.documentID.lowercased()
                 let sportsbookData = sportsbookDoc.data()
                 
-                print("🏢 Processing sportsbook: \(sportsbookName)")
-                print("💵 Data contains moneyline? \(sportsbookData["moneyline"] != nil)")
-                
-                // Process moneyline data
                 var moneylineMap: [String: Double] = [:]
                 if let moneylineData = sportsbookData["moneyline"] as? [String: Any] {
-                    print("💰 Moneyline data: \(moneylineData)")
-                    
-                    // Process away team moneyline
                     if let awayPrice = moneylineData["away"] as? Double {
-                        // Simple Double format
                         moneylineMap[awayTeamName] = awayPrice
-                        print("✓ Added away moneyline: \(awayTeamName) = \(awayPrice)")
                     } else if let awayDict = moneylineData["away"] as? [String: Any],
                               let awayPrice = awayDict["price"] as? Double {
-                        // Nested dictionary format
                         moneylineMap[awayTeamName] = awayPrice
-                        print("✓ Added away moneyline from dict: \(awayTeamName) = \(awayPrice)")
                     }
                     
-                    // Process home team moneyline
                     if let homePrice = moneylineData["home"] as? Double {
-                        // Simple Double format
                         moneylineMap[homeTeamName] = homePrice
-                        print("✓ Added home moneyline: \(homeTeamName) = \(homePrice)")
                     } else if let homeDict = moneylineData["home"] as? [String: Any],
                               let homePrice = homeDict["price"] as? Double {
-                        // Nested dictionary format
                         moneylineMap[homeTeamName] = homePrice
-                        print("✓ Added home moneyline from dict: \(homeTeamName) = \(homePrice)")
                     }
                 }
                 
-                // Verify moneyline data
-                if !moneylineMap.isEmpty {
-                    print("✅ Successfully processed moneyline data: \(moneylineMap)")
-                } else {
-                    print("⚠️ No moneyline data found or processed")
-                }
-                
-                // Process spread data - new format
                 var spreadMap: [String: Double] = [:]
                 if let spreadData = sportsbookData["spread"] as? [String: Any] {
-                    // Process away team spread
                     if let awaySpread = spreadData["away"] as? [String: Any],
                        let line = awaySpread["line"] as? Double,
                        let price = awaySpread["price"] as? Double {
-                        // Format key as "TEAM +/-LINE"
-                        let formattedKey = "\(awayTeamName) +\(abs(line))"
+                        
+                        let formattedLine = line > 0
+                            ? "+\(String(format: "%.1f", line))"
+                            : "\(String(format: "%.1f", line))"
+                        
+                        let formattedKey = "\(awayTeamName) \(formattedLine)"
                         spreadMap[formattedKey] = price
                     }
-                    
-                    // Process home team spread
+
                     if let homeSpread = spreadData["home"] as? [String: Any],
                        let line = homeSpread["line"] as? Double,
                        let price = homeSpread["price"] as? Double {
-                        // Format key as "TEAM +/-LINE"
-                        let linePrefix = line >= 0 ? "+" : ""
-                        let formattedKey = "\(homeTeamName) \(linePrefix)\(line)"
+                        
+                        let formattedLine = line > 0
+                            ? "+\(String(format: "%.1f", line))"
+                            : "\(String(format: "%.1f", line))"
+                        
+                        let formattedKey = "\(homeTeamName) \(formattedLine)"
                         spreadMap[formattedKey] = price
                     }
                 }
                 
-                // Process total data - new format
                 var totalMap: [String: Double] = [:]
                 if let totalData = sportsbookData["total"] as? [String: Any] {
-                    // For total, we might have over and under
                     if let overTotal = totalData["over"] as? [String: Any],
                        let line = overTotal["line"] as? Double,
                        let price = overTotal["price"] as? Double {
@@ -308,7 +302,6 @@ class FirebaseService: ObservableObject {
                     }
                 }
                 
-                // Create BettingLines object with moneyline
                 let bettingLines = BettingLines.create(
                     id: "\(gameID)_\(sportsbookName)",
                     gameID: gameID,
@@ -317,7 +310,6 @@ class FirebaseService: ObservableObject {
                     total: totalMap
                 )
                 
-                // Assign to appropriate sportsbook variable
                 switch sportsbookName {
                 case "draftkings":
                     draftkingsLines = bettingLines
@@ -340,12 +332,10 @@ class FirebaseService: ObservableObject {
                 case "lowvig":
                     lowvigLines = bettingLines
                 default:
-                    print("⚠️ Unknown sportsbook: \(sportsbookName)")
                     break
                 }
             }
             
-            // Create and return AllSportsbookLines object
             return AllSportsbookLines(
                 draftkings: draftkingsLines,
                 betmgm: betmgmLines,
@@ -365,76 +355,12 @@ class FirebaseService: ObservableObject {
         }
     }
     
-    // MARK: - Fetch Prediction Info
-    func fetchPredictionInfo(for gameID: String) async throws -> PredictionInfo? {
-        print("🔍 FirebaseService: Fetching prediction info for game: \(gameID)")
-        
-        // Extract date from gameID
-        let gameIDComponents = gameID.components(separatedBy: "_")
-        guard gameIDComponents.count >= 2 else {
-            print("❌ Invalid game ID format: \(gameID)")
-            return nil
-        }
-        
-        let dateStr = gameIDComponents[0]
+    // MARK: - Fetch Bet Slips (Optimized with Parallel Queries)
+    func fetchBetSlips(for date: Date = Date()) async throws -> [BetSlip] {
+        print("🔍 FirebaseService: Starting to fetch bet slips for date: \(date)...")
         
         do {
-            // Get the game document
-            let gameDoc = try await db.collection("games")
-                                     .document(dateStr)
-                                     .collection("games")
-                                     .document(gameID)
-                                     .getDocument()
-            
-            guard gameDoc.exists else {
-                print("❌ Game document not found: \(gameID)")
-                return nil
-            }
-            
-            // Extract prediction data directly from the game document
-            let data = gameDoc.data() ?? [:]
-            
-            // Extract spread data
-            let spreadData = data["spread"] as? [String: Any]
-            
-            // Extract total data
-            let totalData = data["total"] as? [String: Any]
-            
-            // No prediction data available
-            if spreadData == nil && totalData == nil {
-                print("⚠️ No prediction data available for game: \(gameID)")
-                return nil
-            }
-            
-            // Create prediction info from the new data structure
-            let predictionInfo = PredictionInfo.fromFirebaseData(
-                spreadData: spreadData,
-                totalData: totalData,
-                analysis: nil // No analysis field in the current data structure
-            )
-            
-            if predictionInfo != nil {
-                print("✅ Successfully created prediction info")
-                print("📊 Spread: \(predictionInfo?.spreadBet ?? "none") (\(predictionInfo?.spreadConfidence ?? 0)%)")
-                print("📈 Total: \(predictionInfo?.totalBet ?? "none") (\(predictionInfo?.totalConfidence ?? 0)%)")
-            } else {
-                print("⚠️ Failed to create prediction info from data")
-            }
-            
-            return predictionInfo
-            
-        } catch {
-            print("❌ Error fetching prediction for \(gameID): \(error)")
-            throw error
-        }
-    }
-    
-    // MARK: - Fetch Bet Slips
-    func fetchBetSlips() async throws -> [BetSlip] {
-        print("🔍 FirebaseService: Starting to fetch bet slips...")
-        
-        do {
-            let games = try await fetchGames()
+            let games = try await fetchGames(for: date)
             let teams = try await fetchTeams()
             
             print("📊 Fetched \(games.count) games and \(teams.count) teams")
@@ -442,117 +368,107 @@ class FirebaseService: ObservableObject {
             // Create team lookup dictionary
             var teamLookup: [String: Team] = [:]
             for team in teams {
-                teamLookup[team.shortName] = team
-                teamLookup[team.name] = team  // Also add by full name for matching
-                teamLookup[team.id] = team    // Also add by ID in case it's used
-                print("🔗 Added team to lookup: \(team.shortName) -> \(team.name)")
+                teamLookup[team.shortName.uppercased()] = team
+                teamLookup[team.name.uppercased()] = team
+                teamLookup[team.id.uppercased()] = team
             }
+            
+            print("🔗 Team lookup created with \(teamLookup.count) entries")
+            
+            // Fetch all betting lines in parallel
+            print("⚡️ Fetching betting lines in parallel...")
+            let bettingLinesResults = await withTaskGroup(of: (String, AllSportsbookLines?).self) { group in
+                for game in games {
+                    group.addTask {
+                        let lines = try? await self.fetchAllBettingLines(for: game.id)
+                        return (game.id, lines)
+                    }
+                }
+                
+                var results: [String: AllSportsbookLines] = [:]
+                for await (gameID, lines) in group {
+                    if let lines = lines {
+                        results[gameID] = lines
+                    }
+                }
+                return results
+            }
+            
+            print("✅ Fetched betting lines for \(bettingLinesResults.count) games")
             
             var betSlips: [BetSlip] = []
             
             print("🎮 Processing \(games.count) games...")
             for game in games {
-                print("🎮 Processing game: \(game.homeTeam) vs \(game.awayTeam) (ID: \(game.id))")
-                
-                // Try to find teams by exact match first, then try partial match
-                var homeTeamObj = teamLookup[game.homeTeam]
-                var awayTeamObj = teamLookup[game.awayTeam]
-
-                // If direct lookup failed, try normalized formats (uppercase/lowercase)
-                if homeTeamObj == nil {
-                    // Try uppercase
-                    homeTeamObj = teamLookup[game.homeTeam.uppercased()]
-                    
-                    // Try lowercase if still nil
-                    if homeTeamObj == nil {
-                        homeTeamObj = teamLookup[game.homeTeam.lowercased()]
-                    }
-                }
-
-                if awayTeamObj == nil {
-                    // Try uppercase
-                    awayTeamObj = teamLookup[game.awayTeam.uppercased()]
-                    
-                    // Try lowercase if still nil
-                    if awayTeamObj == nil {
-                        awayTeamObj = teamLookup[game.awayTeam.lowercased()]
-                    }
-                }
-
-                // No partial matching at all - if we can't find it, skip or use a placeholder
-                if homeTeamObj == nil || awayTeamObj == nil {
-                    print("⚠️ Could not find exact match for teams in game: \(game.homeTeam) vs \(game.awayTeam)")
-                    // Skip this game or handle the missing team case as needed
-                    continue
+                // Find teams
+                let homeTeam: Team
+                if let found = findTeam(game.homeTeam, in: teamLookup) {
+                    homeTeam = found
+                } else {
+                    print("⚠️ Creating placeholder for home team: \(game.homeTeam)")
+                    homeTeam = Team(
+                        id: game.homeTeam.replacingOccurrences(of: " ", with: "_"),
+                        name: game.homeTeam,
+                        shortName: game.homeTeam,
+                        logoURL: "https://via.placeholder.com/150",
+                        record: TeamRecord(wins: 0, losses: 0),
+                        conference: game.homeConference ?? "Unknown",
+                        ranking: game.torvikHomeRank,
+                        colorHex: nil
+                    )
                 }
                 
-                guard let homeTeam = homeTeamObj, let awayTeam = awayTeamObj else {
-                    print("❌ Could not find teams for game: \(game.homeTeam) vs \(game.awayTeam)")
-                    print("   Available teams: \(teamLookup.keys.sorted().prefix(10))")
-                    continue
+                let awayTeam: Team
+                if let found = findTeam(game.awayTeam, in: teamLookup) {
+                    awayTeam = found
+                } else {
+                    print("⚠️ Creating placeholder for away team: \(game.awayTeam)")
+                    awayTeam = Team(
+                        id: game.awayTeam.replacingOccurrences(of: " ", with: "_"),
+                        name: game.awayTeam,
+                        shortName: game.awayTeam,
+                        logoURL: "https://via.placeholder.com/150",
+                        record: TeamRecord(wins: 0, losses: 0),
+                        conference: game.awayConference ?? "Unknown",
+                        ranking: game.torvikAwayRank,
+                        colorHex: nil
+                    )
                 }
                 
-                print("✅ Found teams: \(homeTeam.name) vs \(awayTeam.name)")
-                
-                // Fetch all betting lines for this game
-                if let allBettingLines = try await fetchAllBettingLines(for: game.id) {
-                    print("💰 Found betting lines for \(game.id)")
-                    
-                    // Try to fetch prediction info
-                    let predictionInfo = try await fetchPredictionInfo(for: game.id)
-                    if predictionInfo != nil {
-                        print("🧠 Found prediction info for \(game.id)")
-                    } else {
-                        print("⚠️ No prediction info for \(game.id)")
-                    }
-                    
-                    // Use DraftKings as default fallback
+                // Get betting lines from parallel results
+                if let allBettingLines = bettingLinesResults[game.id] {
                     let defaultBettingLines = allBettingLines.draftkings ??
                                             allBettingLines.fanduel ??
                                             allBettingLines.betmgm ??
-                    allBettingLines.betonlineag ??
-                    allBettingLines.betrivers ??
-                    allBettingLines.bovada ??
-                    allBettingLines.lowvig ??
+                                            allBettingLines.betonlineag ??
+                                            allBettingLines.betrivers ??
+                                            allBettingLines.bovada ??
+                                            allBettingLines.lowvig ??
                     BettingLines.create(id: game.id, gameID: game.id, moneyline: [:], spread: [:], total: [:])
                     
                     let betSlip = BetSlip(
                         id: game.id,
                         gameID: game.id,
-                        sportsbook: .draftkings, // Default sportsbook
+                        sportsbook: .draftkings,
                         homeTeam: homeTeam,
                         awayTeam: awayTeam,
                         gameTime: game.date,
                         tipoffTimeString: game.tipoffTime,
                         bettingLines: defaultBettingLines,
                         allBettingLines: allBettingLines,
-                        predictionInfo: predictionInfo,
+                        predictionInfo: game.predictionInfo, // Use from game data!
                         neutralSite: game.neutralSite,
+                        homeConference: game.homeConference,
+                        awayConference: game.awayConference,
+                        homeRanking: game.torvikHomeRank,
+                        awayRanking: game.torvikAwayRank
                     )
                     
                     betSlips.append(betSlip)
-                    print("✅ Created bet slip for: \(game.homeTeam) vs \(game.awayTeam)")
-                } else {
-                    print("⚠️ No betting lines found for game: \(game.id)")
                 }
             }
             
             print("🎯 FirebaseService: Final bet slips count: \(betSlips.count)")
-            
-            // Log first few bet slips for debugging
-            for (index, betSlip) in betSlips.prefix(3).enumerated() {
-                print("📋 Bet Slip \(index + 1):")
-                print("   ID: \(betSlip.id)")
-                print("   Teams: \(betSlip.homeTeam.shortName) vs \(betSlip.awayTeam.shortName)")
-                print("   Game Time: \(betSlip.formattedGameTime)")
-                print("   Has Prediction: \(betSlip.predictionInfo != nil)")
-                if let predictionInfo = betSlip.predictionInfo {
-                    print("   Spread: \(predictionInfo.spreadBet ?? "none") (\(predictionInfo.spreadConfidence)%)")
-                    print("   Total: \(predictionInfo.totalBet ?? "none") (\(predictionInfo.totalConfidence)%)")
-                }
-                print("   Available Sportsbooks: \(availableSportsbooks(for: betSlip.allBettingLines))")
-            }
-            
             return betSlips
             
         } catch {
@@ -561,48 +477,40 @@ class FirebaseService: ObservableObject {
         }
     }
     
+    // MARK: - Helper: Find Team
+    private func findTeam(_ teamName: String, in lookup: [String: Team]) -> Team? {
+        if let team = lookup[teamName.uppercased()] {
+            return team
+        }
+        return nil
+    }
+    
     // Helper function to combine date and tipoff time into a complete date-time object
     func combineDateAndTipoffTime(date: Date, tipoffTime: String?) -> Date {
-        // If no tipoff time is provided, return the original date
         guard let tipoffTimeString = tipoffTime else {
             return date
         }
         
-        // Create a calendar for date manipulation
         let calendar = Calendar.current
-        
-        // Extract components from the original date
         let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
-        
-        // Parse the tipoff time string (e.g., "6:00 PM CT")
-        // First, try to extract just the time part (remove timezone)
         let timeComponents = tipoffTimeString.components(separatedBy: " ")
         guard timeComponents.count >= 2 else {
-            // If the format is not as expected, return the original date
             return date
         }
         
-        // Combine the time and AM/PM
         let timeString = "\(timeComponents[0]) \(timeComponents[1])"
-        
-        // Parse the time
         let timeFormatter = DateFormatter()
         timeFormatter.dateFormat = "h:mm a"
         
         guard let parsedTime = timeFormatter.date(from: timeString) else {
-            // If time parsing fails, return the original date
             return date
         }
         
-        // Extract hour and minute from the parsed time
         let timeComponents2 = calendar.dateComponents([.hour, .minute], from: parsedTime)
-        
-        // Create updated date components with both date and time
         var updatedComponents = dateComponents
         updatedComponents.hour = timeComponents2.hour
         updatedComponents.minute = timeComponents2.minute
         
-        // Create the final date
         return calendar.date(from: updatedComponents) ?? date
     }
     
@@ -616,8 +524,6 @@ class FirebaseService: ObservableObject {
             
             let bets = snapshot.documents.compactMap { document -> Bet? in
                 let data = document.data()
-                print("📄 Processing bet document: \(document.documentID)")
-                print("📊 Bet data keys: \(data.keys.sorted())")
                 
                 guard let gameID = data["gameID"] as? String,
                       let typeString = data["type"] as? String,
@@ -628,18 +534,10 @@ class FirebaseService: ObservableObject {
                       let resultString = data["result"] as? String,
                       let result = BetResult(rawValue: resultString),
                       let placedAtTimestamp = data["placedAt"] as? Timestamp else {
-                    print("❌ Invalid bet data in document: \(document.documentID)")
-                    print("   gameID: \(data["gameID"] ?? "nil")")
-                    print("   type: \(data["type"] ?? "nil")")
-                    print("   selection: \(data["selection"] ?? "nil")")
-                    print("   odds: \(data["odds"] ?? "nil")")
-                    print("   amount: \(data["amount"] ?? "nil")")
-                    print("   result: \(data["result"] ?? "nil")")
-                    print("   placedAt: \(data["placedAt"] ?? "nil")")
                     return nil
                 }
                 
-                let bet = Bet(
+                return Bet(
                     id: document.documentID,
                     userID: userID,
                     gameID: gameID,
@@ -650,9 +548,6 @@ class FirebaseService: ObservableObject {
                     result: result,
                     placedAt: placedAtTimestamp.dateValue()
                 )
-                
-                print("✅ Created bet: \(bet.selection) - $\(bet.amount) - \(bet.result.rawValue)")
-                return bet
             }
             
             print("✅ Successfully fetched \(bets.count) user bets")
@@ -660,7 +555,6 @@ class FirebaseService: ObservableObject {
             
         } catch {
             print("❌ Error fetching user bets: \(error)")
-            // Return empty array instead of throwing for testing
             return []
         }
     }
@@ -728,8 +622,6 @@ class FirebaseService: ObservableObject {
                 return nil
             }
             
-            print("📊 User settings data keys: \(data.keys.sorted())")
-            
             let notificationsEnabled = data["notificationsEnabled"] as? Bool ?? true
             let darkModeEnabled = data["darkModeEnabled"] as? Bool ?? false
             let oddsFormatString = data["preferredOddsFormat"] as? String ?? "american"
@@ -769,6 +661,7 @@ class FirebaseService: ObservableObject {
             throw error
         }
     }
+    
     // Helper function to list available sportsbooks
     private func availableSportsbooks(for allLines: AllSportsbookLines?) -> [String] {
         guard let allLines = allLines else { return [] }

@@ -374,7 +374,7 @@ TEAM_MAPPING = {
     "Marist Red Foxes": "marist",
     "Massachusetts Minutemen": "massachusetts",
     "Mercer Bears": "mercer",
-    "Miami (OH) Redhawks": "miami-oh",
+    "Miami (OH) RedHawks": "miami-oh",
     "New Hampshire Wildcats": "new-hampshire",
     "New Mexico St Aggies": "new-mexico-state",
     "Northern Colorado Bears": "northern-colorado",
