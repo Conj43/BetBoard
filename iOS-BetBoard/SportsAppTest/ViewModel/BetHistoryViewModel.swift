@@ -28,7 +28,6 @@ class BetHistoryViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     private let firebaseService = FirebaseService()
-    private var gameCache: [String: Game] = [:]
     
     // Computed properties for formatting
     var winRateFormatted: String {
@@ -57,14 +56,6 @@ class BetHistoryViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            // Load games first to build cache
-            let games = try await firebaseService.fetchGames()
-            await MainActor.run {
-                for game in games {
-                    self.gameCache[game.id] = game
-                }
-            }
-            
             // Load user bets
             let userBets = try await firebaseService.fetchUserBets(for: currentUser.uid)
             
@@ -147,22 +138,12 @@ class BetHistoryViewModel: ObservableObject {
     }
     
     private func createBetWithGameInfo(from bet: Bet) -> BetWithGameInfo? {
-        guard let game = gameCache[bet.gameID] else {
-            print("⚠️ Could not find game info for bet: \(bet.id)")
-            // Return a fallback with game ID
-            return BetWithGameInfo(
-                bet: bet,
-                homeTeam: "Unknown",
-                awayTeam: "Unknown",
-                gameDate: bet.placedAt
-            )
-        }
-        
+        // Use team names directly from the bet object
         return BetWithGameInfo(
             bet: bet,
-            homeTeam: game.homeTeam,
-            awayTeam: game.awayTeam,
-            gameDate: game.date
+            homeTeam: bet.homeTeamName ?? "Unknown Team",
+            awayTeam: bet.awayTeamName ?? "Unknown Team",
+            gameDate: bet.placedAt
         )
     }
     
@@ -235,17 +216,15 @@ class BetHistoryViewModel: ObservableObject {
             try await firebaseService.addUserBet(bet)
             
             await MainActor.run {
-                // Build BetWithGameInfo so it appears properly in UI immediately
-                if let game = self.gameCache[betSlip.gameID] {
-                    let info = BetWithGameInfo(
-                        bet: bet,
-                        homeTeam: game.homeTeam,
-                        awayTeam: game.awayTeam,
-                        gameDate: game.date
-                    )
-                    allBets.insert(info, at: 0)
-                    filteredBets.insert(info, at: 0)
-                }
+                // Build BetWithGameInfo using team names from the bet
+                let info = BetWithGameInfo(
+                    bet: bet,
+                    homeTeam: bet.homeTeamName ?? "Unkown Team",
+                    awayTeam: bet.awayTeamName ?? "Unknown Team",
+                    gameDate: bet.placedAt
+                )
+                allBets.insert(info, at: 0)
+                filteredBets.insert(info, at: 0)
                 
                 totalBets = allBets.count
             }
@@ -256,7 +235,4 @@ class BetHistoryViewModel: ObservableObject {
             }
         }
     }
-    
-    
-    
 }

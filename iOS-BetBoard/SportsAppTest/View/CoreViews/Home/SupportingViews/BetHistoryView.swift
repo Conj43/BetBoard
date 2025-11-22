@@ -12,7 +12,6 @@ struct BetHistoryView: View {
     @StateObject private var viewModel = BetHistoryViewModel()
     @EnvironmentObject var authService: AuthService
     @State private var selectedBet: BetWithGameInfo?
-    @State private var showingBetSlip = false
     @State private var selectedFilter: BetResultFilter = .all
     @State private var selectedSort: SortOption = .dateNewest
     
@@ -58,11 +57,10 @@ struct BetHistoryView: View {
         }
         .navigationTitle("Bet History")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showingBetSlip) {
-            if let selectedBet = selectedBet {
-                TrackedBetSlipView(bet: selectedBet.bet) {
-                    deleteBet(selectedBet)
-                }
+        // ✅ item-based sheet so it never shows blank on first open
+        .sheet(item: $selectedBet) { betWithGameInfo in
+            TrackedBetSlipView(bet: betWithGameInfo.bet) {
+                deleteBet(betWithGameInfo)
             }
         }
         .task {
@@ -71,10 +69,10 @@ struct BetHistoryView: View {
         .refreshable {
             await viewModel.loadBetHistory()
         }
-        .onChange(of: selectedFilter) { oldValue, newValue in
+        .onChange(of: selectedFilter) { _, newValue in
             viewModel.applyFilters(filter: newValue, sort: selectedSort)
         }
-        .onChange(of: selectedSort) { oldValue, newValue in
+        .onChange(of: selectedSort) { _, newValue in
             viewModel.applyFilters(filter: selectedFilter, sort: newValue)
         }
     }
@@ -175,14 +173,22 @@ struct BetHistoryView: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.filteredBets) { bet in
                     DetailedBetHistoryRowView(bet: bet) {
-                        selectedBet = bet
-                        showingBetSlip = true
+                        selectedBet = bet   // 👈 just set the item
                     }
                 }
             }
             .padding(.horizontal)
         }
     }
+    
+    // MARK: - Delete Bet Function
+    private func deleteBet(_ betWithGameInfo: BetWithGameInfo) {
+        Task {
+            await viewModel.deleteBet(betWithGameInfo)
+        }
+    }
+    
+    
     
     // MARK: - Empty State View
     private var emptyStateView: some View {
@@ -203,11 +209,5 @@ struct BetHistoryView: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
-    // MARK: - Delete Bet Function
-    private func deleteBet(_ betWithGameInfo: BetWithGameInfo) {
-        Task {
-            await viewModel.deleteBet(betWithGameInfo)
-        }
-    }
 }
+

@@ -17,20 +17,23 @@ struct PendingBet: Identifiable {
 
 struct PredictionDetailView: View {
     let prediction: PredictionGame
-        @ObservedObject var viewModel: PredictionsViewModel
-        
-        @State private var selectedSportsbook: Sportsbook
-        @State private var selectedBetType: BetType = .spread
-        @State private var showingSportsbookPicker = false
-        @State private var betAmount: String = ""
-        @State private var isTrackingBet = false
-        @State private var showTrackConfirmation = false
-        @State private var trackedBetDetails: String = ""
-
-        // single source of truth for tracking
-        @State private var pendingBet: PendingBet?
-
-
+    @ObservedObject var viewModel: PredictionsViewModel
+    
+    @State private var selectedSportsbook: Sportsbook
+    @State private var selectedBetType: BetType = .spread
+    @State private var showingSportsbookPicker = false
+    @State private var betAmount: String = ""
+    @State private var isTrackingBet = false
+    @State private var showTrackConfirmation = false
+    @State private var trackedBetDetails: String = ""
+    
+    // single source of truth for tracking
+    @State private var pendingBet: PendingBet?
+    
+    // Get game result if available
+    private var gameResult: GameResult? {
+        viewModel.gameResults[prediction.betSlip.gameID]
+    }
     
     init(prediction: PredictionGame, viewModel: PredictionsViewModel) {
         self.prediction = prediction
@@ -69,8 +72,6 @@ struct PredictionDetailView: View {
             VStack(spacing: 8) {
                 teamMatchupCard
                 
-                
-                
                 sportsbookSelector
                 betTypeTabs
                 linesDisplay
@@ -100,7 +101,7 @@ struct PredictionDetailView: View {
                 )
             }
             .presentationDetents([.fraction(0.35), .medium])
-                .presentationDragIndicator(.visible)
+            .presentationDragIndicator(.visible)
         }
         .alert("Bet Tracked!", isPresented: $showTrackConfirmation) {
             Button("OK", role: .cancel) { }
@@ -113,9 +114,25 @@ struct PredictionDetailView: View {
     // MARK: - Team Matchup Card
     private var teamMatchupCard: some View {
         VStack(spacing: 16) {
-            Text(formattedGameTime)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+            HStack {
+                Text(formattedGameTime)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                // Show final score badge if game is complete
+                if let result = gameResult {
+                    Text("Final: \(result.finalScore)")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue)
+                        .cornerRadius(8)
+                }
+            }
             
             HStack(spacing: 20) {
                 VStack(spacing: 8) {
@@ -138,7 +155,13 @@ struct PredictionDetailView: View {
                         }
                     }
                     
-                    if prediction.betSlip.predictionInfo != nil {
+                    // Show actual score if game is complete
+                    if let result = gameResult {
+                        Text("\(result.awayScore)")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(result.winner == "away" ? .green : .primary)
+                    } else if prediction.betSlip.predictionInfo != nil {
                         VStack(spacing: 2) {
                             Text("Win Probability")
                                 .font(.caption2)
@@ -155,7 +178,7 @@ struct PredictionDetailView: View {
                     }
                 }
                 
-                Text("VS")
+                Text(gameResult != nil ? "@" : "VS")
                     .font(.title3)
                     .fontWeight(.bold)
                     .foregroundColor(.secondary)
@@ -180,7 +203,13 @@ struct PredictionDetailView: View {
                         }
                     }
                     
-                    if prediction.betSlip.predictionInfo != nil {
+                    // Show actual score if game is complete
+                    if let result = gameResult {
+                        Text("\(result.homeScore)")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(result.winner == "home" ? .green : .primary)
+                    } else if prediction.betSlip.predictionInfo != nil {
                         VStack(spacing: 2) {
                             Text("Win Probability")
                                 .font(.caption2)
@@ -302,7 +331,7 @@ struct PredictionDetailView: View {
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
         )
     }
-
+    
     private func betTypeButton(for betType: BetType) -> some View {
         Button(action: {
             selectedBetType = betType
@@ -346,116 +375,131 @@ struct PredictionDetailView: View {
     }
     
     private func moneylineView(lines: BettingLines) -> some View {
-            HStack(spacing: 12) {
-                ForEach(Array(lines.moneyline.keys.sorted()), id: \.self) { team in
-                    if let odds = lines.moneyline[team] {
-                        Button {
+        HStack(spacing: 12) {
+            ForEach(Array(lines.moneyline.keys.sorted()), id: \.self) { team in
+                if let odds = lines.moneyline[team] {
+                    Button {
+                        // Only allow tracking if game hasn't started
+                        if gameResult == nil {
                             pendingBet = PendingBet(
                                 betType: .moneyline,
                                 selection: team,
                                 odds: odds
                             )
                             betAmount = ""
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(team)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .lineLimit(1)
-
-                                Text(formatOdds(odds))
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.orange)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(8)
                         }
-                        .buttonStyle(.plain)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(team)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .lineLimit(1)
+                            
+                            Text(formatOdds(odds))
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(gameResult != nil)
+                    .opacity(gameResult != nil ? 0.6 : 1.0)
                 }
             }
         }
-        
-        private func spreadView(lines: BettingLines) -> some View {
-            HStack(spacing: 12) {
-                let spreadEntries = Array(lines.spread.keys.sorted())
-
-                ForEach(spreadEntries, id: \.self) { key in
-                    if let odds = lines.spread[key] {
-                        Button {
+    }
+    
+    private func spreadView(lines: BettingLines) -> some View {
+        HStack(spacing: 12) {
+            let spreadEntries = Array(lines.spread.keys.sorted())
+            
+            ForEach(spreadEntries, id: \.self) { key in
+                if let odds = lines.spread[key] {
+                    Button {
+                        // Only allow tracking if game hasn't started
+                        if gameResult == nil {
                             pendingBet = PendingBet(
                                 betType: .spread,
                                 selection: key,
                                 odds: odds
                             )
                             betAmount = ""
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(extractTeamName(from: key))
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .lineLimit(2)
-
-                                HStack(spacing: 4) {
-                                    Text(extractSpreadValue(from: key))
-                                        .font(.title2)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.blue)
-
-                                    Text(formatOdds(odds))
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.orange)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(8)
                         }
-                        .buttonStyle(.plain)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(extractTeamName(from: key))
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .lineLimit(2)
+                            
+                            HStack(spacing: 4) {
+                                Text(extractSpreadValue(from: key))
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.blue)
+                                
+                                Text(formatOdds(odds))
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(gameResult != nil)
+                    .opacity(gameResult != nil ? 0.6 : 1.0)
                 }
             }
         }
-        
-        private func totalView(lines: BettingLines) -> some View {
-            HStack(spacing: 12) {
-                let totalEntries = Array(lines.total.keys.sorted())
-
-                ForEach(totalEntries, id: \.self) { selection in
-                    if let odds = lines.total[selection] {
-                        Button {
+    }
+    
+    private func totalView(lines: BettingLines) -> some View {
+        HStack(spacing: 12) {
+            let totalEntries = Array(lines.total.keys.sorted())
+            
+            ForEach(totalEntries, id: \.self) { selection in
+                if let odds = lines.total[selection] {
+                    Button {
+                        // Only allow tracking if game hasn't started
+                        if gameResult == nil {
                             pendingBet = PendingBet(
                                 betType: .total,
                                 selection: selection,
                                 odds: odds
                             )
                             betAmount = ""
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(selection)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-
-                                Text(formatOdds(odds))
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.orange)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(8)
                         }
-                        .buttonStyle(.plain)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(selection)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            
+                            Text(formatOdds(odds))
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(gameResult != nil)
+                    .opacity(gameResult != nil ? 0.6 : 1.0)
                 }
             }
         }
+    }
     
     // MARK: - Our Predictions Card
     private var ourPredictionsCard: some View {
@@ -466,6 +510,12 @@ struct PredictionDetailView: View {
                 Text("Our Predictions")
                     .font(.headline)
                     .fontWeight(.semibold)
+                
+                // Show overall model performance if game is complete
+                if let result = gameResult, let predInfo = prediction.betSlip.predictionInfo {
+                    Spacer()
+                    modelPerformanceBadge(result: result, predInfo: predInfo)
+                }
             }
             
             if let predInfo = prediction.betSlip.predictionInfo, let lines = currentLines {
@@ -479,8 +529,15 @@ struct PredictionDetailView: View {
                             .font(.subheadline)
                             .fontWeight(.semibold)
                             .foregroundColor(.secondary)
+                        if let result = gameResult {
+                            Spacer()
+                            Text("Actual Winner: \(result.winner == "home" ? prediction.homeTeam.shortName : prediction.awayTeam.shortName)")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                        }
                     }
-
+                    
                     if !hasMoneylineOdds {
                         Text("No moneyline odds available for this game.")
                             .font(.caption)
@@ -497,16 +554,31 @@ struct PredictionDetailView: View {
                         VStack(spacing: 6) {
                             ForEach(Array(lines.moneyline.keys.sorted()), id: \.self) { team in
                                 if let odds = lines.moneyline[team] {
-                                    moneylineRowView(team: team, odds: odds, isOurPick: isMoneylinePick(team: team))
+                                    let isPick = isMoneylinePick(team: team)
+                                    moneylineRowView(team: team, odds: odds, isOurPick: isPick)
                                 }
                             }
                         }
-
+                        
                         if let pickTeam = getMoneylinePickTeam() {
-                            Text("Our Pick: \(pickTeam)")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.green)
+                            HStack {
+                                Text("Our Pick: \(pickTeam)")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.green)
+                                
+                                if let result = gameResult {
+                                    let won = checkMoneylineWin(team: pickTeam, result: result)
+                                    HStack(spacing: 2) {
+                                        Image(systemName: won ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                            .font(.caption2)
+                                        Text(won ? "CORRECT" : "INCORRECT")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                    }
+                                    .foregroundColor(won ? .green : .red)
+                                }
+                            }
                         } else {
                             Text("No moneyline pick: both sides have negative edge vs the odds.")
                                 .font(.caption)
@@ -534,20 +606,24 @@ struct PredictionDetailView: View {
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.secondary)
-                        }
-                        
-                        Text("Current Lines:")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        
-                        VStack(spacing: 6) {
-                            ForEach(Array(lines.spread.keys.sorted()), id: \.self) { selection in
-                                if let odds = lines.spread[selection] {
-                                    spreadRowView(
-                                        selection: selection,
-                                        odds: odds,
-                                        isOurPick: isSpreadPick(selection: selection, ourPick: spreadBet)
-                                    )
+                            
+                            // Add prediction result badge if game is complete
+                            if let result = gameResult {
+                                Spacer()
+                                let line = extractSpreadLineValue(from: spreadBet)
+                                if let won = result.didBetWin(betType: .spread, selection: spreadBet, line: line) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: won ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                            .font(.caption)
+                                        Text(won ? "Predicted Correctly" : "Predicted Wrong")
+                                            .font(.caption)
+                                            .fontWeight(.bold)
+                                    }
+                                    .foregroundColor(won ? .green : .red)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(won ? Color.green.opacity(0.2) : Color.red.opacity(0.2))
+                                    .cornerRadius(6)
                                 }
                             }
                         }
@@ -557,8 +633,36 @@ struct PredictionDetailView: View {
                                 .font(.caption)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.blue)
+                            
+                            // Show actual result details
+                            if let result = gameResult {
+                                let margin = abs(result.homeScore - result.awayScore)
+                                let winner = result.winner == "home" ? prediction.homeTeam.shortName : prediction.awayTeam.shortName
+                                Text("Actual Result: \(winner) won by \(margin) pts")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         .padding(.top, 4)
+                        
+                        Text("Sportsbook Lines:")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
+                        
+                        VStack(spacing: 6) {
+                            ForEach(Array(lines.spread.keys.sorted()), id: \.self) { selection in
+                                if let odds = lines.spread[selection] {
+                                    let isPick = isSpreadPick(selection: selection, ourPick: spreadBet)
+                                    spreadRowView(
+                                        selection: selection,
+                                        odds: odds,
+                                        isOurPick: isPick
+                                    )
+                                }
+                            }
+                        }
                     }
                     .padding()
                     .background(cardBackground)
@@ -581,35 +685,62 @@ struct PredictionDetailView: View {
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.secondary)
-                        }
-                        
-                        Text("Current Lines:")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        
-                        VStack(spacing: 6) {
-                            ForEach(Array(lines.total.keys.sorted()), id: \.self) { selection in
-                                if let odds = lines.total[selection] {
-                                    totalRowView(
-                                        selection: selection,
-                                        odds: odds,
-                                        isOurPick: isTotalPick(selection: selection, ourPick: totalBet)
-                                    )
+                            
+                            // Add prediction result badge if game is complete
+                            if let result = gameResult {
+                                Spacer()
+                                let line = extractTotalLineValue(from: totalBet)
+                                if let won = result.didBetWin(betType: .total, selection: totalBet, line: line) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: won ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                            .font(.caption)
+                                        Text(won ? "Predicted Correctly" : "Predicted Wrong")
+                                            .font(.caption)
+                                            .fontWeight(.bold)
+                                    }
+                                    .foregroundColor(won ? .green : .red)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(won ? Color.green.opacity(0.2) : Color.red.opacity(0.2))
+                                    .cornerRadius(6)
                                 }
                             }
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Our Predicted Total:")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                            
-                            Text(totalBet)
-                                .font(.subheadline)
-                                .fontWeight(.bold)
+                            Text("Our Pick: \(totalBet)")
+                                .font(.caption)
+                                .fontWeight(.semibold)
                                 .foregroundColor(.orange)
+                            
+                            // Show actual result details
+                            if let result = gameResult {
+                                let actualTotal = result.homeScore + result.awayScore
+                                Text("Actual Total: \(actualTotal) points")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         .padding(.top, 4)
+                        
+                        Text("Sportsbook Lines:")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
+                        
+                        VStack(spacing: 6) {
+                            ForEach(Array(lines.total.keys.sorted()), id: \.self) { selection in
+                                if let odds = lines.total[selection] {
+                                    let isPick = isTotalPick(selection: selection, ourPick: totalBet)
+                                    totalRowView(
+                                        selection: selection,
+                                        odds: odds,
+                                        isOurPick: isPick
+                                    )
+                                }
+                            }
+                        }
                     }
                     .padding()
                     .background(cardBackground)
@@ -629,6 +760,37 @@ struct PredictionDetailView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
         )
+    }
+    
+    // MARK: - Model Performance Badge
+    private func modelPerformanceBadge(result: GameResult, predInfo: PredictionInfo) -> some View {
+        // Use moneyline pick instead of win probability for the badge
+        let pickTeam = getMoneylinePickTeam()
+        
+        // If no moneyline pick (no edge), fall back to win probability
+        let correct: Bool
+        if let pick = pickTeam {
+            correct = checkMoneylineWin(team: pick, result: result)
+        } else {
+            // No moneyline pick, use win probability as fallback
+            let homeWinProb = getHomeWinProbability()
+            let awayWinProb = getAwayWinProbability()
+            let predictedWinner = homeWinProb > awayWinProb ? "home" : "away"
+            correct = predictedWinner == result.winner
+        }
+        
+        return HStack(spacing: 4) {
+            Image(systemName: correct ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.caption)
+            Text(correct ? "Predicted Winner" : "Wrong Winner")
+                .font(.caption)
+                .fontWeight(.bold)
+        }
+        .foregroundColor(correct ? .green : .red)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(correct ? Color.green.opacity(0.2) : Color.red.opacity(0.2))
+        .cornerRadius(6)
     }
     
     // MARK: - Card Background Helper
@@ -709,7 +871,7 @@ struct PredictionDetailView: View {
                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
         )
     }
-
+    
     private func totalRowView(selection: String, odds: Double, isOurPick: Bool) -> some View {
         HStack(spacing: 6) {
             Text(selection)
@@ -745,6 +907,40 @@ struct PredictionDetailView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
         )
+    }
+    
+    // MARK: - Result Checking Helpers
+    private func checkMoneylineWin(team: String, result: GameResult) -> Bool {
+        let teamUpper = team.uppercased()
+        let awayUpper = prediction.awayTeam.name.uppercased()
+        let homeUpper = prediction.homeTeam.name.uppercased()
+        
+        if teamUpper.contains(awayUpper) || awayUpper.contains(teamUpper) {
+            return result.winner == "away"
+        } else if teamUpper.contains(homeUpper) || homeUpper.contains(teamUpper) {
+            return result.winner == "home"
+        }
+        return false
+    }
+    
+    private func extractSpreadLineValue(from selection: String) -> Double? {
+        let components = selection.components(separatedBy: " ")
+        if let lastComponent = components.last,
+           let lineValue = Double(lastComponent) {
+            return lineValue
+        }
+        return nil
+    }
+    
+    private func extractTotalLineValue(from selection: String) -> Double? {
+        // Extract from "Over 150.5" or "Under 150.5"
+        let components = selection.components(separatedBy: " ")
+        for component in components {
+            if let value = Double(component) {
+                return value
+            }
+        }
+        return nil
     }
     
     // MARK: - Helper Functions
@@ -811,11 +1007,11 @@ struct PredictionDetailView: View {
         
         return 50.0
     }
-
+    
     private func getAwayWinProbability() -> Double {
         return 100.0 - getHomeWinProbability()
     }
-        
+    
     // MARK: - Moneyline helpers
     private func getMoneylinePickTeam() -> String? {
         guard prediction.betSlip.predictionInfo != nil,
@@ -848,7 +1044,7 @@ struct PredictionDetailView: View {
             return prediction.awayTeam.name
         }
     }
-
+    
     private func isMoneylinePick(team: String) -> Bool {
         guard let pick = getMoneylinePickTeam() else { return false }
         
@@ -856,17 +1052,28 @@ struct PredictionDetailView: View {
         let pickUpper = pick.uppercased()
         
         return teamUpper == pickUpper ||
-               teamUpper.contains(pickUpper) ||
-               pickUpper.contains(teamUpper)
+        teamUpper.contains(pickUpper) ||
+        pickUpper.contains(teamUpper)
     }
     
     private func isSpreadPick(selection: String, ourPick: String) -> Bool {
+        // Only highlight if the exact spread values match
+        // Our model's spread is different from sportsbook lines, so don't highlight
+        let selectionValue = extractSpreadLineValue(from: selection)
+        let ourPickValue = extractSpreadLineValue(from: ourPick)
+        
+        guard let selValue = selectionValue, let ourValue = ourPickValue else {
+            return false
+        }
+        
+        // Check if team names match AND spread values are close (within 0.5)
         let selectionTeam = extractTeamName(from: selection).uppercased()
         let ourPickTeam = extractTeamName(from: ourPick).uppercased()
         
-        return selectionTeam.contains(ourPickTeam) ||
-               ourPickTeam.contains(selectionTeam) ||
-               selectionTeam == ourPickTeam
+        let teamMatches = selectionTeam.contains(ourPickTeam) || ourPickTeam.contains(selectionTeam)
+        let spreadMatches = abs(selValue - ourValue) < 0.5
+        
+        return teamMatches && spreadMatches
     }
     
     private func isTotalPick(selection: String, ourPick: String) -> Bool {
@@ -884,7 +1091,7 @@ struct PredictionDetailView: View {
         
         for (key, odds) in lines.moneyline {
             if key.uppercased().contains(teamName.uppercased()) ||
-               teamName.uppercased().contains(key.uppercased()) {
+                teamName.uppercased().contains(key.uppercased()) {
                 return odds
             }
         }
@@ -906,12 +1113,13 @@ struct PredictionDetailView: View {
         let teamName = parts.dropLast().joined(separator: " ")
         let absValue = abs(value)
         
-        if value > 0 {
-            return "Our model projects \(teamName) +\(String(format: "%.1f",absValue)) against the spread."
-        } else if value < 0 {
-            return "Our model projects \(teamName) -\(String(format: "%.1f", absValue)) against the spread."
+        if value < 0 {
+            // Team is favorite, we predict them to win by this amount
+            return "Our Pick: \(teamName) to win by \(String(format: "%.1f", absValue)) points"
         } else {
-            return "Our model projects a pick'em spread for \(teamName)."
+            // Team is underdog with positive spread - this shouldn't happen in our model
+            // But if it does, show it clearly
+            return "Our Pick: \(teamName) +\(String(format: "%.1f", value))"
         }
     }
     
@@ -923,7 +1131,7 @@ struct PredictionDetailView: View {
     ) {
         trackedBetDetails = "\(selection) at \(formatOdds(odds))"
         isTrackingBet = true
-
+        
         Task {
             await viewModel.trackSpecificBet(
                 from: prediction,
@@ -932,7 +1140,7 @@ struct PredictionDetailView: View {
                 odds: odds,
                 amount: amount
             )
-
+            
             await MainActor.run {
                 isTrackingBet = false
                 showTrackConfirmation = true
@@ -947,11 +1155,11 @@ struct QuickTrackBetSheet: View {
     let odds: Double
     let sportsbook: Sportsbook
     @Binding var betAmount: String
-
+    
     let onTrack: (BetType, String, Double, Double) -> Void
-
+    
     @Environment(\.dismiss) private var dismiss
-
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 16) {

@@ -21,25 +21,38 @@ struct PredictionRowView: View {
         predictionsViewModel.gameResults[prediction.betSlip.gameID]
     }
     
-    // Check if bet won
     private var betResult: Bool? {
         guard let result = gameResult else { return nil }
         
-        // Extract line from bestBet selection if needed
+        // Extract line from bestBet selection or keyFactors
         let line: Double?
         if prediction.bestBet.type == .spread {
-            // Parse "Team Name +7.5" or "Team Name -7.5"
+            // First try to parse from selection if it has the line
             let components = prediction.bestBet.selection.components(separatedBy: " ")
             if let lastComponent = components.last,
-               let lineValue = Double(lastComponent.replacingOccurrences(of: "+", with: "")) {
+               lastComponent.hasPrefix("+") || lastComponent.hasPrefix("-"),
+               let lineValue = Double(lastComponent) {
                 line = lineValue
             } else {
-                line = nil
+                // Otherwise try to get from key factors
+                if let lineFactor = prediction.keyFactors.first(where: { $0.contains("Book Line:") || $0.contains("Spread:") }) {
+                    // Extract number from string like "Book Line: -7.5" or "Spread: +7.5"
+                    let lineStr = lineFactor
+                        .replacingOccurrences(of: "Book Line:", with: "")
+                        .replacingOccurrences(of: "Spread:", with: "")
+                        .trimmingCharacters(in: .whitespaces)
+                    line = Double(lineStr)
+                } else {
+                    line = nil
+                }
             }
         } else if prediction.bestBet.type == .total {
             // Get line from key factors
-            if let lineFactor = prediction.keyFactors.first(where: { $0.contains("Book Line:") }) {
-                let lineStr = lineFactor.replacingOccurrences(of: "Book Line:", with: "").trimmingCharacters(in: .whitespaces)
+            if let lineFactor = prediction.keyFactors.first(where: { $0.contains("Book Line:") || $0.contains("Total:") }) {
+                let lineStr = lineFactor
+                    .replacingOccurrences(of: "Book Line:", with: "")
+                    .replacingOccurrences(of: "Total:", with: "")
+                    .trimmingCharacters(in: .whitespaces)
                 line = Double(lineStr)
             } else {
                 line = nil
@@ -93,6 +106,7 @@ struct PredictionRowView: View {
         .padding(.bottom, 4)
     }
     
+    
     private var gameHeaderView: some View {
         VStack(spacing: 8) {
             HStack {
@@ -135,24 +149,28 @@ struct PredictionRowView: View {
             }
             
             // Team matchup
-            HStack(alignment: .center, spacing: 8) {
+            HStack(alignment: .center, spacing: 4) {
                 // Away team
                 TeamLogoView(team: prediction.awayTeam, size: 32)
                 
                 VStack(spacing: 2) {
-                    HStack(spacing: 4) {
+                    VStack(spacing: 2) {
                         Text(prediction.awayTeam.shortName)
                             .font(.subheadline)
                             .fontWeight(.medium)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
                         
                         // Away team ranking
                         if let awayRank = prediction.betSlip.awayRanking {
                             Text("#\(awayRank)")
-                                .font(.caption2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.black)
-                                .padding(.horizontal, 4)
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
+                                .background(Color.black)
                                 .cornerRadius(4)
                         }
                     }
@@ -165,31 +183,33 @@ struct PredictionRowView: View {
                             .foregroundColor(result.winner == "away" ? .green : .primary)
                     }
                 }
-                
-                Spacer()
+                .frame(minWidth: 0, maxWidth: .infinity)
                 
                 // Versus or @ symbol
                 Text(gameResult == nil ? "vs" : "@")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
-                Spacer()
+                    .frame(width: 20)
                 
                 // Home team
                 VStack(spacing: 2) {
-                    HStack(spacing: 4) {
+                    VStack(spacing: 2) {
                         Text(prediction.homeTeam.shortName)
                             .font(.subheadline)
                             .fontWeight(.medium)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
                         
                         // Home team ranking
                         if let homeRank = prediction.betSlip.homeRanking {
                             Text("#\(homeRank)")
-                                .font(.caption2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.black)
-                                .padding(.horizontal, 4)
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
+                                .background(Color.black)
                                 .cornerRadius(4)
                         }
                     }
@@ -202,6 +222,7 @@ struct PredictionRowView: View {
                             .foregroundColor(result.winner == "home" ? .green : .primary)
                     }
                 }
+                .frame(minWidth: 0, maxWidth: .infinity)
                 
                 TeamLogoView(team: prediction.homeTeam, size: 32)
             }
@@ -209,6 +230,7 @@ struct PredictionRowView: View {
         }
         .padding(12)
     }
+    
     
     private var predictionDetailsView: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -253,10 +275,12 @@ struct PredictionRowView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    // Selection
+                    // Selection - allow multiple lines but no word breaking
                     Text(prediction.bestBet.selection)
                         .font(.headline)
                         .fontWeight(.semibold)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
                 }
                 
                 Spacer()
@@ -287,10 +311,18 @@ struct PredictionRowView: View {
             .padding(.vertical, 8)
         }
     }
+
+    
     
     // Format edge based on bet type
     private func formatEdge() -> String {
-        let edge = edgeStrength
+        var edge = edgeStrength
+        
+        // If edge is very small (< 1), it might be in decimal form (0.03 = 3%)
+        // Multiply by 100 to get percentage
+        if edge < 1 && prediction.bestBet.type == .moneyline {
+            edge = edge * 100
+        }
         
         switch prediction.bestBet.type {
         case .moneyline:

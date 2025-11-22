@@ -37,10 +37,13 @@ struct DetailedBetHistoryRowView: View {
                 // Game and bet info
                 HStack {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(bet.gameMatchup)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.blue)
+                        // Show game matchup or fallback to selection if matchup is unknown
+                        if bet.gameMatchup != "Unknown @ Unknown" {
+                            Text(bet.gameMatchup)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                        }
                         
                         Text(bet.bet.selection)
                             .font(.subheadline)
@@ -55,7 +58,7 @@ struct DetailedBetHistoryRowView: View {
                                 .fill(Color(.systemGray4))
                                 .frame(width: 3, height: 3)
                             
-                            Text("$\(Int(bet.bet.amount))")
+                            Text("$\(String(format: "%.0f", bet.bet.amount))")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
@@ -124,9 +127,9 @@ struct DetailedBetHistoryRowView: View {
             } else {
                 winnings = bet.amount * (100 / abs(bet.odds))
             }
-            return "+$\(Int(winnings))"
+            return "+$\(String(format: "%.0f", winnings))"
         case .lost:
-            return "-$\(Int(bet.amount))"
+            return "-$\(String(format: "%.0f", bet.amount))"
         case .push:
             return "$0"
         case .pending:
