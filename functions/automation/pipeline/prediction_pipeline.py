@@ -215,6 +215,55 @@ def _as_float(value: Any) -> Optional[float]:
         return float(value)
     except (TypeError, ValueError):
         return None
+    
+def _build_top_recommendations(
+    day_picks: List[Dict[str, Any]],
+    max_picks: int,
+) -> List[Dict[str, Any]]:
+    """
+    Build top recommendations with:
+      - global ranking by edge_strength
+      - up to 3 per bet_type ("spread", "moneyline", "total")
+      - at most ONE pick per game_id overall
+    """
+    if not day_picks:
+        return []
+
+    # Global ranking by edge strength (descending)
+    ranked = sorted(day_picks, key=lambda p: p.get("edge_strength", 0.0), reverse=True)
+
+    top_recommendations: List[Dict[str, Any]] = []
+    used_game_ids: set[str] = set()
+    type_counts: Dict[str, int] = {"spread": 0, "moneyline": 0, "total": 0}
+    MAX_PER_TYPE = 3
+
+    for bet_type in ("spread", "moneyline", "total"):
+        for pick in ranked:
+            if pick.get("bet_type") != bet_type:
+                continue
+
+            game_id = pick.get("game_id")
+            if not game_id:
+                continue
+
+            # Enforce at most one pick per game
+            if game_id in used_game_ids:
+                continue
+
+            # Enforce per-type cap
+            if type_counts[bet_type] >= MAX_PER_TYPE:
+                continue
+
+            top_recommendations.append(pick)
+            used_game_ids.add(game_id)
+            type_counts[bet_type] += 1
+
+            if len(top_recommendations) >= max_picks:
+                break  # stop if global max reached
+        if len(top_recommendations) >= max_picks:
+            break
+
+    return top_recommendations
 
 
 def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
@@ -467,12 +516,7 @@ def run_prediction_pipeline(config: PredictionPipelineConfig | None = None) -> N
             day_picks.extend(_choose_bets_for_game(game_pred))
 
         _label_missing_odds(game_preds)
-        ranked = sorted(day_picks, key=lambda p: p.get("edge_strength", 0), reverse=True)
-        top_recommendations: List[Dict[str, Any]] = []
-        for bet_type in ("spread", "moneyline", "total"):
-            filtered = [p for p in ranked if p.get("bet_type") == bet_type]
-            top_recommendations.extend(filtered[:3])
-        top_recommendations = top_recommendations[: cfg.max_picks]
+        top_recommendations = _build_top_recommendations(day_picks, cfg.max_picks)
 
         bet_model_preds: List[Dict[str, Any]] = []
         bet_ready = _filter_rows_with_full_odds(features_df)

@@ -480,58 +480,63 @@ def _evaluate_moneyline_model(game_data: Dict[str, Any], actual: Dict[str, Any],
         _append_bet(stats, bet_odds, result, bet_prob)
 
 
-def _evaluate_spread_model(game_data: Dict[str, Any], actual: Dict[str, Any], stats: MarketStats):
-    """
-    Evaluate spread MODEL PERFORMANCE and simulate betting based on predictions.
-    Bets the side that the model projects will cover.
-    """
+def _evaluate_spread_model(
+    game_data: Dict[str, Any],
+    actual: Dict[str, Any],
+    stats: MarketStats,
+) -> None:
     spread = game_data.get("spread") or {}
     predicted_margin = spread.get("predicted_margin")
     line = spread.get("line")
-    pick_name = spread.get("pick")
 
     if predicted_margin is None or line is None:
         return
 
-    stats.count += 1
-    
-    # MAE on margin prediction
-    stats.mae_sum += abs(predicted_margin - actual["margin"])
+    try:
+        predicted_margin = float(predicted_margin)
+        line = float(line)
+    except (TypeError, ValueError):
+        logging.debug("Invalid spread data: predicted_margin=%s line=%s", predicted_margin, line)
+        return
 
-    # Determine which side model predicts will cover
-    # predicted_margin is home's projected margin
-    # line is how much home is favored by (positive = home favored)
-    predicted_cover = predicted_margin - line
-    
-    # Calculate actual cover
-    actual_cover = actual["margin"] - line
-    
-    # Determine betting side and result
-    if predicted_cover == 0:
-        # Model says it's a push, don't bet
-        pass
+    stats.count += 1
+
+    # MAE on the home-margin prediction
+    actual_margin = float(actual["margin"])
+    stats.mae_sum += abs(predicted_margin - actual_margin)
+
+    # Home-centric cover values using the home team's sportsbook spread
+    predicted_cover_home = predicted_margin + line
+    actual_cover_home = actual_margin + line
+
+    # If actual result is exactly on the number, it's a push
+    if actual_cover_home == 0:
+        result = "push"
+        stats.pushes += 1
+        bet_side = None  # We can treat this as no actionable edge
     else:
-        bet_side = "home" if predicted_cover > 0 else "away"
+        home_covered = actual_cover_home > 0
+        predicted_home_covers = predicted_cover_home > 0
+
+        # Model is "correct" if it said the same side would cover
+        if home_covered == predicted_home_covers:
+            stats.correct += 1
+            result = "win"
+        else:
+            result = "loss"
+
+        # Decide which side we'd have bet: the side we project to cover
+        if predicted_cover_home == 0:
+            # Model predicted a perfect push → no bet
+            bet_side = None
+        else:
+            bet_side = "home" if predicted_cover_home > 0 else "away"
+
+    # Simulate a bet only if we actually picked a side
+    if bet_side is not None:
         bet_odds = spread.get("odds_home") if bet_side == "home" else spread.get("odds_away")
-        
-        # If no specific odds, use default
         if not _validate_odds(bet_odds):
             bet_odds = SPREAD_TOTAL_DEFAULT_ODDS
-        
-        # Determine result
-        if actual_cover == 0:
-            result = "push"
-            stats.pushes += 1
-        else:
-            home_covered = actual_cover > 0
-            predicted_home_covers = predicted_cover > 0
-            
-            if home_covered == predicted_home_covers:
-                stats.correct += 1
-                result = "win"
-            else:
-                result = "loss"
-        
         _append_bet(stats, bet_odds, result)
 
 
@@ -652,7 +657,17 @@ def _grade_spread_pick(
     game_data: Dict[str, Any],
     actual: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
-    """Grade a spread pick and return detailed results."""
+    """Grade a spread pick and return detailed results.
+
+    Uses sportsbook-style team spreads:
+      - line is the picked team's spread (e.g. -1.5 for home favorite, +1.5 for road dog)
+      - For the picked team:
+          team_margin = (team_score - opponent_score)
+          cover_margin = team_margin + line
+        Win  if cover_margin > 0
+        Push if cover_margin == 0
+        Loss if cover_margin < 0
+    """
     selection = pick.get("selection")
     side = _resolve_pick(selection, game_data.get("home_team"), game_data.get("away_team"))
     
@@ -671,18 +686,30 @@ def _grade_spread_pick(
         logging.warning("No spread line available for pick")
         return None
 
-    # Line convention: positive = home favored
-    # Calculate actual cover: margin - line
-    # If line = 5.5 (home favored by 5.5), home needs to win by 6+
-    actual_cover = actual["margin"] - line
-    
-    # Determine result
-    if actual_cover == 0:
+    try:
+        line = float(line)
+    except (TypeError, ValueError):
+        logging.warning("Invalid spread line value: %s", line)
+        return None
+
+    # margin is home_score - away_score
+    margin = actual["margin"]
+
+    # Compute margin from the picked team's perspective
+    if side == "home":
+        team_margin = margin                 # home - away
+    else:
+        team_margin = -margin                # away - home
+
+    # Team-perspective cover margin: (team_score + line) - opponent_score
+    cover_margin = team_margin + line
+
+    # Determine result for this ticket
+    if cover_margin == 0:
         result = "push"
     else:
-        home_covered = actual_cover > 0
-        picked_home = (side == "home")
-        result = "win" if home_covered == picked_home else "loss"
+        team_covered = cover_margin > 0
+        result = "win" if team_covered else "loss"
 
     odds = pick.get("odds")
     if not _validate_odds(odds):
@@ -701,8 +728,9 @@ def _grade_spread_pick(
         "model_projection": spread.get("predicted_margin"),
         "home_score": actual["home_score"],
         "away_score": actual["away_score"],
-        "actual_margin": actual["margin"],
-        "actual_cover": actual_cover,
+        "actual_margin": margin,
+        # From the picked team's perspective; >0 = covered, 0 = push, <0 = did not cover
+        "actual_cover": cover_margin,
     }
 
 

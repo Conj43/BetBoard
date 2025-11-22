@@ -380,14 +380,14 @@ struct PredictionDetailView: View {
                 if let odds = lines.moneyline[team] {
                     Button {
                         // Only allow tracking if game hasn't started
-                        if gameResult == nil {
-                            pendingBet = PendingBet(
-                                betType: .moneyline,
-                                selection: team,
-                                odds: odds
-                            )
-                            betAmount = ""
-                        }
+                        if canTrackNewBets {
+                                pendingBet = PendingBet(
+                                    betType: .moneyline,
+                                    selection: team,
+                                    odds: odds
+                                )
+                                betAmount = ""
+                            }
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(team)
@@ -404,6 +404,8 @@ struct PredictionDetailView: View {
                         .padding()
                         .background(Color(.systemGray6))
                         .cornerRadius(8)
+                        .disabled(!canTrackNewBets)
+                        .opacity(canTrackNewBets ? 1.0 : 0.6)
                     }
                     .buttonStyle(.plain)
                     .disabled(gameResult != nil)
@@ -420,15 +422,14 @@ struct PredictionDetailView: View {
             ForEach(spreadEntries, id: \.self) { key in
                 if let odds = lines.spread[key] {
                     Button {
-                        // Only allow tracking if game hasn't started
-                        if gameResult == nil {
-                            pendingBet = PendingBet(
-                                betType: .spread,
-                                selection: key,
-                                odds: odds
-                            )
-                            betAmount = ""
-                        }
+                        if canTrackNewBets {
+                                pendingBet = PendingBet(
+                                    betType: .spread,
+                                    selection: key,
+                                    odds: odds
+                                )
+                                betAmount = ""
+                            }
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(extractTeamName(from: key))
@@ -452,6 +453,8 @@ struct PredictionDetailView: View {
                         .padding()
                         .background(Color(.systemGray6))
                         .cornerRadius(8)
+                        .disabled(!canTrackNewBets)
+                        .opacity(canTrackNewBets ? 1.0 : 0.6)
                     }
                     .buttonStyle(.plain)
                     .disabled(gameResult != nil)
@@ -468,15 +471,14 @@ struct PredictionDetailView: View {
             ForEach(totalEntries, id: \.self) { selection in
                 if let odds = lines.total[selection] {
                     Button {
-                        // Only allow tracking if game hasn't started
-                        if gameResult == nil {
-                            pendingBet = PendingBet(
-                                betType: .total,
-                                selection: selection,
-                                odds: odds
-                            )
-                            betAmount = ""
-                        }
+                        if canTrackNewBets {
+                                pendingBet = PendingBet(
+                                    betType: .total,
+                                    selection: selection,
+                                    odds: odds
+                                )
+                                betAmount = ""
+                            }
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(selection)
@@ -496,6 +498,8 @@ struct PredictionDetailView: View {
                     .buttonStyle(.plain)
                     .disabled(gameResult != nil)
                     .opacity(gameResult != nil ? 0.6 : 1.0)
+                    .disabled(!canTrackNewBets)
+                    .opacity(canTrackNewBets ? 1.0 : 0.6)
                 }
             }
         }
@@ -607,10 +611,9 @@ struct PredictionDetailView: View {
                                 .fontWeight(.semibold)
                                 .foregroundColor(.secondary)
                             
-                            // Add prediction result badge if game is complete
-                            if let result = gameResult {
+                            if let result = gameResult,
+                               let line = actualSpreadLineForOurPick(spreadBet: spreadBet, lines: lines) {
                                 Spacer()
-                                let line = extractSpreadLineValue(from: spreadBet)
                                 if let won = result.didBetWin(betType: .spread, selection: spreadBet, line: line) {
                                     HStack(spacing: 4) {
                                         Image(systemName: won ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -629,7 +632,7 @@ struct PredictionDetailView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(formattedSpreadSentence(from: spreadBet))
+                            Text(formattedSpreadSentence(from: spreadBet, lines: lines))
                                 .font(.caption)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.blue)
@@ -686,10 +689,9 @@ struct PredictionDetailView: View {
                                 .fontWeight(.semibold)
                                 .foregroundColor(.secondary)
                             
-                            // Add prediction result badge if game is complete
-                            if let result = gameResult {
+                            if let result = gameResult,
+                               let line = actualTotalLineForOurPick(totalBet: totalBet, lines: lines) {
                                 Spacer()
-                                let line = extractTotalLineValue(from: totalBet)
                                 if let won = result.didBetWin(betType: .total, selection: totalBet, line: line) {
                                     HStack(spacing: 4) {
                                         Image(systemName: won ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -1057,23 +1059,20 @@ struct PredictionDetailView: View {
     }
     
     private func isSpreadPick(selection: String, ourPick: String) -> Bool {
-        // Only highlight if the exact spread values match
-        // Our model's spread is different from sportsbook lines, so don't highlight
-        let selectionValue = extractSpreadLineValue(from: selection)
-        let ourPickValue = extractSpreadLineValue(from: ourPick)
+        // Which team did our model pick?
+        let parts = ourPick.split(separator: " ")
+        let pickTeamName = parts.dropLast().joined(separator: " ").uppercased()
         
-        guard let selValue = selectionValue, let ourValue = ourPickValue else {
-            return false
-        }
+        let homeUpper = prediction.homeTeam.name.uppercased()
+        let awayUpper = prediction.awayTeam.name.uppercased()
         
-        // Check if team names match AND spread values are close (within 0.5)
+        let isHomePick = pickTeamName.contains(homeUpper) || homeUpper.contains(pickTeamName)
+        let targetTeamUpper = isHomePick ? homeUpper : awayUpper
+        
+        // Which team is this sportsbook selection for?
         let selectionTeam = extractTeamName(from: selection).uppercased()
-        let ourPickTeam = extractTeamName(from: ourPick).uppercased()
         
-        let teamMatches = selectionTeam.contains(ourPickTeam) || ourPickTeam.contains(selectionTeam)
-        let spreadMatches = abs(selValue - ourValue) < 0.5
-        
-        return teamMatches && spreadMatches
+        return selectionTeam.contains(targetTeamUpper) || targetTeamUpper.contains(selectionTeam)
     }
     
     private func isTotalPick(selection: String, ourPick: String) -> Bool {
@@ -1103,25 +1102,98 @@ struct PredictionDetailView: View {
         return lines.moneyline.count >= 2
     }
     
-    private func formattedSpreadSentence(from spreadBet: String) -> String {
+    private func actualSpreadLineForOurPick(spreadBet: String, lines: BettingLines) -> Double? {
+        // Team name in our model pick
+        let parts = spreadBet.split(separator: " ")
+        let pickTeamName = parts.dropLast().joined(separator: " ").uppercased()
+        
+        let homeUpper = prediction.homeTeam.name.uppercased()
+        let awayUpper = prediction.awayTeam.name.uppercased()
+        
+        // Is our pick the home or away team?
+        let isHomePick = pickTeamName.contains(homeUpper) || homeUpper.contains(pickTeamName)
+        let targetTeamUpper = isHomePick ? homeUpper : awayUpper
+        
+        // Find that team’s line in the sportsbook spreads
+        for (selection, _) in lines.spread {
+            let selTeamUpper = extractTeamName(from: selection).uppercased()
+            
+            if selTeamUpper.contains(targetTeamUpper) || targetTeamUpper.contains(selTeamUpper),
+               let line = extractSpreadLineValue(from: selection) {
+                return line
+            }
+        }
+        
+        return nil
+    }
+    
+    // MARK: - Bet Timing Helpers
+    private var canTrackNewBets: Bool {
+        // No new bets if game is final
+        guard gameResult == nil else { return false }
+        // No new bets once the game has started
+        return Date() < prediction.gameTime
+    }
+
+    // Use the sportsbook total line for the Over/Under our model picked
+    private func actualTotalLineForOurPick(totalBet: String, lines: BettingLines) -> Double? {
+        let betUpper = totalBet.uppercased()
+        let wantsOver = betUpper.contains("OVER")
+        let wantsUnder = betUpper.contains("UNDER")
+
+        for (selection, _) in lines.total {
+            let selUpper = selection.uppercased()
+            if (wantsOver && selUpper.contains("OVER")) || (wantsUnder && selUpper.contains("UNDER")) {
+                if let line = extractTotalLineValue(from: selection) {
+                    return line
+                }
+            }
+        }
+        return nil
+    }
+    
+    private func formattedSpreadSentence(from spreadBet: String, lines: BettingLines) -> String {
         let parts = spreadBet.split(separator: " ")
         guard let last = parts.last,
-              let value = Double(last) else {
+              let modelMargin = Double(last) else {
             return "Our projected spread: \(spreadBet)"
         }
         
         let teamName = parts.dropLast().joined(separator: " ")
-        let absValue = abs(value)
         
-        if value < 0 {
-            // Team is favorite, we predict them to win by this amount
-            return "Our Pick: \(teamName) to win by \(String(format: "%.1f", absValue)) points"
+        // modelMargin is "home minus away":
+        //   > 0 → home wins by modelMargin
+        //   < 0 → away wins by |modelMargin|
+        
+        // Is our pick the home team?
+        let teamUpper = teamName.uppercased()
+        let homeUpper = prediction.homeTeam.name.uppercased()
+        let isHomePick = teamUpper.contains(homeUpper) || homeUpper.contains(teamUpper)
+        
+        // Convert global home-margin into spread from the picked team's POV
+        let teamSpread = isHomePick ? -modelMargin : modelMargin
+        
+        let predictedAbs = abs(teamSpread)
+        let predictedSign = teamSpread >= 0 ? "+" : "-"
+        let predictedString = "\(predictedSign)\(String(format: "%.1f", predictedAbs))"
+        
+        // Grab the actual sportsbook line we’re betting into
+        let actualLine = actualSpreadLineForOurPick(spreadBet: spreadBet, lines: lines)
+        if let actualLine = actualLine {
+            let actualAbs = abs(actualLine)
+            let actualSign = actualLine >= 0 ? "+" : "-"
+            let actualString = "\(actualSign)\(String(format: "%.1f", actualAbs))"
+            
+            // Final wording:
+            // "We project Nebraska to cover -7.0, so we pick Nebraska -5.0."
+            // "We project Kansas St to cover +5.6, so we pick Kansas St +10.5."
+            return "We project \(teamName) to cover \(predictedString), so we pick \(teamName) \(actualString)."
         } else {
-            // Team is underdog with positive spread - this shouldn't happen in our model
-            // But if it does, show it clearly
-            return "Our Pick: \(teamName) +\(String(format: "%.1f", value))"
+            // Fallback if we somehow do not find a line
+            return "We project \(teamName) to cover \(predictedString) against the spread."
         }
     }
+
     
     private func trackBetFromDetail(
         betType: BetType,
@@ -1185,4 +1257,6 @@ struct QuickTrackBetSheet: View {
             }
         }
     }
+    
+
 }
