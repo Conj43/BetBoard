@@ -276,7 +276,7 @@ struct PredictionRowView: View {
                         .foregroundColor(.secondary)
                     
                     // Selection - allow multiple lines but no word breaking
-                    Text(prediction.bestBet.selection)
+                    Text(displayedSelection())
                         .font(.headline)
                         .fontWeight(.semibold)
                         .lineLimit(3)
@@ -393,6 +393,64 @@ struct PredictionRowView: View {
             let formatter = DateFormatter()
             formatter.dateFormat = "MM/dd - h:mm a"
             return formatter.string(from: prediction.gameTime)
+        }
+    }
+    
+    private func displayedSelection() -> String {
+        switch prediction.bestBet.type {
+        case .total:
+            // Side comes from selection ("Over" / "Under")
+            let raw = prediction.bestBet.selection.trimmingCharacters(in: .whitespaces)
+            let upper = raw.uppercased()
+            let side: String
+            if upper.contains("UNDER") {
+                side = "Under"
+            } else if upper.contains("OVER") {
+                side = "Over"
+            } else {
+                side = raw.isEmpty ? "Total" : raw
+            }
+            
+            if let line = bestBetBookLine() {
+                // Show Under/Over + the **book line**, e.g. "Under 180.5"
+                return "\(side) \(String(format: "%.1f", line))"
+            } else {
+                return side
+            }
+            
+        case .spread:
+            // For spreads you already have "Team -3.5" in selection
+            return prediction.bestBet.selection
+            
+        case .moneyline:
+            return prediction.bestBet.selection
+        }
+    }
+    
+    private func bestBetBookLine() -> Double? {
+        switch prediction.bestBet.type {
+        case .spread:
+            if let lineFactor = prediction.keyFactors.first(where: { $0.contains("Book Line:") || $0.contains("Spread:") }) {
+                let lineStr = lineFactor
+                    .replacingOccurrences(of: "Book Line:", with: "")
+                    .replacingOccurrences(of: "Spread:", with: "")
+                    .trimmingCharacters(in: .whitespaces)
+                return Double(lineStr)
+            }
+            return nil
+            
+        case .total:
+            if let lineFactor = prediction.keyFactors.first(where: { $0.contains("Book Line:") || $0.contains("Total:") }) {
+                let lineStr = lineFactor
+                    .replacingOccurrences(of: "Book Line:", with: "")
+                    .replacingOccurrences(of: "Total:", with: "")
+                    .trimmingCharacters(in: .whitespaces)
+                return Double(lineStr)
+            }
+            return nil
+            
+        case .moneyline:
+            return nil
         }
     }
 }

@@ -349,41 +349,82 @@ def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
         })
 
     def _best_total():
-        best = None
+        """Choose the best total bet (Over/Under) from preferred books.
+
+        We define edge as:
+        - Over:  model_total - line
+        - Under: line - model_total
+
+        We only consider candidates with positive edge (model likes that side),
+        and pick the one with the largest edge.
+        """
+        model_total = _as_float(game_pred.get("model_total"))
+        if model_total is None or not bookmakers:
+            return None
+
+        best: Optional[Dict[str, Any]] = None
+
         for book_key, payload in bookmakers.items():
             if not any(pref in str(book_key).lower() for pref in preferred_books):
                 continue
+
             total = payload.get("total")
             if not isinstance(total, dict):
                 continue
+
             over = total.get("over") or {}
             under = total.get("under") or {}
-            for label, market in (("Over", over), ("Under", under)):
-                line = market.get("line")
-                if line is None:
-                    continue
-                model_total = _as_float(game_pred.get("model_total"))
-                if model_total is None:
-                    continue
-                edge = model_total - line if label == "Over" else line - model_total
-                if best is None or abs(edge) > abs(best[0]):
-                    best = (edge, line, book_key, label, market.get("price"))
+
+            over_line = _as_float(over.get("line"))
+            under_line = _as_float(under.get("line"))
+            over_price = over.get("price")
+            under_price = under.get("price")
+
+            # Over candidate: edge = model_total - line
+            if over_line is not None:
+                edge_over = model_total - over_line
+                if edge_over > 0:
+                    cand = {
+                        "selection": "Over",
+                        "edge": edge_over,
+                        "line": over_line,
+                        "book": book_key,
+                        "price": over_price,
+                    }
+                    if best is None or cand["edge"] > best["edge"]:
+                        best = cand
+
+            # Under candidate: edge = line - model_total
+            if under_line is not None:
+                edge_under = under_line - model_total
+                if edge_under > 0:
+                    cand = {
+                        "selection": "Under",
+                        "edge": edge_under,
+                        "line": under_line,
+                        "book": book_key,
+                        "price": under_price,
+                    }
+                    if best is None or cand["edge"] > best["edge"]:
+                        best = cand
+
         return best
 
     best_total = _best_total()
     model_total = _as_float(game_pred.get("model_total"))
-    if best_total:
-        edge, line_total, book_key, selection, price = best_total
+    if best_total and model_total is not None:
         picks.append({
             "game_id": game_id,
             "bet_type": "total",
-            "selection": selection,
-            "model_projection": model_total,
-            "book_line": line_total,
-            "bookmaker": book_key,
-            "edge_strength": abs(edge),
-            "odds": price,
-            "odds_to_prob": make_preds.implied_prob_from_moneyline(price),
+            "selection": best_total["selection"],          # "Over" / "Under"
+            "model_projection": model_total,               # e.g. 157.3
+            "book_line": best_total["line"],               # e.g. 180.5
+            "bookmaker": best_total["book"],
+            "edge_strength": best_total["edge"],
+            "odds": best_total["price"],
+            "odds_to_prob": make_preds.implied_prob_from_moneyline(
+                best_total["price"]
+            ),
         })
     elif model_total is not None:
         line_total = _as_float(game_pred.get("bet_total"))
