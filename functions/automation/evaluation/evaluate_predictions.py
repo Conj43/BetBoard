@@ -505,34 +505,32 @@ def _evaluate_spread_model(
     actual_margin = float(actual["margin"])
     stats.mae_sum += abs(predicted_margin - actual_margin)
 
-    # Home-centric cover values using the home team's sportsbook spread
-    predicted_cover_home = predicted_margin + line
-    actual_cover_home = actual_margin + line
+    # Convert line to home spread and check coverage
+    # line: 3.5 means home favored → home spread = -3.5
+    # To cover -3.5, home must win by MORE than 3.5
+    predicted_cover_home = predicted_margin - line  # FIXED: was +, now -
+    actual_cover_home = actual_margin - line        # FIXED: was +, now -
 
-    # If actual result is exactly on the number, it's a push
+    # Rest of function stays the same...
     if actual_cover_home == 0:
         result = "push"
         stats.pushes += 1
-        bet_side = None  # We can treat this as no actionable edge
+        bet_side = None
     else:
         home_covered = actual_cover_home > 0
         predicted_home_covers = predicted_cover_home > 0
 
-        # Model is "correct" if it said the same side would cover
         if home_covered == predicted_home_covers:
             stats.correct += 1
             result = "win"
         else:
             result = "loss"
 
-        # Decide which side we'd have bet: the side we project to cover
         if predicted_cover_home == 0:
-            # Model predicted a perfect push → no bet
             bet_side = None
         else:
             bet_side = "home" if predicted_cover_home > 0 else "away"
 
-    # Simulate a bet only if we actually picked a side
     if bet_side is not None:
         bet_odds = spread.get("odds_home") if bet_side == "home" else spread.get("odds_away")
         if not _validate_odds(bet_odds):
@@ -657,17 +655,7 @@ def _grade_spread_pick(
     game_data: Dict[str, Any],
     actual: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
-    """Grade a spread pick and return detailed results.
-
-    Uses sportsbook-style team spreads:
-      - line is the picked team's spread (e.g. -1.5 for home favorite, +1.5 for road dog)
-      - For the picked team:
-          team_margin = (team_score - opponent_score)
-          cover_margin = team_margin + line
-        Win  if cover_margin > 0
-        Push if cover_margin == 0
-        Loss if cover_margin < 0
-    """
+    """Grade a spread pick and return detailed results."""
     selection = pick.get("selection")
     side = _resolve_pick(selection, game_data.get("home_team"), game_data.get("away_team"))
     
@@ -681,6 +669,10 @@ def _grade_spread_pick(
     line = pick.get("book_line")
     if line is None:
         line = spread.get("line")
+        # spread.line stores how much HOME is favored by
+        # Convert to actual team spread: home = -line, away = line
+        if side == "home" and line is not None:
+            line = -line
     
     if line is None:
         logging.warning("No spread line available for pick")
@@ -697,14 +689,14 @@ def _grade_spread_pick(
 
     # Compute margin from the picked team's perspective
     if side == "home":
-        team_margin = margin                 # home - away
+        team_margin = margin
     else:
-        team_margin = -margin                # away - home
+        team_margin = -margin
 
-    # Team-perspective cover margin: (team_score + line) - opponent_score
+    # Team-perspective cover margin
     cover_margin = team_margin + line
 
-    # Determine result for this ticket
+    # Determine result
     if cover_margin == 0:
         result = "push"
     else:
@@ -729,10 +721,8 @@ def _grade_spread_pick(
         "home_score": actual["home_score"],
         "away_score": actual["away_score"],
         "actual_margin": margin,
-        # From the picked team's perspective; >0 = covered, 0 = push, <0 = did not cover
         "actual_cover": cover_margin,
     }
-
 
 def _grade_total_pick(
     pick: Dict[str, Any],
