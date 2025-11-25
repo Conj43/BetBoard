@@ -3,6 +3,7 @@
 //  SportsAppTest
 //
 //  Created by Trenton Roney on 8/26/25.
+//  Updated by Trenton Roney on 11/25/25.
 //
 
 import SwiftUI
@@ -22,7 +23,7 @@ struct SearchView: View {
                 
                 // Content
                 if viewModel.isLoading {
-                    ProgressView("Loading games...")
+                    ProgressView("Loading teams...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let errorMessage = viewModel.errorMessage {
                     errorView(errorMessage: errorMessage)
@@ -31,7 +32,7 @@ struct SearchView: View {
                         viewModel.searchText = teamName
                     }
                 } else if viewModel.searchResults.isEmpty {
-                    SearchNoResultsView()
+                    SearchNoResultsView(searchTerm: viewModel.searchText)
                 } else {
                     searchResultsList
                 }
@@ -54,7 +55,7 @@ struct SearchView: View {
                 .font(.largeTitle)
                 .foregroundColor(.orange)
             
-            Text("Error Loading Games")
+            Text("Error Loading Teams")
                 .font(.headline)
             
             Text(errorMessage)
@@ -76,17 +77,17 @@ struct SearchView: View {
     private var searchResultsList: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
-                ForEach(viewModel.searchResults) { betSlip in
-                    NavigationLink(destination: BetSlipDetailView(betSlip: betSlip)) {
-                        GameSearchResultRowView(betSlip: betSlip)
+                ForEach(viewModel.searchResults) { team in
+                    NavigationLink(destination: TeamDetailView(team: team)) {
+                        TeamSearchResultRowView(team: team)
                     }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
             .padding(.horizontal)
         }
     }
 }
-
 
 #Preview {
     SearchView()
