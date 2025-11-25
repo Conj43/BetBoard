@@ -353,4 +353,5 @@ TORVIK_MAP = {
     "albany": "albany-ny",
     "bowlinggreen": "bowling-green-state",
     "uscupstate": "south-carolina-upstate",
+    "easttexasa&m": "texas-am-commerce",
 } 

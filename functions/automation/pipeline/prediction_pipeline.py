@@ -215,6 +215,55 @@ def _as_float(value: Any) -> Optional[float]:
         return float(value)
     except (TypeError, ValueError):
         return None
+    
+def _build_top_recommendations(
+    day_picks: List[Dict[str, Any]],
+    max_picks: int,
+) -> List[Dict[str, Any]]:
+    """
+    Build top recommendations with:
+      - global ranking by edge_strength
+      - up to 3 per bet_type ("spread", "moneyline", "total")
+      - at most ONE pick per game_id overall
+    """
+    if not day_picks:
+        return []
+
+    # Global ranking by edge strength (descending)
+    ranked = sorted(day_picks, key=lambda p: p.get("edge_strength", 0.0), reverse=True)
+
+    top_recommendations: List[Dict[str, Any]] = []
+    used_game_ids: set[str] = set()
+    type_counts: Dict[str, int] = {"spread": 0, "moneyline": 0, "total": 0}
+    MAX_PER_TYPE = 3
+
+    for bet_type in ("spread", "moneyline", "total"):
+        for pick in ranked:
+            if pick.get("bet_type") != bet_type:
+                continue
+
+            game_id = pick.get("game_id")
+            if not game_id:
+                continue
+
+            # Enforce at most one pick per game
+            if game_id in used_game_ids:
+                continue
+
+            # Enforce per-type cap
+            if type_counts[bet_type] >= MAX_PER_TYPE:
+                continue
+
+            top_recommendations.append(pick)
+            used_game_ids.add(game_id)
+            type_counts[bet_type] += 1
+
+            if len(top_recommendations) >= max_picks:
+                break  # stop if global max reached
+        if len(top_recommendations) >= max_picks:
+            break
+
+    return top_recommendations
 
 
 def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
@@ -229,7 +278,64 @@ def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
     model_spread = _as_float(game_pred.get("model_spread_home"))
     line_spread = _as_float(game_pred.get("bet_spread_home"))
 
-    if model_spread is not None and line_spread is not None:
+    def _best_spread():
+        if model_spread is None or not bookmakers:
+            return None
+        best = None
+        for book_key, payload in bookmakers.items():
+            if not isinstance(book_key, str):
+                continue
+            if not any(pref in book_key.lower() for pref in preferred_books):
+                continue
+            if not isinstance(payload, Mapping):
+                continue
+            spread_market = payload.get("spread")
+            if not isinstance(spread_market, Mapping):
+                continue
+            home_market = spread_market.get("home") or {}
+            away_market = spread_market.get("away") or {}
+            home_line_val = _as_float(home_market.get("line"))
+            if home_line_val is None:
+                away_line_val = _as_float(away_market.get("line"))
+                if away_line_val is not None:
+                    home_line_val = -away_line_val
+            if home_line_val is None:
+                continue
+            # Spread edge is the predicted ATS margin: predicted_margin + bookmaker_line
+            edge_val = model_spread + home_line_val
+            selection = home_team if edge_val >= 0 else away_team
+            odds = None
+            if selection == home_team:
+                odds = home_market.get("price")
+            else:
+                odds = away_market.get("price")
+            odds_prob = make_preds.implied_prob_from_moneyline(odds) if odds is not None else None
+            candidate = {
+                "edge": edge_val,
+                "line": home_line_val,
+                "selection": selection,
+                "book": book_key,
+                "odds": odds,
+                "odds_prob": odds_prob,
+            }
+            if best is None or abs(edge_val) > abs(best["edge"]):
+                best = candidate
+        return best
+
+    best_spread = _best_spread()
+    if best_spread:
+        picks.append({
+            "game_id": game_id,
+            "bet_type": "spread",
+            "selection": best_spread["selection"],
+            "model_projection": model_spread,
+            "book_line": best_spread["line"],
+            "bookmaker": best_spread["book"],
+            "edge_strength": abs(best_spread["edge"]),
+            "odds": best_spread["odds"],
+            "odds_to_prob": best_spread["odds_prob"],
+        })
+    elif model_spread is not None and line_spread is not None:
         # Spread edge is the predicted ATS margin: predicted_margin + bookmaker_line
         edge = model_spread + line_spread
         selection = home_team if edge >= 0 else away_team
@@ -243,41 +349,82 @@ def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
         })
 
     def _best_total():
-        best = None
+        """Choose the best total bet (Over/Under) from preferred books.
+
+        We define edge as:
+        - Over:  model_total - line
+        - Under: line - model_total
+
+        We only consider candidates with positive edge (model likes that side),
+        and pick the one with the largest edge.
+        """
+        model_total = _as_float(game_pred.get("model_total"))
+        if model_total is None or not bookmakers:
+            return None
+
+        best: Optional[Dict[str, Any]] = None
+
         for book_key, payload in bookmakers.items():
             if not any(pref in str(book_key).lower() for pref in preferred_books):
                 continue
+
             total = payload.get("total")
             if not isinstance(total, dict):
                 continue
+
             over = total.get("over") or {}
             under = total.get("under") or {}
-            for label, market in (("Over", over), ("Under", under)):
-                line = market.get("line")
-                if line is None:
-                    continue
-                model_total = _as_float(game_pred.get("model_total"))
-                if model_total is None:
-                    continue
-                edge = model_total - line if label == "Over" else line - model_total
-                if best is None or abs(edge) > abs(best[0]):
-                    best = (edge, line, book_key, label, market.get("price"))
+
+            over_line = _as_float(over.get("line"))
+            under_line = _as_float(under.get("line"))
+            over_price = over.get("price")
+            under_price = under.get("price")
+
+            # Over candidate: edge = model_total - line
+            if over_line is not None:
+                edge_over = model_total - over_line
+                if edge_over > 0:
+                    cand = {
+                        "selection": "Over",
+                        "edge": edge_over,
+                        "line": over_line,
+                        "book": book_key,
+                        "price": over_price,
+                    }
+                    if best is None or cand["edge"] > best["edge"]:
+                        best = cand
+
+            # Under candidate: edge = line - model_total
+            if under_line is not None:
+                edge_under = under_line - model_total
+                if edge_under > 0:
+                    cand = {
+                        "selection": "Under",
+                        "edge": edge_under,
+                        "line": under_line,
+                        "book": book_key,
+                        "price": under_price,
+                    }
+                    if best is None or cand["edge"] > best["edge"]:
+                        best = cand
+
         return best
 
     best_total = _best_total()
     model_total = _as_float(game_pred.get("model_total"))
-    if best_total:
-        edge, line_total, book_key, selection, price = best_total
+    if best_total and model_total is not None:
         picks.append({
             "game_id": game_id,
             "bet_type": "total",
-            "selection": selection,
-            "model_projection": model_total,
-            "book_line": line_total,
-            "bookmaker": book_key,
-            "edge_strength": abs(edge),
-            "odds": price,
-            "odds_to_prob": make_preds.implied_prob_from_moneyline(price),
+            "selection": best_total["selection"],          # "Over" / "Under"
+            "model_projection": model_total,               # e.g. 157.3
+            "book_line": best_total["line"],               # e.g. 180.5
+            "bookmaker": best_total["book"],
+            "edge_strength": best_total["edge"],
+            "odds": best_total["price"],
+            "odds_to_prob": make_preds.implied_prob_from_moneyline(
+                best_total["price"]
+            ),
         })
     elif model_total is not None:
         line_total = _as_float(game_pred.get("bet_total"))
@@ -410,12 +557,7 @@ def run_prediction_pipeline(config: PredictionPipelineConfig | None = None) -> N
             day_picks.extend(_choose_bets_for_game(game_pred))
 
         _label_missing_odds(game_preds)
-        ranked = sorted(day_picks, key=lambda p: p.get("edge_strength", 0), reverse=True)
-        top_recommendations: List[Dict[str, Any]] = []
-        for bet_type in ("spread", "moneyline", "total"):
-            filtered = [p for p in ranked if p.get("bet_type") == bet_type]
-            top_recommendations.extend(filtered[:3])
-        top_recommendations = top_recommendations[: cfg.max_picks]
+        top_recommendations = _build_top_recommendations(day_picks, cfg.max_picks)
 
         bet_model_preds: List[Dict[str, Any]] = []
         bet_ready = _filter_rows_with_full_odds(features_df)

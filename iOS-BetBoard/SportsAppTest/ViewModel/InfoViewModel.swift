@@ -16,6 +16,7 @@
 import Foundation
 import FirebaseAuth
 import Combine
+import SwiftUI
 
 @MainActor
 class InfoViewModel: ObservableObject {
@@ -101,4 +102,12 @@ class InfoViewModel: ObservableObject {
             }
         }
     }
+    
+    var colorScheme: ColorScheme? {
+            // Default to light mode if no setting is found
+            if let darkModeEnabled = settings?.darkModeEnabled {
+                return darkModeEnabled ? .dark : .light
+            }
+            return .light // Default to light mode
+        }
 }

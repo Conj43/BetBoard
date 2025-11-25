@@ -21,7 +21,6 @@ class HomeViewModel: ObservableObject {
     
     private let firebaseService = FirebaseService()
     private var cancellables = Set<AnyCancellable>()
-    private var gameCache: [String: Game] = [:]
     
     var totalPnLFormatted: String {
         let formatter = NumberFormatter()
@@ -51,14 +50,6 @@ class HomeViewModel: ObservableObject {
         
         Task {
             do {
-                // Load games first to build cache
-                let games = try await firebaseService.fetchGames()
-                await MainActor.run {
-                    for game in games {
-                        self.gameCache[game.id] = game
-                    }
-                }
-                
                 let userBets = try await firebaseService.fetchUserBets(for: currentUser.uid)
                 
                 await MainActor.run {
@@ -119,22 +110,12 @@ class HomeViewModel: ObservableObject {
     }
     
     private func createBetWithGameInfo(from bet: Bet) -> BetWithGameInfo? {
-        guard let game = gameCache[bet.gameID] else {
-            print("⚠️ Could not find game info for bet: \(bet.id)")
-            // Return a fallback with game ID
-            return BetWithGameInfo(
-                bet: bet,
-                homeTeam: "Unknown",
-                awayTeam: "Unknown",
-                gameDate: bet.placedAt
-            )
-        }
-        
+        // Use team names directly from the bet object
         return BetWithGameInfo(
             bet: bet,
-            homeTeam: game.homeTeam,
-            awayTeam: game.awayTeam,
-            gameDate: game.date
+            homeTeam: bet.homeTeamName ?? "Unkown Team",
+            awayTeam: bet.awayTeamName ?? "Unknown Team",
+            gameDate: bet.placedAt
         )
     }
     

@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Bet: Identifiable, Codable, Hashable {
+struct Bet: Identifiable, Codable {
     let id: String
     let userID: String
     let gameID: String
@@ -17,14 +17,41 @@ struct Bet: Identifiable, Codable, Hashable {
     let amount: Double
     let result: BetResult
     let placedAt: Date
-    
-    // MARK: - Hashable Conformance
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-    
-    static func == (lhs: Bet, rhs: Bet) -> Bool {
-        return lhs.id == rhs.id
+
+    // New, all optional so old data still works
+    let homeTeamName: String?
+    let awayTeamName: String?
+    let gameDate: Date?
+    let sportsbook: Sportsbook?
+
+    init(
+        id: String,
+        userID: String,
+        gameID: String,
+        type: BetType,
+        selection: String,
+        odds: Double,
+        amount: Double,
+        result: BetResult,
+        placedAt: Date,
+        homeTeamName: String? = nil,
+        awayTeamName: String? = nil,
+        gameDate: Date? = nil,
+        sportsbook: Sportsbook? = nil
+    ) {
+        self.id = id
+        self.userID = userID
+        self.gameID = gameID
+        self.type = type
+        self.selection = selection
+        self.odds = odds
+        self.amount = amount
+        self.result = result
+        self.placedAt = placedAt
+        self.homeTeamName = homeTeamName
+        self.awayTeamName = awayTeamName
+        self.gameDate = gameDate
+        self.sportsbook = sportsbook
     }
 }
 

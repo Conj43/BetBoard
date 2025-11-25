@@ -11,8 +11,7 @@ struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
     @EnvironmentObject var authService: AuthService
     @State private var selectedTimeframe: TimeFrame = .oneWeek
-    @State private var selectedBet: BetWithGameInfo?
-    @State private var showingBetSlip = false
+    @State private var selectedBet: BetWithGameInfo?   // keeps the selected bet
     
     var body: some View {
         NavigationView {
@@ -48,8 +47,7 @@ struct HomeView: View {
                         TrackedBetsSectionView(
                             trackedBets: viewModel.trackedBets,
                             onBetTap: { bet in
-                                selectedBet = bet
-                                showingBetSlip = true
+                                selectedBet = bet      // <- just set the item
                             }
                         )
                         
@@ -57,8 +55,7 @@ struct HomeView: View {
                         HistoricalBetsSectionView(
                             recentBets: viewModel.recentBets,
                             onBetTap: { bet in
-                                selectedBet = bet
-                                showingBetSlip = true
+                                selectedBet = bet      // <- just set the item
                             }
                         )
                     }
@@ -66,11 +63,10 @@ struct HomeView: View {
                 }
             }
             .navigationTitle("Home")
-            .sheet(isPresented: $showingBetSlip) {
-                if let selectedBet = selectedBet {
-                    TrackedBetSlipView(bet: selectedBet.bet) {
-                        deleteBet(selectedBet)
-                    }
+            // item-based sheet – no more first-time blank
+            .sheet(item: $selectedBet) { betWithGameInfo in
+                TrackedBetSlipView(bet: betWithGameInfo.bet) {
+                    deleteBet(betWithGameInfo)
                 }
             }
             .refreshable {

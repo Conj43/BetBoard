@@ -3,6 +3,7 @@
 //  SportsAppTest
 //
 //  Created by Trenton Roney on 8/26/25.
+//  Updated by Trenton Roney on 11/25/25.
 //
 
 import SwiftUI
@@ -16,7 +17,7 @@ struct SearchBarView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
             
-            TextField("Search teams...", text: $searchText)
+            TextField("Search for teams...", text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .autocapitalization(.none)
                 .disableAutocorrection(true)

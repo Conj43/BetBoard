@@ -9,225 +9,399 @@ import SwiftUI
 import FirebaseAuth
 import Firebase
 
+// MARK: - View Mode
+enum PredictionsViewMode {
+    case allGames
+    case recommended
+}
+
+enum ConferenceFilter: String, CaseIterable {
+    case all = "All"
+    case americaEast = "America East Conference"
+    case americanAthletic = "American Athletic Conference"
+    case atlantic10 = "Atlantic 10 Conference"
+    case atlanticCoast = "Atlantic Coast Conference"
+    case atlanticSun = "Atlantic Sun Conference"
+    case big12 = "Big 12 Conference"
+    case bigEast = "Big East Conference"
+    case bigSky = "Big Sky Conference"
+    case bigSouth = "Big South Conference"
+    case bigTen = "Big Ten Conference"
+    case bigWest = "Big West Conference"
+    case colonialAthletic = "Colonial Athletic Association"
+    case conferenceUSA = "Conference USA"
+    case horizonLeague = "Horizon League"
+    case ivyLeague = "Ivy League"
+    case metroAtlantic = "Metro Atlantic Athletic Conference"
+    case midAmerican = "Mid-American Conference"
+    case midEastern = "Mid-Eastern Athletic Conference"
+    case missouriValley = "Missouri Valley Conference"
+    case mountainWest = "Mountain West Conference"
+    case northeast = "Northeast Conference"
+    case ohioValley = "Ohio Valley Conference"
+    case pac12 = "Pac-12 Conference"
+    case patriotLeague = "Patriot League"
+    case southeastern = "Southeastern Conference"
+    case southern = "Southern Conference"
+    case southland = "Southland Conference"
+    case southwesternAthletic = "Southwestern Athletic Conference"
+    case summitLeague = "Summit League"
+    case sunBelt = "Sun Belt Conference"
+    case westCoast = "West Coast Conference"
+    case westernAthletic = "Western Athletic Conference"
+}
+
+enum RankingFilter: String, CaseIterable {
+    case all = "All"
+    case top25 = "Top 25"
+    case top50 = "Top 50"
+}
+
 // MARK: - PredictionsViewModel
 @MainActor
 class PredictionsViewModel: ObservableObject {
-    @Published var predictions: [PredictionGame] = []
-    @Published var filteredPredictions: [PredictionGame] = []
-    @Published var isLoading: Bool = true
+    // Data
+    @Published var allGames: [PredictionGame] = []
+    @Published var recommendedGames: [PredictionGame] = []
+    @Published var filteredGames: [PredictionGame] = []
+    
+    // UI State
+    @Published var viewMode: PredictionsViewMode = .recommended
+    @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
-    // We're not using selectedBetType anymore as we're showing all predictions
-    // But keeping it for compatibility with other views that might depend on it
-    @Published var selectedBetType: BetType = .spread
+    // Filters
+    @Published var selectedConference: ConferenceFilter = .all
+    @Published var selectedRanking: RankingFilter = .all
     
-    private var gameStatusCache: [String: GameStatus] = [:]
+    // Date selection and results
+    @Published var selectedDate: Date = Date()
+    @Published var gameResults: [String: GameResult] = [:]
+    
+    @Published var appSettings: AppSettings?
+    // Cache management
+    private var lastLoadedDate: String?
+    private var cacheKey: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: selectedDate)
+    }
+    private var betSlipsCache: [String: [BetSlip]] = [:]
+    private var gameResultsCache: [String: [String: GameResult]] = [:]
+    
     private let firebaseService = FirebaseService()
+    private var gameStatusCache: [String: GameStatus] = [:]
+    
+    // Computed property for displayed games
+    var filteredPredictions: [PredictionGame] {
+        return filteredGames
+    }
+    
+
+    func fetchGameResults(for date: Date) async throws -> [String: GameResult] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let dateStr = formatter.string(from: date)
+        
+        print("🔍 Fetching game results for \(dateStr)...")
+        
+        // Get all games for this date
+        let gamesSnapshot = try await Firestore.firestore()
+            .collection("games")
+            .document(dateStr)
+            .collection("games")
+            .getDocuments()
+        
+        var results: [String: GameResult] = [:]
+        
+        for gameDoc in gamesSnapshot.documents {
+            let gameID = gameDoc.documentID
+            let gameData = gameDoc.data()
+            
+            // Try to get game_results/odds_api subcollection document
+            do {
+                let resultsDoc = try await Firestore.firestore()
+                    .collection("games")
+                    .document(dateStr)
+                    .collection("games")
+                    .document(gameID)
+                    .collection("game_results")
+                    .document("odds_api")
+                    .getDocument()
+                
+                // Check if results exist and game is completed
+                if resultsDoc.exists,
+                   let resultData = resultsDoc.data(),
+                   let completed = resultData["completed"] as? Bool,
+                   completed,
+                   let homeScore = resultData["home_score"] as? Int,
+                   let awayScore = resultData["away_score"] as? Int {
+                    
+                    // Get team names from the main game document
+                    let homeTeam = gameData["home_team"] as? String ?? ""
+                    let awayTeam = gameData["away_team"] as? String ?? ""
+                    
+                    results[gameID] = GameResult(
+                        homeScore: homeScore,
+                        awayScore: awayScore,
+                        homeTeam: homeTeam,
+                        awayTeam: awayTeam
+                    )
+                    
+                    print("✅ Result: \(gameID) - \(awayTeam) \(awayScore) @ \(homeTeam) \(homeScore)")
+                }
+            } catch {
+                // No results for this game yet, continue
+                continue
+            }
+        }
+        
+        print("✅ Loaded \(results.count) game results for \(dateStr)")
+        return results
+    }
     
     func loadPredictions() async {
-        print("🔄 Loading predictions...")
-        
-        do {
-            // First, load all bet slips
-            let betSlips = try await firebaseService.fetchBetSlips()
-            print("📊 Fetched \(betSlips.count) bet slips")
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+            let cacheKey = dateFormatter.string(from: selectedDate)
             
-            // Fetch game statuses for filtering
-            await loadGameStatuses(for: betSlips.map { $0.gameID })
-            
-            // Filter active games (not yet played or in progress)
-            let activeBetSlips = betSlips.filter { betSlip in
-                guard let gameStatus = self.gameStatusCache[betSlip.gameID] else {
-                    print("⚠️ No game status found for betSlip gameID: \(betSlip.gameID), including it anyway")
-                    return true
-                }
+            // Check if we already loaded this date
+            if lastLoadedDate == cacheKey,
+               let cachedBetSlips = betSlipsCache[cacheKey],
+               !cachedBetSlips.isEmpty {
+                print("✅ Using cached data for \(cacheKey)")
                 
-                // Only include games that are not final
-                switch gameStatus {
-                case .final:
-                    print("❌ Excluding final game: \(betSlip.gameID)")
-                    return false
-                case .notPlayed, .inProgress:
-                    print("✅ Including active game: \(betSlip.gameID)")
-                    return true
-                }
-            }
-            
-            print("🎯 Active bet slips after filtering: \(activeBetSlips.count)")
-            
-            // Load prediction games from bet slips, but only include those with recommendations
-            let predictionGames = await loadPredictionsWithRecommendations(from: activeBetSlips)
-            print("🧠 Created \(predictionGames.count) prediction games with recommendations")
-            
-            // Sort predictions by odds_to_prob (high to low) instead of ranking
-            let sortedPredictions = predictionGames.sorted { (game1, game2) -> Bool in
-                let prob1 = game1.keyFactors.first(where: { $0.starts(with: "Win Probability:") })?
-                    .dropFirst(16).dropLast(1).trimmingCharacters(in: .whitespaces) ?? "0"
-                let prob2 = game2.keyFactors.first(where: { $0.starts(with: "Win Probability:") })?
-                    .dropFirst(16).dropLast(1).trimmingCharacters(in: .whitespaces) ?? "0"
+                // Use cached bet slips
+                let allGames = cachedBetSlips.compactMap { createPredictionGameFromBetSlip($0) }
+                    .sorted { $0.gameTime < $1.gameTime }
                 
-                return (Double(prob1) ?? 0) > (Double(prob2) ?? 0)
-            }
-            
-            self.predictions = sortedPredictions
-            // Instead of filtering, we just set filteredPredictions to all predictions
-            self.filteredPredictions = sortedPredictions
-            self.isLoading = false
-            print("✅ Predictions loaded successfully: \(self.filteredPredictions.count) predictions")
-        } catch {
-            self.errorMessage = "Failed to load predictions: \(error.localizedDescription)"
-            self.isLoading = false
-            print("❌ Error loading predictions: \(error)")
-        }
-    }
-    
-    private func loadGameStatuses(for gameIDs: [String]) async {
-        print("🔄 Loading game statuses for \(gameIDs.count) games...")
-        
-        // In a real implementation, this would fetch game statuses from a service
-        // For now, we'll just simulate by marking all as not played
-        for gameID in gameIDs {
-            gameStatusCache[gameID] = .notPlayed
-        }
-        
-        print("✅ Loaded game statuses")
-    }
-    
-    // MARK: - Load Predictions with Recommendations
-    private func loadPredictionsWithRecommendations(from betSlips: [BetSlip]) async -> [PredictionGame] {
-        print("🔄 Loading predictions with recommendations from \(betSlips.count) bet slips")
-        
-        var predictionGames: [PredictionGame] = []
-        
-        for betSlip in betSlips {
-            // Fetch game data with recommended field from Firebase
-            if let gameData = await fetchGameWithRecommendations(gameID: betSlip.gameID) {
-                // Check if recommended exists and is an array
-                if let recommendedArray = gameData["recommended"] as? [[String: Any]] {
-                    print("✅ Found recommended data for game: \(betSlip.gameID) with \(recommendedArray.count) recommendations")
-                    
-                    // Process each recommendation in the array
-                    for (index, recommendationData) in recommendedArray.enumerated() {
-                        if let game = createPredictionGameFromRecommendation(
-                            for: betSlip,
-                            recommendationData: recommendationData,
-                            ranking: index
-                        ) {
-                            predictionGames.append(game)
-                            print("✅ Created prediction game with recommendation ranking: \(index)")
-                        }
-                    }
+                self.allGames = allGames
+                
+                // Load recommended (always fetch top_picks as it might change)
+                async let recommendedTask = loadRecommendedGames(from: cachedBetSlips)
+                
+                // Use cached game results if available
+                if let cachedResults = gameResultsCache[cacheKey] {
+                    self.gameResults = cachedResults
+                    self.recommendedGames = try! await recommendedTask
                 } else {
-                    // Try if it's a map with indices instead of an array
-                    if let recommendedMap = gameData["recommended"] as? [String: [String: Any]] {
-                        print("✅ Found recommended data (as map) for game: \(betSlip.gameID) with \(recommendedMap.count) recommendations")
-                        
-                        // Convert map to an array of (index, data) tuples and sort by index
-                        let recommendations = recommendedMap.compactMap { key, value -> (Int, [String: Any])? in
-                            if let index = Int(key) {
-                                return (index, value)
-                            }
-                            return nil
-                        }.sorted(by: { $0.0 < $1.0 })
-                        
-                        // Process each recommendation
-                        for (index, recommendationData) in recommendations {
-                            if let game = createPredictionGameFromRecommendation(
-                                for: betSlip,
-                                recommendationData: recommendationData,
-                                ranking: index
-                            ) {
-                                predictionGames.append(game)
-                                print("✅ Created prediction game with recommendation ranking: \(index)")
-                            }
-                        }
-                    } else {
-                        print("⚠️ No recommended field (or invalid format) for game: \(betSlip.gameID)")
-                        print("⚠️ Available fields: \(gameData.keys.joined(separator: ", "))")
-                        if let recValue = gameData["recommended"] {
-                            print("⚠️ Recommended is of type: \(type(of: recValue))")
-                        }
-                    }
+                    async let resultsTask = fetchGameResults(for: selectedDate)
+                    let (results, recommendedGames) = try! await (resultsTask, recommendedTask)
+                    self.gameResults = results
+                    self.gameResultsCache[cacheKey] = results
+                    self.recommendedGames = recommendedGames
                 }
-            } else {
-                print("⚠️ Could not fetch game data for: \(betSlip.gameID)")
+                
+                applyFilters()
+                return
+            }
+            
+            print("🔄 Loading predictions for \(cacheKey)...")
+            isLoading = true
+            errorMessage = nil
+            
+            do {
+                // ONLY FETCH BET SLIPS ONCE
+                let betSlips = try await firebaseService.fetchBetSlips(for: selectedDate)
+                
+                // Cache bet slips
+                betSlipsCache[cacheKey] = betSlips
+                
+                // Create all games from bet slips
+                let allGames = betSlips.compactMap { createPredictionGameFromBetSlip($0) }
+                    .sorted { $0.gameTime < $1.gameTime }
+                
+                // Load recommended picks and results
+                async let resultsTask = fetchGameResults(for: selectedDate)
+                async let recommendedTask = loadRecommendedGames(from: betSlips)
+                
+                let (results, recommendedGames) = try await (resultsTask, recommendedTask)
+                
+                // Cache results
+                gameResultsCache[cacheKey] = results
+                
+                self.allGames = allGames
+                self.recommendedGames = recommendedGames
+                self.gameResults = results
+                self.lastLoadedDate = cacheKey
+                
+                applyFilters()
+                isLoading = false
+                
+                print("✅ Loaded \(allGames.count) games, \(recommendedGames.count) recommended, \(results.count) results")
+            } catch {
+                self.errorMessage = "Failed to load predictions: \(error.localizedDescription)"
+                self.isLoading = false
+                print("❌ Error loading predictions: \(error)")
             }
         }
         
-        return predictionGames
+        // Clear cache when needed
+        func clearCache() {
+            betSlipsCache.removeAll()
+            gameResultsCache.removeAll()
+            print("🗑️ Cleared all caches")
+        }
+    
+    // MARK: - Date Navigation
+    func goToPreviousDay() async {
+        selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+        await loadPredictions()
     }
     
-    // Fetch game data with recommendations from Firebase
-    private func fetchGameWithRecommendations(gameID: String) async -> [String: Any]? {
-        print("🔍 Fetching game data with recommendations for: \(gameID)")
+    func goToNextDay() async {
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        if selectedDate < tomorrow {
+            selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+            await loadPredictions()
+        }
+    }
+    
+    func goToToday() async {
+        selectedDate = Date()
+        await loadPredictions()
+    }
+    
+    // MARK: - Load All Games
+    private func loadAllGames() async throws -> [PredictionGame] {
+        print("🔄 Loading all games for \(selectedDate)...")
         
-        // Extract date from gameID
-        let gameIDComponents = gameID.components(separatedBy: "_")
-        guard gameIDComponents.count >= 2 else {
-            print("❌ Invalid game ID format: \(gameID)")
-            return nil
+        // Pass the selected date to fetchBetSlips
+        let betSlips = try await firebaseService.fetchBetSlips(for: selectedDate)
+        print("📊 Fetched \(betSlips.count) bet slips")
+        
+        await loadGameStatuses(for: betSlips.map { $0.gameID })
+        
+        let games = betSlips.compactMap { betSlip -> PredictionGame? in
+            createPredictionGameFromBetSlip(betSlip)
         }
         
-        let dateStr = gameIDComponents[0]
+        return games.sorted { $0.gameTime < $1.gameTime }
+    }
+    
+    // MARK: - Load Recommended Games from top_picks
+    // MARK: - Load Recommended Games from top_picks
+    // MARK: - Load Recommended Games from top_picks
+    private func loadRecommendedGames(from betSlips: [BetSlip]) async throws -> [PredictionGame] {
+        print("🔄 Loading recommended games from top_picks...")
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateStr = dateFormatter.string(from: selectedDate)
         
         do {
-            // Get the game document
-            let gameDoc = try await Firestore.firestore().collection("games")
-                                     .document(dateStr)
-                                     .collection("games")
-                                     .document(gameID)
-                                     .getDocument()
+            let topPicksDoc = try await Firestore.firestore()
+                .collection("games")
+                .document(dateStr)
+                .collection("picks_metadata")
+                .document("top_picks")
+                .getDocument()
             
-            guard gameDoc.exists else {
-                print("❌ Game document not found: \(gameID)")
-                return nil
+            guard topPicksDoc.exists,
+                  let data = topPicksDoc.data(),
+                  let picksArray = data["picks"] as? [[String: Any]] else {
+                print("⚠️ No top picks found for \(dateStr)")
+                return []
             }
             
-            return gameDoc.data()
+            print("✅ Found \(picksArray.count) top picks")
+            
+            // Create lookup from already-fetched bet slips
+            var betSlipLookup: [String: BetSlip] = [:]
+            for betSlip in betSlips {
+                betSlipLookup[betSlip.gameID] = betSlip
+            }
+            
+            var recommendedGames: [PredictionGame] = []
+            
+            for (index, pickData) in picksArray.enumerated() {
+                guard let gameID = pickData["game_id"] as? String,
+                      let betSlip = betSlipLookup[gameID] else {
+                    continue
+                }
+                
+                if let game = createPredictionGameFromTopPick(
+                    betSlip: betSlip,
+                    pickData: pickData,
+                    ranking: index
+                ) {
+                    recommendedGames.append(game)
+                }
+            }
+            
+            return recommendedGames
         } catch {
-            print("❌ Error fetching game data: \(error.localizedDescription)")
-            return nil
+            print("❌ Error loading top picks: \(error)")
+            return []
         }
     }
     
-    // Create a prediction game from recommendation data
-    private func createPredictionGameFromRecommendation(
-        for betSlip: BetSlip,
-        recommendationData: [String: Any],
+    // MARK: - Create PredictionGame from BetSlip
+    private func createPredictionGameFromBetSlip(_ betSlip: BetSlip) -> PredictionGame? {
+        let spreadOdds = betSlip.bettingLines.spread["homeOdds"] ?? -110.0
+        
+        let bestBet = BestBet(
+            type: .spread,
+            selection: betSlip.homeTeam.name,
+            odds: spreadOdds,
+            sportsbook: betSlip.sportsbook
+        )
+        
+        var keyFactors: [String] = []
+        
+        if let homeRank = betSlip.homeRanking {
+            keyFactors.append("Home Rank: #\(homeRank)")
+        }
+        if let awayRank = betSlip.awayRanking {
+            keyFactors.append("Away Rank: #\(awayRank)")
+        }
+        if let homeConf = betSlip.homeConference {
+            keyFactors.append("Home: \(homeConf)")
+        }
+        if let awayConf = betSlip.awayConference {
+            keyFactors.append("Away: \(awayConf)")
+        }
+        
+        return PredictionGame(
+            homeTeam: betSlip.homeTeam,
+            awayTeam: betSlip.awayTeam,
+            gameTime: betSlip.gameTime,
+            bestBet: bestBet,
+            confidence: 50.0,
+            analysis: nil,
+            keyFactors: keyFactors,
+            betSlip: betSlip
+        )
+    }
+    
+    // MARK: - Create PredictionGame from Top Pick
+    private func createPredictionGameFromTopPick(
+        betSlip: BetSlip,
+        pickData: [String: Any],
         ranking: Int
     ) -> PredictionGame? {
-        // Extract bet information from recommendation
         guard
-            let betType = recommendationData["bet_type"] as? String,
-            let bookLine = recommendationData["book_line"] as? Double,
-            let bookmaker = recommendationData["bookmaker"] as? String,
-            let edgeStrength = recommendationData["edge_strength"] as? Double,
-            let selection = recommendationData["selection"] as? String
+            let betType = pickData["bet_type"] as? String,
+            let bookLine = pickData["book_line"] as? Double,
+            let bookmaker = pickData["bookmaker"] as? String,
+            let edgeStrength = pickData["edge_strength"] as? Double,
+            let selection = pickData["selection"] as? String
         else {
-            print("❌ Missing required fields in recommendation data")
-            print("⚠️ bet_type: \(recommendationData["bet_type"] ?? "missing")")
-            print("⚠️ book_line: \(recommendationData["book_line"] ?? "missing")")
-            print("⚠️ bookmaker: \(recommendationData["bookmaker"] ?? "missing")")
-            print("⚠️ edge_strength: \(recommendationData["edge_strength"] ?? "missing")")
-            print("⚠️ selection: \(recommendationData["selection"] ?? "missing")")
             return nil
         }
         
-        // Optional fields
-        let modelProjection = recommendationData["model_projection"] as? Double
-        let odds = recommendationData["odds"] as? Double ?? -110.0
+        let modelProjection = pickData["model_projection"] as? Double
+        let odds = pickData["odds"] as? Double ?? -110.0
         
-        // Parse odds_to_prob which could be String or Double
         let oddsToProbDouble: Double
-        if let probStr = recommendationData["odds_to_prob"] as? String {
+        if let probStr = pickData["odds_to_prob"] as? String {
             oddsToProbDouble = Double(probStr) ?? 0.0
-        } else if let probDouble = recommendationData["odds_to_prob"] as? Double {
+        } else if let probDouble = pickData["odds_to_prob"] as? Double {
             oddsToProbDouble = probDouble
         } else {
             oddsToProbDouble = 0.0
         }
         
-        // Map bet type to enum - ADD SUPPORT FOR MONEYLINE
         let betTypeEnum: BetType
         if betType.lowercased() == "total" {
             betTypeEnum = .total
@@ -237,13 +411,11 @@ class PredictionsViewModel: ObservableObject {
             betTypeEnum = .spread
         }
         
-        // Map bookmaker to enum
         var sportsbookEnum: Sportsbook = .draftkings
         if let sbEnum = Sportsbook.allCases.first(where: { $0.rawValue.lowercased() == bookmaker.lowercased() }) {
             sportsbookEnum = sbEnum
         }
         
-        // Create BestBet
         let bestBet = BestBet(
             type: betTypeEnum,
             selection: selection,
@@ -251,9 +423,8 @@ class PredictionsViewModel: ObservableObject {
             sportsbook: sportsbookEnum
         )
         
-        // Create key factors from recommendation data
         var keyFactors: [String] = [
-            "Ranking: \(ranking)",
+            "Ranking: \(ranking + 1)",
             "Book Line: \(bookLine)",
             "Edge Strength: \(String(format: "%.2f", edgeStrength))"
         ]
@@ -267,11 +438,9 @@ class PredictionsViewModel: ObservableObject {
             keyFactors.append("Win Probability: \(String(format: "%.1f", percentage))%")
         }
         
-        // Calculate confidence based on edge strength
-        let confidence = min(max(50 + edgeStrength * 5, 50), 95) // Scale to 50-95 range
+        let confidence = min(max(50 + edgeStrength * 5, 50), 95)
         
-        // Create the prediction game
-        let predictionGame = PredictionGame(
+        return PredictionGame(
             homeTeam: betSlip.homeTeam,
             awayTeam: betSlip.awayTeam,
             gameTime: betSlip.gameTime,
@@ -281,33 +450,124 @@ class PredictionsViewModel: ObservableObject {
             keyFactors: keyFactors,
             betSlip: betSlip
         )
-        
-        return predictionGame
     }
     
-    // Keep filterPredictions for backwards compatibility but make it a no-op
-    func filterPredictions(by betType: BetType) {
-        // We're no longer filtering by bet type, just maintaining all predictions
-        self.selectedBetType = betType
-        self.filteredPredictions = self.predictions
-        print("📊 Showing all \(self.filteredPredictions.count) predictions (no filtering)")
+    // MARK: - Helper Functions
+    private func fetchGameData(gameID: String) async -> [String: Any]? {
+        let gameIDComponents = gameID.components(separatedBy: "_")
+        guard gameIDComponents.count >= 2 else {
+            return nil
+        }
+        
+        let dateStr = gameIDComponents[0]
+        
+        do {
+            let gameDoc = try await Firestore.firestore()
+                .collection("games")
+                .document(dateStr)
+                .collection("games")
+                .document(gameID)
+                .getDocument()
+            
+            return gameDoc.data()
+        } catch {
+            print("❌ Error fetching game data: \(error)")
+            return nil
+        }
+    }
+    
+    private func createBetSlipFromGameData(gameData: [String: Any]) async throws -> BetSlip? {
+        // Placeholder - needs implementation
+        return nil
+    }
+    
+    private func loadGameStatuses(for gameIDs: [String]) async {
+        for gameID in gameIDs {
+            gameStatusCache[gameID] = GameStatus.notPlayed
+        }
+    }
+    
+    
+        
+    func applyFilters() {
+        let sourceGames = viewMode == .allGames ? allGames : recommendedGames
+        
+        var filtered = sourceGames
+        
+        // Only apply filters in All Games mode
+        if viewMode == .allGames {
+            // Filter by conference
+            if selectedConference != .all {
+                filtered = filtered.filter { game in
+                    let homeConf = game.betSlip.homeConference?.uppercased() ?? ""
+                    let awayConf = game.betSlip.awayConference?.uppercased() ?? ""
+                    let filterConf = selectedConference.rawValue.uppercased()
+                    
+                    // Match if either team is in the selected conference
+                    return homeConf.contains(filterConf) || awayConf.contains(filterConf)
+                }
+            }
+            
+            // Filter by ranking
+            switch selectedRanking {
+            case .all:
+                break
+            case .top25:
+                filtered = filtered.filter { game in
+                    (game.betSlip.homeRanking ?? 999) <= 25 || (game.betSlip.awayRanking ?? 999) <= 25
+                }
+            case .top50:
+                filtered = filtered.filter { game in
+                    (game.betSlip.homeRanking ?? 999) <= 50 || (game.betSlip.awayRanking ?? 999) <= 50
+                }
+            }
+        }
+        
+        self.filteredGames = filtered
+    }
+    
+    func switchViewMode(to mode: PredictionsViewMode) {
+        viewMode = mode
+        
+        // Reset filters when switching to Recommended
+        if mode == .recommended {
+            selectedConference = .all
+            selectedRanking = .all
+        }
+        
+        applyFilters()
+    }
+    
+    func updateConferenceFilter(_ filter: ConferenceFilter) {
+        selectedConference = filter
+        applyFilters()
+    }
+    
+    func updateRankingFilter(_ filter: RankingFilter) {
+        selectedRanking = filter
+        applyFilters()
     }
     
     // MARK: - Refresh
     func refreshPredictions() async {
-        print("🔄 Refreshing predictions...")
-        self.isLoading = true
-        self.errorMessage = nil
+        print("🔄 Force refreshing predictions...")
+        lastLoadedDate = nil
         await loadPredictions()
     }
     
-    // MARK: - Bet Tracking Functions
-    func trackSpecificBet(from prediction: PredictionGame, betType: BetType, selection: String, odds: Double, amount: Double) async {
+    // MARK: - Bet Tracking
+    func trackSpecificBet(
+        from prediction: PredictionGame,
+        betType: BetType,
+        selection: String,
+        odds: Double,
+        amount: Double
+    ) async {
         guard let currentUser = Auth.auth().currentUser else {
             errorMessage = "Please log in to track bets"
             return
         }
-        
+
         let bet = Bet(
             id: UUID().uuidString,
             userID: currentUser.uid,
@@ -317,19 +577,21 @@ class PredictionsViewModel: ObservableObject {
             odds: odds,
             amount: amount,
             result: .pending,
-            placedAt: Date()
+            placedAt: Date(),
+            homeTeamName: prediction.homeTeam.name,
+            awayTeamName: prediction.awayTeam.name,
+            gameDate: prediction.gameTime,
+            sportsbook: prediction.betSlip.sportsbook
         )
-        
+
         do {
             try await firebaseService.addUserBet(bet)
-            // Clear any previous errors
             errorMessage = nil
         } catch {
             errorMessage = "Failed to track bet: \(error.localizedDescription)"
         }
     }
     
-    // Keep the old method for backwards compatibility, but now it defaults to $0 amount
     func trackBet(from prediction: PredictionGame) async {
         await trackSpecificBet(
             from: prediction,
@@ -339,4 +601,29 @@ class PredictionsViewModel: ObservableObject {
             amount: 0.0
         )
     }
+    var colorScheme: ColorScheme? {
+            // Default to light mode if no setting is found
+            if let darkModeEnabled = appSettings?.darkModeEnabled {
+                return darkModeEnabled ? .dark : .light
+            }
+            return .light // Default to light mode
+        }
+        
+        /// Load user settings from Firestore
+        func loadUserSettings() async {
+            guard let currentUser = Auth.auth().currentUser else { return }
+            
+            do {
+                let settings = try await firebaseService.fetchUserSettings(for: currentUser.uid)
+                await MainActor.run {
+                    self.appSettings = settings
+                }
+            } catch {
+                print("Error loading user settings: \(error)")
+                // Use defaults on error - will default to light mode
+                self.appSettings = nil
+            }
+        }
+    
+
 }

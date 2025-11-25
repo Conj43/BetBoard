@@ -77,7 +77,6 @@ struct TrackBetSectionView: View {
                     .foregroundColor(.white)
                     .cornerRadius(8)
             }
-            .disabled(!isValidAmount)
         }
         .padding(16)
         .background(Color.gray.opacity(0.05))

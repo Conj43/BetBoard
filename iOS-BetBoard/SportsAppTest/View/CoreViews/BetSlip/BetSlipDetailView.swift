@@ -13,6 +13,7 @@ struct BetSlipDetailView: View {
     @State private var showingTrackConfirmation = false
     @State private var trackedBetDetails: String = ""
     @State private var isTrackingBet = false
+    @EnvironmentObject var betHistoryVM: BetHistoryViewModel
     
     var body: some View {
         ScrollView {
@@ -39,19 +40,34 @@ struct BetSlipDetailView: View {
         isTrackingBet = true
         
         Task {
-            await trackBetToFirebase(betType: betType, selection: selection, odds: odds, amount: amount)
+            await betHistoryVM.trackBet(
+                from: betSlip,
+                betType: betType,
+                selection: selection,
+                odds: odds,
+                amount: amount
+            )
+            
+            await MainActor.run {
+                isTrackingBet = false
+                showingTrackConfirmation = true
+            }
         }
     }
     
-    private func trackBetToFirebase(betType: BetType, selection: String, odds: Double, amount: Double) async {
+    private func trackBetToFirebase(
+        betType: BetType,
+        selection: String,
+        odds: Double,
+        amount: Double
+    ) async {
         guard let currentUser = Auth.auth().currentUser else {
-            await MainActor.run {
-                isTrackingBet = false
-            }
+            await MainActor.run { isTrackingBet = false }
             return
         }
-        
+
         let firebaseService = FirebaseService()
+
         let bet = Bet(
             id: UUID().uuidString,
             userID: currentUser.uid,
@@ -61,9 +77,13 @@ struct BetSlipDetailView: View {
             odds: odds,
             amount: amount,
             result: .pending,
-            placedAt: Date()
+            placedAt: Date(),
+            homeTeamName: betSlip.homeTeam.name,
+            awayTeamName: betSlip.awayTeam.name,
+            gameDate: betSlip.gameTime,
+            sportsbook: betSlip.sportsbook
         )
-        
+
         do {
             try await firebaseService.addUserBet(bet)
             await MainActor.run {
@@ -71,12 +91,8 @@ struct BetSlipDetailView: View {
                 showingTrackConfirmation = true
             }
         } catch {
-            // Handle error appropriately
             print("Failed to track bet: \(error)")
-            await MainActor.run {
-                isTrackingBet = false
-                // You could show an error alert here
-            }
+            await MainActor.run { isTrackingBet = false }
         }
     }
     
@@ -87,4 +103,6 @@ struct BetSlipDetailView: View {
             return "\(Int(odds))"
         }
     }
+    
+    
 }
