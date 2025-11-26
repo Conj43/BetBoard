@@ -57,9 +57,6 @@ struct TeamGameDetailView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                Text("\(game.awayTeam.record.wins)-\(game.awayTeam.record.losses)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
                 
                 if let ranking = game.awayRanking {
                     Text("#\(ranking)")
@@ -84,10 +81,6 @@ struct TeamGameDetailView: View {
                 Text(game.homeTeam.name)
                     .font(.title2)
                     .fontWeight(.bold)
-                
-                Text("\(game.homeTeam.record.wins)-\(game.homeTeam.record.losses)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
                 
                 if let ranking = game.homeRanking {
                     Text("#\(ranking)")

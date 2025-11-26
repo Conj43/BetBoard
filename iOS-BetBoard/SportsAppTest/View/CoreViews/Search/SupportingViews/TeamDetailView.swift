@@ -55,17 +55,6 @@ struct TeamDetailView: View {
                 .fontWeight(.bold)
             
             HStack(spacing: 20) {
-                VStack {
-                    Text("Record")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(team.record.wins)-\(team.record.losses)")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                }
-                
-                Divider()
-                    .frame(height: 40)
                 
                 VStack {
                     Text("Conference")

@@ -87,27 +87,6 @@ struct InfoView: View {
                     }
                 )
             )
-            
-            // Odds Format Picker
-            SettingsRowView(
-                icon: "number",
-                iconColor: .green,
-                title: "Odds Format"
-            ) {
-                Picker("Odds Format", selection: Binding(
-                    get: { viewModel.settings?.preferredOddsFormat ?? .american },
-                    set: { newValue in
-                        Task {
-                            await viewModel.updateOddsFormat(format: newValue)
-                        }
-                    }
-                )) {
-                    Text("American").tag(OddsFormat.american)
-                    Text("Decimal").tag(OddsFormat.decimal)
-                    Text("Fractional").tag(OddsFormat.fractional)
-                }
-                .pickerStyle(MenuPickerStyle())
-            }
         }
     }
     
