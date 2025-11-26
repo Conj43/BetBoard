@@ -11,8 +11,8 @@ struct SearchEmptyStateView: View {
     @State private var bounceOffset: CGFloat = 0
     
     // Popular teams by conference
-    let topTeams = ["Duke", "UNC", "Kansas", "Gonzaga", "Kentucky", "Villanova"]
-    let powerConferences = ["ACC", "Big Ten", "SEC", "Big 12", "Big East"]
+    let topTeams = ["Duke", "Missouri", "Kansas", "Gonzaga", "Kentucky", "Villanova"]
+    let powerConferences = ["ACC", "Big Ten", "SEC", "Big 12", "Big East", "Ivy"]
     
     var body: some View {
         ScrollView {
@@ -59,12 +59,6 @@ struct SearchEmptyStateView: View {
                         }
                 }
                 
-                // Main message
-                VStack(spacing: 12) {
-                    Text("The Court is Empty!")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
                     
                     Text("Search for your favorite teams to find games")
                         .font(.body)
@@ -114,6 +108,10 @@ struct SearchEmptyStateView: View {
                 .background(Color(.systemBackground))
                 .cornerRadius(16)
                 .shadow(color: .black.opacity(0.05), radius: 4)
+            
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
                 
                 // Power conferences section
                 VStack(alignment: .leading, spacing: 16) {
@@ -157,15 +155,6 @@ struct SearchEmptyStateView: View {
                 .cornerRadius(16)
                 .shadow(color: .black.opacity(0.05), radius: 4)
                 
-                // Pro tip
-                HStack(spacing: 8) {
-                    Image(systemName: "lightbulb.fill")
-                        .foregroundColor(.yellow)
-                    
-                    Text("Pro tip: Try searching by team abbreviations like 'UNC' or 'UK'")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
                 .padding()
                 .background(Color(.systemGray6))
                 .cornerRadius(8)
@@ -173,7 +162,6 @@ struct SearchEmptyStateView: View {
             .padding()
         }
     }
-}
 
 #Preview {
     SearchEmptyStateView { team in
