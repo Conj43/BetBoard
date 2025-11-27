@@ -142,7 +142,7 @@ def _grade_user_bet(bet_data: Dict[str, Any], game_data: Dict[str, Any], actual:
             return None
 
         # Convert bettor's line into the home-team convention used by the grader.
-        adjusted_line = -line if side == "home" else line
+        adjusted_line = line if side == "home" else -line
         pick = {
             "selection": pick_selection,
             "book_line": adjusted_line,
