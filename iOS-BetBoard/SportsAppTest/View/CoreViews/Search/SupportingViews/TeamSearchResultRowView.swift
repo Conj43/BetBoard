@@ -22,10 +22,6 @@ struct TeamSearchResultRowView: View {
                     .fontWeight(.semibold)
                 
                 HStack(spacing: 8) {
-                    // Record
-                    Text("\(team.record.wins)-\(team.record.losses)")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
                     
                     // Conference
                     Text(team.conference)

@@ -14,20 +14,14 @@ struct TrackedBetsSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Tracked Bets")
+                Text("Live Bets")
                     .font(.headline)
                     .fontWeight(.semibold)
                 Spacer()
-                NavigationLink("See All", destination: AllTrackedBetsView())
-                    .font(.subheadline)
-                    .foregroundColor(.blue)
             }
             
             if trackedBets.isEmpty {
                 TrackedBetsEmptyStateView {
-                    // This closure is called when user taps "Browse Games"
-                    // You'll need to handle navigation to the Search tab
-                    // For now, we can leave it empty or print a message
                     print("Navigate to Search tab")
                 }
             } else {
@@ -52,13 +46,10 @@ struct HistoricalBetsSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Recent Bets")
+                Text("Completed Bets")
                     .font(.headline)
                     .fontWeight(.semibold)
                 Spacer()
-                NavigationLink("See All", destination: BetHistoryView())
-                    .font(.subheadline)
-                    .foregroundColor(.blue)
             }
             
             if recentBets.isEmpty {
@@ -68,7 +59,7 @@ struct HistoricalBetsSectionView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding()
             } else {
-                ForEach(recentBets.prefix(5)) { bet in
+                ForEach(recentBets.prefix(3)) { bet in
                     HistoricalBetRowView(bet: bet) {
                         onBetTap(bet)
                     }

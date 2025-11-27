@@ -55,17 +55,6 @@ struct TeamDetailView: View {
                 .fontWeight(.bold)
             
             HStack(spacing: 20) {
-                VStack {
-                    Text("Record")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(team.record.wins)-\(team.record.losses)")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                }
-                
-                Divider()
-                    .frame(height: 40)
                 
                 VStack {
                     Text("Conference")
@@ -76,20 +65,6 @@ struct TeamDetailView: View {
                         .fontWeight(.semibold)
                 }
                 
-                if let ranking = team.ranking {
-                    Divider()
-                        .frame(height: 40)
-                    
-                    VStack {
-                        Text("Rank")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("#\(ranking)")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.orange)
-                    }
-                }
             }
             .padding()
             .background(Color(.systemGray6))
@@ -246,17 +221,6 @@ struct TeamGameRowView: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Color.orange.opacity(0.1))
-                        .cornerRadius(6)
-                }
-                
-                if let ranking = opponentTeam.ranking {
-                    Text("#\(ranking)")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.orange)
                         .cornerRadius(6)
                 }
                 
