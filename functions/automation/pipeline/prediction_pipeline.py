@@ -216,6 +216,34 @@ def _as_float(value: Any) -> Optional[float]:
     except (TypeError, ValueError):
         return None
     
+def _meets_bet_criteria(pick: Dict[str, Any]) -> bool:
+    """Filter picks based on edge and odds requirements."""
+    bet_type = pick.get("bet_type")
+    edge = pick.get("edge_strength", 0)
+    odds = pick.get("odds")
+    
+    if bet_type == "spread":
+        return 5 <= edge <= 10
+    
+    elif bet_type == "total":
+        return 5 <= edge <= 10
+    
+    elif bet_type == "moneyline":
+        # Edge is in probability (0-1 scale), need 1-5%
+        if not (0.01 <= edge <= 0.05):
+            return False
+        # Odds must be -200 or less (more negative = bigger favorite)
+        if odds is None:
+            return False
+        try:
+            odds_val = float(odds)
+            return odds_val <= -200
+        except (TypeError, ValueError):
+            return False
+    
+    return False
+
+
 def _build_top_recommendations(
     day_picks: List[Dict[str, Any]],
     max_picks: int,
@@ -225,12 +253,19 @@ def _build_top_recommendations(
       - global ranking by edge_strength
       - up to 3 per bet_type ("spread", "moneyline", "total")
       - at most ONE pick per game_id overall
+      - filtered by min/max edge and odds criteria
     """
     if not day_picks:
         return []
 
+    # Filter picks that meet criteria
+    valid_picks = [p for p in day_picks if _meets_bet_criteria(p)]
+    
+    if not valid_picks:
+        return []
+
     # Global ranking by edge strength (descending)
-    ranked = sorted(day_picks, key=lambda p: p.get("edge_strength", 0.0), reverse=True)
+    ranked = sorted(valid_picks, key=lambda p: p.get("edge_strength", 0.0), reverse=True)
 
     top_recommendations: List[Dict[str, Any]] = []
     used_game_ids: set[str] = set()
@@ -259,7 +294,7 @@ def _build_top_recommendations(
             type_counts[bet_type] += 1
 
             if len(top_recommendations) >= max_picks:
-                break  # stop if global max reached
+                break
         if len(top_recommendations) >= max_picks:
             break
 
@@ -301,7 +336,8 @@ def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
                     home_line_val = -away_line_val
             if home_line_val is None:
                 continue
-            # Spread edge is the predicted ATS margin: predicted_margin + bookmaker_line
+            
+            # Spread edge calculation
             edge_val = model_spread + home_line_val
             selection = home_team if edge_val >= 0 else away_team
             odds = None
@@ -309,17 +345,30 @@ def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
                 odds = home_market.get("price")
             else:
                 odds = away_market.get("price")
-            odds_prob = make_preds.implied_prob_from_moneyline(odds) if odds is not None else None
+            
+            # Build candidate with EV adjustment
             candidate = {
                 "edge": edge_val,
                 "line": home_line_val,
                 "selection": selection,
                 "book": book_key,
                 "odds": odds,
-                "odds_prob": odds_prob,
+                "odds_prob": None,
+                "ev_adjusted": 0,
             }
-            if best is None or abs(edge_val) > abs(best["edge"]):
+            
+            if odds is not None:
+                odds_prob = make_preds.implied_prob_from_moneyline(odds)
+                candidate["odds_prob"] = odds_prob
+                if odds_prob is not None:
+                    # EV-adjusted edge
+                    ev_adjusted = abs(edge_val) * (1.0 - odds_prob)
+                    candidate["ev_adjusted"] = ev_adjusted
+            
+            # Compare and update best (INSIDE THE LOOP)
+            if best is None or candidate["ev_adjusted"] > best["ev_adjusted"]:
                 best = candidate
+        
         return best
 
     best_spread = _best_spread()
@@ -356,7 +405,7 @@ def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
         - Under: line - model_total
 
         We only consider candidates with positive edge (model likes that side),
-        and pick the one with the largest edge.
+        and pick the one with the largest EV-adjusted edge.
         """
         model_total = _as_float(game_pred.get("model_total"))
         if model_total is None or not bookmakers:
@@ -381,31 +430,43 @@ def _choose_bets_for_game(game_pred: Mapping[str, Any]) -> List[Dict[str, Any]]:
             under_price = under.get("price")
 
             # Over candidate: edge = model_total - line
-            if over_line is not None:
+            if over_line is not None and over_price is not None:
                 edge_over = model_total - over_line
                 if edge_over > 0:
+                    odds_prob = make_preds.implied_prob_from_moneyline(over_price)
+                    ev_adjusted = 0
+                    if odds_prob is not None:
+                        ev_adjusted = edge_over * (1.0 - odds_prob)
+                    
                     cand = {
                         "selection": "Over",
                         "edge": edge_over,
                         "line": over_line,
                         "book": book_key,
                         "price": over_price,
+                        "ev_adjusted": ev_adjusted,
                     }
-                    if best is None or cand["edge"] > best["edge"]:
+                    if best is None or cand["ev_adjusted"] > best.get("ev_adjusted", 0):
                         best = cand
 
             # Under candidate: edge = line - model_total
-            if under_line is not None:
+            if under_line is not None and under_price is not None:
                 edge_under = under_line - model_total
                 if edge_under > 0:
+                    odds_prob = make_preds.implied_prob_from_moneyline(under_price)
+                    ev_adjusted = 0
+                    if odds_prob is not None:
+                        ev_adjusted = edge_under * (1.0 - odds_prob)
+                    
                     cand = {
                         "selection": "Under",
                         "edge": edge_under,
                         "line": under_line,
                         "book": book_key,
                         "price": under_price,
+                        "ev_adjusted": ev_adjusted,
                     }
-                    if best is None or cand["edge"] > best["edge"]:
+                    if best is None or cand["ev_adjusted"] > best.get("ev_adjusted", 0):
                         best = cand
 
         return best

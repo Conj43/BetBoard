@@ -17,6 +17,8 @@ struct PortfolioChartView: View {
     @Binding var selectedTimeframe: TimeFrame
     let onTimeframeChange: (TimeFrame) -> Void
     
+    @State private var selectedDate: Date?  // ADD THIS
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -73,16 +75,76 @@ struct PortfolioChartView: View {
                 }
             }
             
+            // ADD: Show selected point info
+            if let selectedDateValue = selectedDate,
+               let dataPoint = chartData.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDateValue) }) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(formatDate(dataPoint.date))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(formatCurrency(dataPoint.pnl))
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(dataPoint.pnl >= 0 ? .green : .red)
+                    }
+                    Spacer()
+                    Button("Clear") {
+                        selectedDate = nil
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
+            }
+            
             // Chart
             Chart(chartData) { dataPoint in
+                AreaMark(
+                    x: .value("Date", dataPoint.date),
+                    yStart: .value("Start", 0),
+                    yEnd: .value("P&L", dataPoint.pnl)
+                )
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [
+                            (totalPnL >= 0 ? Color.green : Color.red).opacity(0.2),
+                            (totalPnL >= 0 ? Color.green : Color.red).opacity(0.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .interpolationMethod(.monotone)
+                
                 LineMark(
                     x: .value("Date", dataPoint.date),
                     y: .value("P&L", dataPoint.pnl)
                 )
                 .foregroundStyle(totalPnL >= 0 ? .green : .red)
-                .interpolationMethod(.catmullRom)
+                .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                .interpolationMethod(.monotone)
+                
+                // ADD: Show selected point
+                if let selectedDateValue = selectedDate,
+                   let selected = chartData.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDateValue) }) {
+                    RuleMark(x: .value("Selected", selected.date))
+                        .foregroundStyle(.gray.opacity(0.5))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
+                    
+                    PointMark(
+                        x: .value("Date", selected.date),
+                        y: .value("P&L", selected.pnl)
+                    )
+                    .foregroundStyle(totalPnL >= 0 ? .green : .red)
+                    .symbolSize(100)
+                }
             }
             .frame(height: 200)
+            .chartXSelection(value: $selectedDate)  // ADD THIS - enables tap/drag selection
             .chartXAxis {
                 AxisMarks(values: .automatic) { value in
                     AxisGridLine()
@@ -112,5 +174,12 @@ struct PortfolioChartView: View {
         formatter.currencySymbol = "$"
         formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: value)) ?? "$0"
+    }
+    
+    // ADD THIS helper
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter.string(from: date)
     }
 }

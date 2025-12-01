@@ -516,7 +516,10 @@ struct PredictionDetailView: View {
                     .fontWeight(.semibold)
                 
                 // Show overall model performance if game is complete
-                if let result = gameResult, let predInfo = prediction.betSlip.predictionInfo {
+                if let result = gameResult,
+                   let predInfo = prediction.betSlip.predictionInfo,
+                   hasMoneylineOdds,                    // ADD THIS
+                   getMoneylinePickTeam() != nil {      // ADD THIS
                     Spacer()
                     modelPerformanceBadge(result: result, predInfo: predInfo)
                 }
