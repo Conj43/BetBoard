@@ -18,7 +18,7 @@ class HomeViewModel: ObservableObject {
     @Published var roi: Double = 0.0
     @Published var isLoading = false
     @Published var errorMessage: String?
-    
+    private var allUserBets: [Bet] = []
     private let firebaseService = FirebaseService()
     private var cancellables = Set<AnyCancellable>()
     
@@ -53,9 +53,10 @@ class HomeViewModel: ObservableObject {
                 let userBets = try await firebaseService.fetchUserBets(for: currentUser.uid)
                 
                 await MainActor.run {
+                    self.allUserBets = userBets
                     self.processUserBets(userBets)
                     self.calculateMetrics(from: userBets)
-                    self.updateChartData(for: .oneWeek, from: userBets)
+                    self.updateChartData(for: .oneWeek)
                     self.isLoading = false
                 }
             } catch {
@@ -76,15 +77,14 @@ class HomeViewModel: ObservableObject {
         do {
             try await firebaseService.deleteUserBet(betID: betWithGameInfo.bet.id, userID: currentUser.uid)
             
-            // Remove the bet from local arrays
             await MainActor.run {
+                // Remove from allUserBets too
+                self.allUserBets.removeAll { $0.id == betWithGameInfo.bet.id }
                 self.trackedBets.removeAll { $0.id == betWithGameInfo.id }
                 self.recentBets.removeAll { $0.id == betWithGameInfo.id }
                 
-                // Recalculate metrics with remaining bets
-                let remainingBets = self.getAllUniqueBets()
-                self.calculateMetrics(from: remainingBets)
-                self.updateChartData(for: .oneWeek, from: remainingBets)
+                self.calculateMetrics(from: self.allUserBets)
+                self.updateChartData(for: .oneWeek)  // REMOVE from: parameter
             }
         } catch {
             await MainActor.run {
@@ -159,7 +159,7 @@ class HomeViewModel: ObservableObject {
         }
     }
     
-    func updateChartData(for timeframe: TimeFrame, from allBets: [Bet]? = nil) {
+    func updateChartData(for timeframe: TimeFrame) {
         let calendar = Calendar.current
         let now = Date()
         
@@ -176,12 +176,18 @@ class HomeViewModel: ObservableObject {
         case .ytd:
             startDate = calendar.date(from: DateComponents(year: calendar.component(.year, from: now), month: 1, day: 1)) ?? now
         case .allTime:
-            startDate = allBets?.min(by: { $0.placedAt < $1.placedAt })?.placedAt ?? now
+            startDate = allUserBets.min(by: { $0.placedAt < $1.placedAt })?.placedAt ?? now
         }
         
-        let betsToUse = allBets ?? getAllUniqueBets()
-        let filteredBets = betsToUse.filter { $0.placedAt >= startDate && $0.result != .pending }
+        let filteredBets = allUserBets.filter { $0.placedAt >= startDate && $0.result != .pending }
             .sorted { $0.placedAt < $1.placedAt }
+        
+        // Group bets by day
+        var betsByDay: [Date: [Bet]] = [:]
+        for bet in filteredBets {
+            let dayStart = calendar.startOfDay(for: bet.placedAt)
+            betsByDay[dayStart, default: []].append(bet)
+        }
         
         var runningPnL: Double = 0
         var dataPoints: [ChartDataPoint] = []
@@ -189,17 +195,24 @@ class HomeViewModel: ObservableObject {
         // Add starting point
         dataPoints.append(ChartDataPoint(date: startDate, pnl: 0))
         
-        for bet in filteredBets {
-            let betProfit = calculateBetProfit(bet: bet)
-            runningPnL += betProfit
-            dataPoints.append(ChartDataPoint(date: bet.placedAt, pnl: runningPnL))
-            
-            print("📈 Chart data point: \(bet.selection) - Profit: $\(betProfit), Running P&L: $\(runningPnL)")
+        // Sort days and create one point per day
+        let sortedDays = betsByDay.keys.sorted()
+        for day in sortedDays {
+            let betsForDay = betsByDay[day] ?? []
+            for bet in betsForDay {
+                runningPnL += calculateBetProfit(bet: bet)
+            }
+            // Use end of day for smoother visualization
+            let endOfDay = calendar.date(byAdding: .hour, value: 23, to: day) ?? day
+            dataPoints.append(ChartDataPoint(date: endOfDay, pnl: runningPnL))
         }
         
-        // Add current point if needed
-        if let lastPoint = dataPoints.last, lastPoint.date < now {
-            dataPoints.append(ChartDataPoint(date: now, pnl: runningPnL))
+        // Only add current point if last bet was more than 1 day ago
+        if let lastPoint = dataPoints.last {
+            let daysSinceLastBet = calendar.dateComponents([.day], from: lastPoint.date, to: now).day ?? 0
+            if daysSinceLastBet > 1 {
+                dataPoints.append(ChartDataPoint(date: now, pnl: runningPnL))
+            }
         }
         
         // If no data, show a flat line at 0
@@ -211,9 +224,10 @@ class HomeViewModel: ObservableObject {
         }
         
         chartData = dataPoints
-        print("📊 Final chart data points: \(dataPoints.count)")
     }
     
+    // Remove getAllUniqueBets() - not needed anymore
+
     // Helper function to get all unique bets from both tracked and recent
     private func getAllUniqueBets() -> [Bet] {
         var allBets: [Bet] = []
