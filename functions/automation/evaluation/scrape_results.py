@@ -155,16 +155,6 @@ class OddsAPIScoresFetcher:
                 home_score = score_map.get(home_team_raw)
                 away_score = score_map.get(away_team_raw)
 
-                # Fallback to positional order if mapping fails (neutral sites sometimes shuffle)
-                if home_score is None or away_score is None:
-                    try:
-                        if home_score is None and isinstance(scores_list, list) and len(scores_list) > 0:
-                            home_score = int(scores_list[0].get("score"))
-                        if away_score is None and isinstance(scores_list, list) and len(scores_list) > 1:
-                            away_score = int(scores_list[1].get("score"))
-                    except (TypeError, ValueError, AttributeError, IndexError):
-                        pass
-
                 if home_score is None or away_score is None:
                     logging.warning(f"Could not parse scores for game: {game.get('id')}")
                     continue
@@ -343,9 +333,23 @@ def publish_results(
             )
             continue
 
-        # Scores are already correct from API
-        home_score = game['home_score']
-        away_score = game['away_score']
+        # Build score map from API using NORMALIZED team names
+        api_scores = {
+            game['home_team']: game['home_score'],  # normalized keys
+            game['away_team']: game['away_score']
+        }
+        
+        # Look up scores using the game doc's team names (which are also normalized)
+        home_score = api_scores.get(match.home_team)
+        away_score = api_scores.get(match.away_team)
+        
+        if home_score is None or away_score is None:
+            logging.error(
+                f"Score mismatch for {match.doc_id}: "
+                f"Game doc has teams ({match.home_team}, {match.away_team}), "
+                f"API returned scores for ({game['home_team']}, {game['away_team']})"
+            )
+            continue
 
         result_doc = {
             "home_score": home_score,
@@ -368,7 +372,6 @@ def publish_results(
         )
     
     logging.info(f"Successfully published {matched_count}/{len(games)} game results")
-
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
