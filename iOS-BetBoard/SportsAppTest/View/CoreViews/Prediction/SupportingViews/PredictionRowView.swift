@@ -397,35 +397,55 @@ struct PredictionRowView: View {
     }
     
     private func displayedSelection() -> String {
-        switch prediction.bestBet.type {
-        case .total:
-            // Side comes from selection ("Over" / "Under")
-            let raw = prediction.bestBet.selection.trimmingCharacters(in: .whitespaces)
-            let upper = raw.uppercased()
-            let side: String
-            if upper.contains("UNDER") {
-                side = "Under"
-            } else if upper.contains("OVER") {
-                side = "Over"
-            } else {
-                side = raw.isEmpty ? "Total" : raw
+            switch prediction.bestBet.type {
+            case .total:
+                // Side comes from selection ("Over" / "Under")
+                let raw = prediction.bestBet.selection.trimmingCharacters(in: .whitespaces)
+                let upper = raw.uppercased()
+                let side: String
+                
+                if upper.contains("UNDER") {
+                    side = "Under"
+                } else if upper.contains("OVER") {
+                    side = "Over"
+                } else {
+                    side = raw.isEmpty ? "Total" : raw
+                }
+                
+                if let line = bestBetBookLine() {
+                    // Show Under/Over + the **book line**, e.g. "Under 180.5"
+                    return "\(side) \(String(format: "%.1f", line))"
+                } else {
+                    return side
+                }
+                
+            case .spread:
+                let teamName = prediction.bestBet.selection
+                
+                // Fetch the line from the keyFactors (using your existing helper)
+                if let line = bestBetBookLine() {
+                    // Format the line:
+                    // 1. Add "+" sign if positive (Double to String doesn't do this auto)
+                    // 2. Ensure 1 decimal place (e.g., 3.0 or 5.5)
+                    let sign = line > 0 ? "+" : ""
+                    let lineStr = "\(sign)\(String(format: "%.1f", line))"
+                    
+                    // Check if the team name already contains the line to prevent duplicates
+                    // (e.g. if data is "Lakers -5.5", don't output "Lakers -5.5 -5.5")
+                    if teamName.contains(String(format: "%.1f", abs(line))) {
+                        return teamName
+                    }
+                    
+                    return "\(teamName) \(lineStr)"
+                }
+                
+                // Fallback if line is missing
+                return teamName
+                
+            case .moneyline:
+                return prediction.bestBet.selection
             }
-            
-            if let line = bestBetBookLine() {
-                // Show Under/Over + the **book line**, e.g. "Under 180.5"
-                return "\(side) \(String(format: "%.1f", line))"
-            } else {
-                return side
-            }
-            
-        case .spread:
-            // For spreads you already have "Team -3.5" in selection
-            return prediction.bestBet.selection
-            
-        case .moneyline:
-            return prediction.bestBet.selection
         }
-    }
     
     private func bestBetBookLine() -> Double? {
         switch prediction.bestBet.type {
