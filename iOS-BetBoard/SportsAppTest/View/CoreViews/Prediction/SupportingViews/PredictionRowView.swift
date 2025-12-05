@@ -422,24 +422,18 @@ struct PredictionRowView: View {
             case .spread:
                 let teamName = prediction.bestBet.selection
                 
-                // Fetch the line from the keyFactors (using your existing helper)
                 if let line = bestBetBookLine() {
-                    // Format the line:
-                    // 1. Add "+" sign if positive (Double to String doesn't do this auto)
-                    // 2. Ensure 1 decimal place (e.g., 3.0 or 5.5)
-                    let sign = line > 0 ? "+" : ""
-                    let lineStr = "\(sign)\(String(format: "%.1f", line))"
+                    // Determine if we're betting on home or away team
+                    let bettingOnHome = teamName.contains(prediction.homeTeam.shortName)
                     
-                    // Check if the team name already contains the line to prevent duplicates
-                    // (e.g. if data is "Lakers -5.5", don't output "Lakers -5.5 -5.5")
-                    if teamName.contains(String(format: "%.1f", abs(line))) {
-                        return teamName
-                    }
+                    // If betting on away team, flip the sign
+                    let adjustedLine = bettingOnHome ? line : -line
                     
+                    let sign = adjustedLine > 0 ? "+" : ""
+                    let lineStr = "\(sign)\(String(format: "%.1f", adjustedLine))"
                     return "\(teamName) \(lineStr)"
                 }
                 
-                // Fallback if line is missing
                 return teamName
                 
             case .moneyline:
