@@ -24,38 +24,16 @@ struct PredictionRowView: View {
     private var betResult: Bool? {
         guard let result = gameResult else { return nil }
         
-        // Extract line from bestBet selection or keyFactors
-        let line: Double?
-        if prediction.bestBet.type == .spread {
-            // First try to parse from selection if it has the line
-            let components = prediction.bestBet.selection.components(separatedBy: " ")
-            if let lastComponent = components.last,
-               lastComponent.hasPrefix("+") || lastComponent.hasPrefix("-"),
-               let lineValue = Double(lastComponent) {
-                line = lineValue
-            } else {
-                // Otherwise try to get from key factors
-                if let lineFactor = prediction.keyFactors.first(where: { $0.contains("Book Line:") || $0.contains("Spread:") }) {
-                    // Extract number from string like "Book Line: -7.5" or "Spread: +7.5"
-                    let lineStr = lineFactor
-                        .replacingOccurrences(of: "Book Line:", with: "")
-                        .replacingOccurrences(of: "Spread:", with: "")
-                        .trimmingCharacters(in: .whitespaces)
-                    line = Double(lineStr)
-                } else {
-                    line = nil
-                }
-            }
-        } else if prediction.bestBet.type == .total {
-            // Get line from key factors
-            if let lineFactor = prediction.keyFactors.first(where: { $0.contains("Book Line:") || $0.contains("Total:") }) {
-                let lineStr = lineFactor
-                    .replacingOccurrences(of: "Book Line:", with: "")
-                    .replacingOccurrences(of: "Total:", with: "")
-                    .trimmingCharacters(in: .whitespaces)
-                line = Double(lineStr)
-            } else {
-                line = nil
+        // Get the displayed line (already adjusted for the team being bet on)
+        var line: Double?
+        if prediction.bestBet.type == .spread || prediction.bestBet.type == .total {
+            line = bestBetBookLine()
+            
+            // For spread bets, adjust sign based on which team we're betting on
+            if prediction.bestBet.type == .spread {
+                let teamName = prediction.bestBet.selection
+                let bettingOnHome = teamName.contains(prediction.homeTeam.shortName)
+                line = bettingOnHome ? line : (line != nil ? -line! : nil)
             }
         } else {
             line = nil
