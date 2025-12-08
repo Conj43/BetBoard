@@ -48,7 +48,7 @@ struct AppInfoDetailView: View {
                         .fontWeight(.semibold)
                     
                     ForEach([
-                        ("chart.bar.xaxis", "Our Predictions", "Get confidence-rated predictions for upcoming games"),
+                        ("chart.bar.xaxis", "Our Predictions", "Get predictions for upcoming games"),
                         ("magnifyingglass", "Game Search", "Find games by team names and matchups"),
                         ("chart.line.uptrend.xyaxis", "Performance Tracking", "Track your betting performance over time"),
                         ("brain.head.profile", "Smart Analysis", "Detailed breakdowns of key factors for each game")
@@ -80,7 +80,7 @@ struct AppInfoDetailView: View {
                         .font(.headline)
                         .fontWeight(.semibold)
                     
-                    Text("BetBoard is for informational and educational purposes only. We do not facilitate actual betting or gambling. All predictions are based on algorithmic analysis and should not be considered guaranteed outcomes. Please bet responsibly and within your means.")
+                    Text("BetBoard is for informational and educational purposes only. We do not facilitate betting or gambling. All predictions are based on algorithmic analysis and should not be considered guaranteed outcomes. Please bet responsibly.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
