@@ -178,17 +178,39 @@ class PredictionsViewModel: ObservableObject {
     func loadPredictions() async {
         let cacheKey = self.cacheKey
             
-            // Check if cache is recent (within 5 minutes)
-            if let cachedTime = cacheTimestamps[cacheKey],
-               Date().timeIntervalSince(cachedTime) < 300, // 5 minutes
-               let cachedBetSlips = betSlipsCache[cacheKey],
-               !cachedBetSlips.isEmpty,
-               let cachedResults = gameResultsCache[cacheKey] {
-                
-                print("✅ Using fresh cached data for \(cacheKey)")
-                // Use cached data...
-                return
+        // Check if cache is recent (within 5 minutes)
+        if let cachedTime = cacheTimestamps[cacheKey],
+           Date().timeIntervalSince(cachedTime) < 300, // 5 minutes
+           let cachedBetSlips = betSlipsCache[cacheKey],
+           !cachedBetSlips.isEmpty,
+           let cachedResults = gameResultsCache[cacheKey] {
+            
+            print("✅ Using fresh cached data for \(cacheKey)")
+            
+            // Reconstruct games from cached bet slips
+            let allGames = cachedBetSlips.compactMap { createPredictionGameFromBetSlip($0) }
+                .sorted { $0.gameTime < $1.gameTime }
+            
+            // Reconstruct recommended games from cache
+            let recommendedGames: [PredictionGame]
+            do {
+                recommendedGames = try await loadRecommendedGames(from: cachedBetSlips)
+            } catch {
+                recommendedGames = []
+                print("⚠️ Failed to load recommended games from cache: \(error)")
             }
+            
+            // Update all published properties
+            self.allGames = allGames
+            self.recommendedGames = recommendedGames
+            self.gameResults = cachedResults
+            self.lastLoadedDate = cacheKey
+            
+            applyFilters()
+            isLoading = false
+            
+            return
+        }
         
         print("🔄 Loading predictions for \(cacheKey)...")
         isLoading = true
