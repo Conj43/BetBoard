@@ -17,12 +17,15 @@ playground.xcworkspace
 # Swift Package Manager
 .build/
 .swiftpm/
+htmlcov/
+.coverage
 
 # Python
 .venv/
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
 
 # Node
 node_modules/

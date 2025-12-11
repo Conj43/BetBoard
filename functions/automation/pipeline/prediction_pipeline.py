@@ -112,10 +112,16 @@ def _load_feature_columns(model_dir: str, explicit: Sequence[str] | None = None)
     if explicit:
         return list(explicit)
 
-    _require_firebase_storage()
-    feature_names = make_preds.get_feature_names(str(model_dir))
+    feature_names: Sequence[str] | None = None
+    if hasattr(make_preds, "get_feature_names"):
+        try:
+            _require_firebase_storage()
+            feature_names = make_preds.get_feature_names(str(model_dir))
+        except Exception:
+            feature_names = None
+
     if feature_names:
-        return feature_names
+        return list(feature_names)
 
     if FEATURE_COLS_ORDER:
         return list(FEATURE_COLS_ORDER)
@@ -220,27 +226,20 @@ def _meets_bet_criteria(pick: Dict[str, Any]) -> bool:
     """Filter picks based on edge and odds requirements."""
     bet_type = pick.get("bet_type")
     edge = pick.get("edge_strength", 0)
-    odds = pick.get("odds")
-    
-    if bet_type == "spread":
-        return 5 <= edge <= 10
-    
-    elif bet_type == "total":
-        return 5 <= edge <= 10
-    
-    elif bet_type == "moneyline":
-        # Edge is in probability (0-1 scale), need 1-5%
-        if not (0.01 <= edge <= 0.05):
-            return False
-        # Odds must be -200 or less (more negative = bigger favorite)
-        if odds is None:
-            return False
-        try:
-            odds_val = float(odds)
-            return odds_val <= -200
-        except (TypeError, ValueError):
-            return False
-    
+
+    try:
+        edge_val = float(edge)
+    except (TypeError, ValueError):
+        return False
+
+    if bet_type in ("spread", "total"):
+        # Require a meaningful edge: absolute edge between 5 and 10 points
+        return 5.0 <= abs(edge_val) <= 10.0
+
+    if bet_type == "moneyline":
+        # Require between 1% and 5% edge on implied win probability.
+        return 0.01 <= edge_val <= 0.05
+
     return False
 
 
@@ -570,8 +569,13 @@ def run_prediction_pipeline(config: PredictionPipelineConfig | None = None) -> N
     print(f"Model dir: {cfg.model_dir}")
 
     explicit_cols = _resolve_explicit_feature_columns(cfg.feature_columns_source)
-    feature_cols = _load_feature_columns(cfg.model_dir, explicit_cols)
-    bet_feature_cols = _load_feature_columns(cfg.bet_model_dir, explicit_cols)
+    try:
+        feature_cols = _load_feature_columns(cfg.model_dir, explicit_cols)
+        bet_feature_cols = _load_feature_columns(cfg.bet_model_dir, explicit_cols)
+    except RuntimeError as exc:
+        print(f"[ERROR] Unable to resolve feature columns: {exc}")
+        return
+
     print(f"Using {len(feature_cols)} feature columns (main model).")
     print(f"Using {len(bet_feature_cols)} feature columns (bet model).")
 
