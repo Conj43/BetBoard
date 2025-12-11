@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import logging
 import math
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional
@@ -96,7 +97,10 @@ def _normalize_team(value: Optional[str]) -> str:
         except Exception:
             _ALIAS_MAP = {}
 
-    slug = "".join(ch for ch in value.lower() if ch.isalnum())
+    # Strip diacritics so accented and unaccented variants normalize identically.
+    normalized = unicodedata.normalize("NFKD", value)
+    deaccented = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    slug = "".join(ch for ch in deaccented.lower() if ch.isalnum())
     if not slug:
         return ""
 
@@ -506,10 +510,10 @@ def _evaluate_spread_model(
     stats.mae_sum += abs(predicted_margin - actual_margin)
 
     # Convert line to home spread and check coverage
-    # line: 3.5 means home favored → home spread = -3.5
-    # To cover -3.5, home must win by MORE than 3.5
-    predicted_cover_home = predicted_margin - line  # FIXED: was +, now -
-    actual_cover_home = actual_margin - line        # FIXED: was +, now -
+    # line: -5.0 means home favored by five; adding the line to the actual
+    # margin yields 0 for a push, >0 for a home cover, <0 for an away cover.
+    predicted_cover_home = predicted_margin + line
+    actual_cover_home = actual_margin + line
 
     # Rest of function stays the same...
     if actual_cover_home == 0:

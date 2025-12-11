@@ -514,6 +514,11 @@ def build_features_for_date(date_str: str) -> pd.DataFrame:
         if col not in features_df.columns:
             features_df[col] = 0.0
 
+    # Replace any remaining numeric NaNs with 0.0 to keep downstream code simple
+    numeric_cols = features_df.select_dtypes(include=[np.number]).columns
+    if len(numeric_cols) > 0:
+        features_df[numeric_cols] = features_df[numeric_cols].fillna(0.0)
+
     torvik_metrics = [
         ("barthag", True),
         ("adj_o", True),

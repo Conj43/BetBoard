@@ -1,5 +1,6 @@
 """Utility functions for data normalization and key mapping."""
 import re
+import unicodedata
 
 import pandas as pd
 import numpy as np
@@ -21,26 +22,25 @@ def parse_dates(series: pd.Series) -> pd.Series:
     Returns timezone-naive dates normalized to midnight.
     """
     candidates = [
-        "%m/%d/%Y",
         "%Y-%m-%d",
+        "%m/%d/%Y",
         "%m/%d/%y",
         "%Y/%m/%d",
         "%d-%b-%y",
         "%d-%b-%Y",
     ]
-    best = None
-    best_ok = -1
-    
+    best = pd.Series([pd.NaT] * len(series), index=series.index)
+
+    # First, try explicit formats in order
     for fmt in candidates:
         dt = pd.to_datetime(series, format=fmt, errors="coerce")
-        ok = dt.notna().sum()
-        if ok > best_ok:
-            best_ok, best = ok, dt
-    
-    if best_ok <= 0:
-        # Fallback: let pandas infer
-        best = pd.to_datetime(series, errors="coerce")
-    
+        best = best.fillna(dt)
+
+    # Fallback: generic inference for anything still NaT
+    if best.isna().any():
+        inferred = pd.to_datetime(series, errors="coerce")
+        best = best.fillna(inferred)
+
     # Ensure tz-naive and strip time-of-day for consistent joins
     try:
         best = best.dt.tz_localize(None)
@@ -66,7 +66,10 @@ def load_alias_map() -> dict[str, str]:
         return _ALIAS_MAP_CACHE
     
     def _slug(x: str) -> str:
-        return "".join(ch for ch in str(x).lower() if ch.isalnum())
+        # Strip diacritics so accented and unaccented variants share the same key.
+        normalized = unicodedata.normalize("NFKD", str(x))
+        deaccented = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+        return "".join(ch for ch in deaccented.lower() if ch.isalnum())
     
     alias: dict[str, str] = {}
 
@@ -159,7 +162,10 @@ def ensure_bet_schema(df: pd.DataFrame, cols: list[str] = None) -> pd.DataFrame:
     Ensure the provided betting columns exist in df.
     Adds missing columns as NaN. Returns a new DataFrame.
     """
-    from automation.config.config import CANONICAL_BET_COLS
+    try:
+        from automation.config.config import CANONICAL_BET_COLS
+    except Exception:
+        CANONICAL_BET_COLS = []
     if cols is None:
         cols = CANONICAL_BET_COLS
     
