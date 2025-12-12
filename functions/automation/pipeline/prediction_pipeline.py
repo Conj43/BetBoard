@@ -221,7 +221,7 @@ def _as_float(value: Any) -> Optional[float]:
         return float(value)
     except (TypeError, ValueError):
         return None
-    
+
 def _meets_bet_criteria(pick: Dict[str, Any]) -> bool:
     """Filter picks based on edge and odds requirements."""
     bet_type = pick.get("bet_type")
@@ -237,7 +237,10 @@ def _meets_bet_criteria(pick: Dict[str, Any]) -> bool:
         return 5.0 <= abs(edge_val) <= 10.0
 
     if bet_type == "moneyline":
-        # Require between 1% and 5% edge on implied win probability.
+        # Require between 1% and 5% edge on implied win probability and avoid longshot prices beyond +300.
+        ml_odds = _as_float(pick.get("odds") or pick.get("book_line"))
+        if ml_odds is not None and ml_odds > 300:
+            return False
         return 0.01 <= edge_val <= 0.05
 
     return False

@@ -310,12 +310,14 @@ def test_meets_bet_criteria_edges():
     pick_bad = {"bet_type": "total", "edge_strength": 4.0}
     assert not pp._meets_bet_criteria(pick_bad)
 
-    ml_good = {"bet_type": "moneyline", "edge_strength": 0.02}
-    ml_bad_low = {"bet_type": "moneyline", "edge_strength": 0.005}
-    ml_bad_high = {"bet_type": "moneyline", "edge_strength": 0.06}
+    ml_good = {"bet_type": "moneyline", "edge_strength": 0.02, "odds": 250}
+    ml_bad_low = {"bet_type": "moneyline", "edge_strength": 0.005, "odds": 200}
+    ml_bad_high = {"bet_type": "moneyline", "edge_strength": 0.06, "odds": 200}
+    ml_longshot = {"bet_type": "moneyline", "edge_strength": 0.02, "odds": 350}
     assert pp._meets_bet_criteria(ml_good)
     assert not pp._meets_bet_criteria(ml_bad_low)
     assert not pp._meets_bet_criteria(ml_bad_high)
+    assert not pp._meets_bet_criteria(ml_longshot)
 
 
 def test_build_top_recommendations_caps():
