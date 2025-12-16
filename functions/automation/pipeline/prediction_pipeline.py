@@ -221,7 +221,7 @@ def _as_float(value: Any) -> Optional[float]:
         return float(value)
     except (TypeError, ValueError):
         return None
-    
+
 def _meets_bet_criteria(pick: Dict[str, Any]) -> bool:
     """Filter picks based on edge and odds requirements."""
     bet_type = pick.get("bet_type")
@@ -232,12 +232,38 @@ def _meets_bet_criteria(pick: Dict[str, Any]) -> bool:
     except (TypeError, ValueError):
         return False
 
-    if bet_type in ("spread", "total"):
-        # Require a meaningful edge: absolute edge between 5 and 10 points
+    if bet_type == "spread":
+        # Get the line to determine favorite/underdog status
+        line = _as_float(pick.get("book_line", 0))
+        if line is None:
+            return False
+        
+        try:
+            line_val = float(line)
+        except (TypeError, ValueError):
+            return False
+        
+        # Underdog (negative line from picked team's perspective)
+        if line_val < 0:
+            return 0 < edge_val <= 6.0
+        
+        # Small favorite (0-5 points)
+        elif 0 <= line_val <= 5:
+            return 4.0 <= edge_val <= 6.0
+        
+        # Large favorite (>5 points) - don't bet
+        else:
+            return False
+
+    if bet_type == "total":
+        # Keep existing total logic
         return 5.0 <= abs(edge_val) <= 10.0
 
     if bet_type == "moneyline":
-        # Require between 1% and 5% edge on implied win probability.
+        # Keep existing moneyline logic
+        ml_odds = _as_float(pick.get("odds") or pick.get("book_line"))
+        if ml_odds is not None and ml_odds > 300:
+            return False
         return 0.01 <= edge_val <= 0.05
 
     return False
