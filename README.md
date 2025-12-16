@@ -1,4 +1,7 @@
-# BetBoard 📊
+<div align="center">
+  <img src="betboard.png" alt="BetBoard Logo" width="200">
+  <h1>BetBoard</h1>
+</div>
 
 A SwiftUI-based iOS application for tracking sports betting performance with AI-powered predictions for college basketball games.
 
